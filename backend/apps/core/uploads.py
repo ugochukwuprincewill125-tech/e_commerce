@@ -27,8 +27,6 @@ import secrets
 
 from django.conf import settings
 
-from .storage import BackblazeMediaStorage
-
 # How long a presigned URL stays valid (signature window, not download TTL).
 SIGNING_TTL_SECONDS = 15 * 60
 
@@ -53,6 +51,19 @@ def b2_configured() -> bool:
         and settings.B2_APPLICATION_KEY
         and settings.B2_BUCKET_NAME
         and settings.B2_ENDPOINT_URL
+    )
+
+
+def _s3_client():
+    """One boto3 client for signing and existence checks (same creds as storage)."""
+    import boto3
+
+    return boto3.client(
+        "s3",
+        endpoint_url=settings.B2_ENDPOINT_URL,
+        aws_access_key_id=settings.B2_APPLICATION_KEY_ID,
+        aws_secret_access_key=settings.B2_APPLICATION_KEY,
+        region_name=(settings.B2_ENDPOINT_URL.split("//")[1].split(".")[1] if settings.B2_ENDPOINT_URL else None),
     )
 
 
@@ -102,8 +113,7 @@ def sign_product_image(product_id: int, filename: str, content_type: str) -> dic
             "storage": "local",
         }
 
-    storage = BackblazeMediaStorage()
-    client = storage.bucket.meta.client
+    client = _s3_client()
     upload_url = client.generate_presigned_url(
         "put_object",
         Params={"Bucket": settings.B2_BUCKET_NAME, "Key": key, "ContentType": content_type},
@@ -126,8 +136,7 @@ def key_is_wellformed(key: str) -> bool:
 def object_exists(key: str) -> bool:
     """Verify a direct upload actually landed before attaching it."""
     if b2_configured():
-        storage = BackblazeMediaStorage()
-        client = storage.bucket.meta.client
+        client = _s3_client()
         try:
             client.head_object(Bucket=settings.B2_BUCKET_NAME, Key=key)
             return True

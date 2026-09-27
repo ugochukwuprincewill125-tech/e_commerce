@@ -1,19 +1,27 @@
 /**
- * Every sidebar / sticky column must stay put while its page scrolls.
+ * Every sidebar / secondary column must stay put while the page scrolls.
  * Run: node tools/audit-sticky.cjs
  *
- * Two rules are enforced:
- *  1. Any element using `sticky` must be able to travel. On a grid or flex
- *     child the default `align-self: stretch` makes the element fill the row,
- *     leaving no room to move — so sticky children need `self-start`.
- *  2. Sticky offsets must use the `sticky-chrome` helper (which reads
- *     --chrome-top) rather than a hard-coded pixel value, because the account
- *     shell renders no navbar and would otherwise leave a large dead gap.
+ * The requirement: a sidebar never scrolls with the page, but scrolling *inside*
+ * a sidebar still works. That needs four things, each checked below.
+ *
+ *  1. The document must not be a scroll container. `overflow-x: hidden` on
+ *     <html>/<body> forces the paired `overflow-y: visible` to compute to
+ *     `auto`, which turns them into scroll containers — sticky then resolves
+ *     against the wrong scrollport and sidebars drift. `clip` is required.
+ *  2. A shared `.pinned-panel` utility must exist, be desktop-scoped, and set
+ *     sticky + align-self + a viewport max-height.
+ *  3. That panel must be its own scrollport with `overscroll-behavior: contain`
+ *     so a wheel gesture inside it stops instead of chaining to the document.
+ *  4. No ad-hoc sticky sidebar may remain: every one must use the utility, so
+ *     the behaviour is identical everywhere.
  */
 const fs = require('fs')
 const path = require('path')
 
 const SRC = path.join(__dirname, '..', 'src')
+const rel = (p) => path.relative(SRC, p).replace(/\\/g, '/')
+
 const walk = (dir, out = []) => {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     const p = path.join(dir, e.name)
@@ -29,51 +37,110 @@ const check = (label, ok, detail) => {
   console.log((ok ? '  PASS  ' : '  FAIL  ') + label + (detail ? '   [' + detail + ']' : ''))
 }
 
-const files = walk(SRC)
-const stickies = []
-for (const f of files) {
-  const rel = path.relative(SRC, f).replace(/\\/g, '/')
-  const lines = fs.readFileSync(f, 'utf8').split('\n')
-  lines.forEach((line, i) => {
-    if (/\bsticky\b/.test(line) && /className=/.test(line)) stickies.push({ rel, line: i + 1, text: line })
-  })
-}
-
-console.log('STICKY ELEMENTS FOUND: ' + stickies.length + '\n')
-console.log('Rule 1 — sticky grid/flex children can travel')
-for (const s of stickies) {
-  // A sticky element is a grid/flex child if it sits inside a grid/flex parent.
-  // Those must opt out of the stretching default. Elements that are sticky
-  // purely inside a scroll container (top-0 headers) are unaffected.
-  const needsSelfStart = /lg:sticky|sticky-chrome/.test(s.text) && /top-0/.test(s.text) === false
-  if (!needsSelfStart) {
-    check(s.rel + ':' + s.line + ' (pinned at top-0, no travel needed)', true)
-    continue
-  }
-  check(s.rel + ':' + s.line + ' has self-start', /self-start/.test(s.text), s.text.trim().slice(0, 70))
-}
-
-console.log('\nRule 2 — no hard-coded non-zero sticky offsets')
-for (const s of stickies) {
-  // `sticky top-0` is correct for a bar pinned to the viewport top and must be
-  // exempt. Only a non-zero offset is a hard-coded assumption.
-  const hardCoded = /\bsticky\b[^\n]*\btop-(?!0\b)\d/.test(s.text) && !/sticky-chrome/.test(s.text)
-  check(s.rel + ':' + s.line + ' uses sticky-chrome', !hardCoded, hardCoded ? s.text.trim().slice(0, 70) : '')
-}
-
-console.log('\nRule 3 — the offset variable is driven by real chrome')
 const css = fs.readFileSync(path.join(SRC, 'index.css'), 'utf8')
-const layout = fs.readFileSync(path.join(SRC, 'components', 'Layout', 'Layout.jsx'), 'utf8')
-check('--chrome-top is declared', /--chrome-top:\s*0px/.test(css))
-check('sticky-chrome utility exists', /\.sticky-chrome/.test(css))
-check('Layout sets it from navbar visibility', /'--chrome-top': showNavbar \? '68px' : '0px'/.test(layout))
-check('html overflow-x is clipped', /html[\s\S]*?overflow-x:\s*hidden/.test(css.split('body')[0]))
-check('body overscroll is handled', /overscroll-behavior-y/.test(css))
+const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '')
+const bare = stripComments(css)
 
-console.log('\nRule 4 — mobile sticky bars clear the tab bar')
-const pdp = fs.readFileSync(path.join(SRC, 'pages', 'ProductDetails', 'ProductDetails.jsx'), 'utf8')
-check('PDP buy bar is auth-aware', /user \? 'bottom-0' : 'bottom-16'/.test(pdp))
-check('PDP buy bar reads the session', /const \{ user \} = useAuth\(\)/.test(pdp))
+/* ---- 1. the document must not be a scroll container ---- */
+console.log('Rule 1 - document is not a scroll container')
+{
+  // The effective value is the last declaration, so `clip` must come after the
+  // `hidden` fallback.
+  const html = bare.match(/\bhtml\s*\{([^}]*)\}/)
+  const body = bare.match(/\bbody\s*\{([^}]*)\}/)
+  for (const [name, m] of [
+    ['html', html],
+    ['body', body],
+  ]) {
+    if (!m) {
+      check(`${name} has an overflow-x rule`, false, 'no rule found')
+      continue
+    }
+    const decls = [...m[1].matchAll(/overflow-x:\s*([^;]+);/g)].map((x) => x[1].trim())
+    const last = decls[decls.length - 1]
+    check(`${name} overflow-x resolves to clip`, last === 'clip', `declares: ${decls.join(' then ')}`)
+  }
+  check('overscroll containment helper is available', /overscroll-behavior:\s*contain/.test(bare))
+}
 
-console.log(failed === 0 ? '\nPASS - all sidebars stick correctly' : '\nFAIL - ' + failed + ' check(s)')
+/* ---- 2. the shared pinned-panel utility ---- */
+console.log('\nRule 2 - shared .pinned-panel utility')
+{
+  const mq = css.match(/@media\s*\(min-width:\s*1024px\)\s*\{([\s\S]*?)\n\}/)
+  check('defined inside a desktop-only media query', !!mq)
+  const block = mq ? mq[1] : ''
+  check('position: sticky', /position:\s*sticky/.test(block))
+  check('align-self: start (grid child must not stretch)', /align-self:\s*start/.test(block))
+  check('max-height caps it to the viewport', /max-height:\s*calc\(100svh/.test(block))
+  check('is its own scrollport', /overflow-y:\s*auto/.test(block))
+  check('scroll gesture does not chain to the page', /overscroll-behavior:\s*contain/.test(block))
+  check('offset follows the real chrome', /top:\s*var\(--chrome-top/.test(block))
+  check('flush variant exists for the full-height rail', /\.pinned-panel-flush/.test(block))
+}
+
+/* ---- 3. every sidebar/column uses the utility ---- */
+console.log('\nRule 3 - sidebars use the utility, not ad-hoc sticky')
+{
+  const files = walk(SRC)
+  let pinned = 0
+  const adHoc = []
+  for (const f of files) {
+    const r = rel(f)
+    const lines = fs.readFileSync(f, 'utf8').split('\n')
+    lines.forEach((line, i) => {
+      if (!/className=/.test(line)) return
+      if (/\bpinned-panel\b/.test(line)) pinned++
+      // The old hand-rolled pattern: a column doing its own sticky offset.
+      if (/\bsticky\b/.test(line) && /self-start/.test(line) && !/pinned-panel/.test(line)) {
+        adHoc.push(`${r}:${i + 1}  ${line.trim().slice(0, 70)}`)
+      }
+      if (/\bsticky-chrome\b/.test(line)) {
+        adHoc.push(`${r}:${i + 1}  uses sticky-chrome instead of pinned-panel`)
+      }
+    })
+  }
+  check(`${pinned} sidebar/column(s) use .pinned-panel`, pinned >= 5, `found ${pinned}`)
+  check('no ad-hoc sticky sidebar remains', adHoc.length === 0, adHoc.join(' | ').slice(0, 120))
+}
+
+/* ---- 4. the specific sidebars the user named ---- */
+console.log('\nRule 4 - the sidebars that must be pinned')
+{
+  const rail = fs.readFileSync(path.join(SRC, 'components', 'Account', 'AccountNav.jsx'), 'utf8')
+  check('account rail (home, dashboard, cart, shop, ...) is pinned', /<aside[^>]*pinned-panel/.test(rail))
+  check('account rail scrolls internally, not with the page', /overflow-y-auto[^"]*overscroll-contain|overscroll-contain[^"]*overflow-y-auto/.test(rail))
+
+  const shop = fs.readFileSync(path.join(SRC, 'pages', 'Shop', 'Shop.jsx'), 'utf8')
+  check('shop filter sidebar is pinned', /<aside[^>]*pinned-panel/.test(shop))
+  check('shop filter sidebar is not viewport-height capped twice', !/max-h-\[calc\(100svh/.test(shop))
+
+  const targets = [
+    ['components/Account/AccountNav.jsx', 'account rail'],
+    ['pages/Shop/Shop.jsx', 'shop filters'],
+    ['pages/Cart/Cart.jsx', 'cart summary'],
+    ['pages/Checkout/Checkout.jsx', 'checkout summary'],
+    ['pages/Contact/Contact.jsx', 'contact form'],
+    ['pages/ProductDetails/Gallery.jsx', 'product gallery'],
+  ]
+  for (const [f, label] of targets) {
+    const src = fs.readFileSync(path.join(SRC, f), 'utf8')
+    check(`${label} uses .pinned-panel`, /pinned-panel/.test(src), f)
+  }
+}
+
+/* ---- 5. chrome offset plumbing ---- */
+console.log('\nRule 5 - chrome offset plumbing')
+{
+  check('--chrome-top is declared', /--chrome-top:\s*0px/.test(css))
+  const layout = fs.readFileSync(path.join(SRC, 'components', 'Layout', 'Layout.jsx'), 'utf8')
+  check('Layout drives it from navbar visibility', /'--chrome-top':\s*showNavbar\s*\?\s*'68px'\s*:\s*'0px'/.test(layout))
+  const shop = fs.readFileSync(path.join(SRC, 'pages', 'Shop', 'Shop.jsx'), 'utf8')
+  check('shop filters clear the site navbar', /pinned-panel/.test(shop))
+}
+
+console.log(
+  failed === 0
+    ? '\nPASS - every sidebar is pinned and scrolls only internally'
+    : '\nFAIL - ' + failed + ' check(s)'
+)
 process.exit(failed ? 1 : 0)

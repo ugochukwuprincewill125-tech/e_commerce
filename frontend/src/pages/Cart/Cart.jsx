@@ -149,7 +149,7 @@ export default function Cart() {
           </div>
 
           {/* Summary column */}
-          <div className="space-y-4 lg:sticky lg:sticky-chrome lg:self-start">
+          <div className="pinned-panel space-y-4">
             {/* Fulfilment method */}
             <div className="rounded-md border border-line bg-white p-5">
               <h2 className="text-[15px] font-semibold uppercase tracking-wide text-ink-900">Fulfilment</h2>

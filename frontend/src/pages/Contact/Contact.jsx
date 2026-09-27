@@ -142,7 +142,7 @@ export default function Contact() {
         </div>
 
         <Reveal delay={0.05}>
-          <form onSubmit={onSubmit} noValidate className="card p-6 sm:p-8 lg:sticky lg:sticky-chrome lg:self-start">
+          <form onSubmit={onSubmit} noValidate className="pinned-panel card p-6 sm:p-8">
             <h2 className="text-xl font-semibold">Send us a message</h2>
             <p className="mt-1 text-sm text-metal-500">We usually reply within one business day.</p>
             <div className="mt-6 grid gap-4 sm:grid-cols-2">

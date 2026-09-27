@@ -422,7 +422,7 @@ export default function Checkout() {
             </div>
           </form>
 
-          <div className="lg:sticky lg:sticky-chrome lg:self-start">
+          <div className="pinned-panel">
             <OrderSummary
               quote={quote.data}
               loading={quote.isFetching}

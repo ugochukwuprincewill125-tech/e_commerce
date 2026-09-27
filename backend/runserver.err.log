@@ -1,67 +1,93 @@
 Watching for file changes with StatReloader
 Watching for file changes with StatReloader
-[27/Sep/2026 23:10:29] "GET /api/health/ HTTP/1.1" 200 15
-[27/Sep/2026 23:10:47] "GET /api/store-info/ HTTP/1.1" 200 1328
-[27/Sep/2026 23:10:49] "GET /api/categories/?root=true HTTP/1.1" 200 7291
-[27/Sep/2026 23:10:49] "GET /api/cart/ HTTP/1.1" 200 164
-[27/Sep/2026 23:10:49] "GET /api/categories/?featured=true HTTP/1.1" 200 4863
-[27/Sep/2026 23:10:49] "GET /api/products/?featured=true&page_size=3&ordering=-effective_price HTTP/1.1" 200 2779
-[27/Sep/2026 23:10:50] "GET /media/products/apple-macbook-air-13-m2-8gb256gb-1_tIIIYS8.jpg HTTP/1.1" 304 0
-[27/Sep/2026 23:10:50] "GET /api/products/?on_sale=true&in_stock=true&min_discount=8&page_size=12&ordering=-review_count HTTP/1.1" 200 10466
-[27/Sep/2026 23:10:50] "GET /api/products/?featured=true&page_size=12 HTTP/1.1" 200 10539
-[27/Sep/2026 23:10:50] "GET /media/products/ugreen-usb-c-to-usb-c-100w-cable-2m-1_admYaU1.jpg HTTP/1.1" 304 0
-[27/Sep/2026 23:10:50] "GET /media/products/samsung-t7-portable-ssd-1tb-1_OZoM6mM.jpg HTTP/1.1" 304 0
-[27/Sep/2026 23:10:50] "GET /media/products/samsung-t7-portable-ssd-1tb-2_QfsvaKe.jpg HTTP/1.1" 304 0
-[27/Sep/2026 23:10:50] "GET /media/products/apple-ipad-10th-generation-64gb-wi-fi-1_5hmOjc6.jpg HTTP/1.1" 304 0
-[27/Sep/2026 23:10:50] "GET /media/products/anker-powercore-20000mah-power-bank-1_zVU1Y86.jpg HTTP/1.1" 304 0
-[27/Sep/2026 23:10:50] "GET /media/products/tp-link-archer-c6-ac1200-dual-band-router-1_XjIVkMz.jpg HTTP/1.1" 304 0
-[27/Sep/2026 23:10:50] "GET /media/products/anker-powercore-20000mah-power-bank-2_IlCiOhs.jpg HTTP/1.1" 304 0
-[27/Sep/2026 23:10:50] "GET /media/products/logitech-g435-lightspeed-gaming-headset-1_Yv7mebZ.jpg HTTP/1.1" 304 0
-[27/Sep/2026 23:10:50] "GET /media/products/apple-ipad-10th-generation-64gb-wi-fi-2_vIS5Zgq.jpg HTTP/1.1" 304 0
-[27/Sep/2026 23:10:50] "GET /media/products/xiaomi-smart-band-8-1_ypnO6fT.jpg HTTP/1.1" 304 0
-[27/Sep/2026 23:10:50] "GET /media/products/samsung-galaxy-s24-ultra-256gb-2_8V0Vh4c.jpg HTTP/1.1" 304 0
-[27/Sep/2026 23:10:50] "GET /media/products/jbl-flip-6-portable-speaker-1_inubqFR.jpg HTTP/1.1" 304 0
-[27/Sep/2026 23:10:50] "GET /media/products/sony-dualsense-wireless-controller-1_06WGHkf.jpg HTTP/1.1" 304 0
-[27/Sep/2026 23:10:50] "GET /media/products/tp-link-deco-m4-mesh-wi-fi-2-pack-1_AGShka7.jpg HTTP/1.1" 304 0
-[27/Sep/2026 23:10:50] "GET /media/products/samsung-galaxy-watch6-44mm-1_scLzdro.jpg HTTP/1.1" 304 0
-[27/Sep/2026 23:10:51] "GET /media/products/jbl-flip-6-portable-speaker-2_4UkZZnf.jpg HTTP/1.1" 304 0
-[27/Sep/2026 23:10:51] "GET /media/products/sony-dualsense-wireless-controller-2_uu57asJ.jpg HTTP/1.1" 304 0
-[27/Sep/2026 23:10:51] "GET /media/products/samsung-galaxy-watch6-44mm-2_EMk4W2U.jpg HTTP/1.1" 304 0
-[27/Sep/2026 23:10:51] "GET /media/products/sony-wh-1000xm5-wireless-headphones-1_NJw6svX.jpg HTTP/1.1" 304 0
-[27/Sep/2026 23:10:51] "GET /media/products/tp-link-deco-m4-mesh-wi-fi-2-pack-2_11ekPFZ.jpg HTTP/1.1" 304 0
-[27/Sep/2026 23:10:51] "GET /media/products/sony-wh-1000xm5-wireless-headphones-2_vd3RFsS.jpg HTTP/1.1" 304 0
-[27/Sep/2026 23:10:51] "GET /media/products/apple-airpods-pro-2nd-generation-usb-c-1_58zLrCw.jpg HTTP/1.1" 304 0
-[27/Sep/2026 23:10:51] "GET /media/products/apple-airpods-pro-2nd-generation-usb-c-2_so39Gx3.jpg HTTP/1.1" 304 0
+[27/Sep/2026 23:36:31] "GET /api/health/ HTTP/1.1" 200 15
 C:\Users\user\Downloads\timeline-global-systems\backend\venv\Lib\site-packages\jwt\api_jwt.py:149: InsecureKeyLengthWarning: The HMAC key is 31 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
   return self._jws.encode(
-[27/Sep/2026 23:10:56] "POST /api/auth/login/ HTTP/1.1" 200 721
-[27/Sep/2026 23:10:58] "GET /api/categories/ HTTP/1.1" 200 13757
+[27/Sep/2026 23:36:36] "POST /api/auth/login/ HTTP/1.1" 200 721
 C:\Users\user\Downloads\timeline-global-systems\backend\venv\Lib\site-packages\jwt\api_jwt.py:370: InsecureKeyLengthWarning: The HMAC key is 31 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
   decoded = self.decode_complete(
-[27/Sep/2026 23:11:00] "POST /api/admin-api/products/ HTTP/1.1" 201 767
-[27/Sep/2026 23:11:03] "POST /api/admin-api/uploads/sign/ HTTP/1.1" 200 260
-[27/Sep/2026 23:11:05] "PUT /api/admin-api/uploads/local/?key=media%2Fproducts%2F68%2F1840036f-macbook-pro.jpg HTTP/1.1" 200 71
-[27/Sep/2026 23:11:08] "PATCH /api/admin-api/products/68/ HTTP/1.1" 200 957
-[27/Sep/2026 23:11:09] "GET /api/products/direct-upload-laptop/ HTTP/1.1" 200 1091
-[27/Sep/2026 23:12:29] "POST /api/auth/login/ HTTP/1.1" 200 721
-[27/Sep/2026 23:12:31] "GET /api/categories/ HTTP/1.1" 200 13757
-[27/Sep/2026 23:12:34] "POST /api/admin-api/products/ HTTP/1.1" 201 888
-Bad Request: /api/admin-api/products/
-Bad Request: /api/admin-api/products/
-[27/Sep/2026 23:13:03] "POST /api/admin-api/products/ HTTP/1.1" 400 157
-[27/Sep/2026 23:14:18] "GET /media/products/tp-link-archer-c6-ac1200-dual-band-router-2_Wjbizca.jpg HTTP/1.1" 304 0
-[27/Sep/2026 23:14:18] "GET /media/products/dell-24-p2422h-full-hd-monitor-2_Ubwlh8G.jpg HTTP/1.1" 304 0
-[27/Sep/2026 23:14:18] "GET /media/products/logitech-g435-lightspeed-gaming-headset-2_stpmDzI.jpg HTTP/1.1" 304 0
-[27/Sep/2026 23:14:18] "GET /media/products/ugreen-usb-c-to-usb-c-100w-cable-2m-2_JMQ53X1.jpg HTTP/1.1" 304 0
-[27/Sep/2026 23:14:18] "GET /media/products/dell-24-p2422h-full-hd-monitor-1_CpyQxqL.jpg HTTP/1.1" 304 0
-[27/Sep/2026 23:14:18] "GET /media/products/xiaomi-smart-band-8-2_CF0eqTX.jpg HTTP/1.1" 304 0
-[27/Sep/2026 23:14:18] "GET /media/products/tecno-spark-20-pro-2_6TkTjuA.jpg HTTP/1.1" 304 0
-[27/Sep/2026 23:14:18] "GET /media/products/tecno-spark-20-pro-1_fJfF0zv.jpg HTTP/1.1" 304 0
-[27/Sep/2026 23:15:55] "GET /api/categories/?featured=true HTTP/1.1" 200 4863
-[27/Sep/2026 23:15:56] "GET /api/products/?featured=true&page_size=12 HTTP/1.1" 200 10539
-[27/Sep/2026 23:15:56] "GET /api/products/?on_sale=true&in_stock=true&min_discount=8&page_size=12&ordering=-review_count HTTP/1.1" 200 10466
-[27/Sep/2026 23:19:14] "GET /api/products/?page_size=12 HTTP/1.1" 200 10525
-[27/Sep/2026 23:19:15] "GET /api/products/facets/ HTTP/1.1" 200 3260
-[27/Sep/2026 23:19:15] "GET /media/products/apple-macbook-air-13-m2-8gb256gb-2_K2bWCiN.jpg HTTP/1.1" 304 0
-[27/Sep/2026 23:19:15] "GET /media/products/hp-15-laptop-core-i5-13th-gen-8gb512gb-1_BNxnVMr.jpg HTTP/1.1" 304 0
-[27/Sep/2026 23:19:15] "GET /media/products/hp-15-laptop-core-i5-13th-gen-8gb512gb-2_n5DuImB.jpg HTTP/1.1" 304 0
+[27/Sep/2026 23:36:45] "POST /api/admin-api/products/ HTTP/1.1" 201 752
+[27/Sep/2026 23:36:50] "POST /api/admin-api/uploads/sign/ HTTP/1.1" 200 550
+C:\Users\user\Downloads\timeline-global-systems\backend\venv\Lib\site-packages\jwt\api_jwt.py:370: InsecureKeyLengthWarning: The HMAC key is 31 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+  decoded = self.decode_complete(
+[27/Sep/2026 23:36:54] "GET /api/products/?ordering=-created_at&page=1&page_size=24 HTTP/1.1" 200 1210
+[27/Sep/2026 23:37:01] "OPTIONS /api/products/b2-live-laptop/ HTTP/1.1" 200 0
+[27/Sep/2026 23:37:03] "GET /api/products/b2-live-laptop/ HTTP/1.1" 200 886
+[27/Sep/2026 23:37:03] "OPTIONS /api/products/?slugs=kaspersky-standard-1-device-1-year,sony-dualsense-wireless-controller,samsung-t7-portable-ssd-1tb,apple-macbook-air-13-m2-8gb256gb&page_size=4 HTTP/1.1" 200 0
+[27/Sep/2026 23:37:03] "OPTIONS /api/products/b2-live-laptop/related/ HTTP/1.1" 200 0
+[27/Sep/2026 23:37:05] "GET /api/products/?slugs=kaspersky-standard-1-device-1-year,sony-dualsense-wireless-controller,samsung-t7-portable-ssd-1tb,apple-macbook-air-13-m2-8gb256gb&page_size=4 HTTP/1.1" 200 99
+[27/Sep/2026 23:37:05] "PATCH /api/admin-api/products/74/ HTTP/1.1" 200 1021
+[27/Sep/2026 23:37:05] "GET /api/products/b2-live-laptop/related/ HTTP/1.1" 200 547
+[27/Sep/2026 23:37:08] "GET /api/products/b2-live-laptop/ HTTP/1.1" 200 1155
+[27/Sep/2026 23:37:15] "GET /api/store-info/ HTTP/1.1" 200 1328
+[27/Sep/2026 23:37:15] "GET /api/users/profile/ HTTP/1.1" 200 251
+[27/Sep/2026 23:37:15] "GET /api/categories/?root=true HTTP/1.1" 200 1681
+Not Found: /api/products/b2-live-laptop/
+Not Found: /api/products/b2-live-laptop/
+[27/Sep/2026 23:37:15] "GET /api/products/b2-live-laptop/ HTTP/1.1" 404 48
+[27/Sep/2026 23:37:16] "GET /api/users/profile/ HTTP/1.1" 200 251
+Not Found: /api/products/b2-live-laptop/
+Not Found: /api/products/b2-live-laptop/
+[27/Sep/2026 23:37:18] "GET /api/products/b2-live-laptop/ HTTP/1.1" 404 48
+[27/Sep/2026 23:37:18] "GET /api/wishlist/ HTTP/1.1" 200 39
+[27/Sep/2026 23:37:18] "GET /api/cart/ HTTP/1.1" 200 164
+[27/Sep/2026 23:37:24] "GET /api/users/dashboard/ HTTP/1.1" 200 114
+[27/Sep/2026 23:37:26] "GET /api/orders/?page=1&page_size=10 HTTP/1.1" 200 100
+[27/Sep/2026 23:37:33] "OPTIONS /api/cart/quote/ HTTP/1.1" 200 0
+[27/Sep/2026 23:37:34] "OPTIONS /api/users/addresses/ HTTP/1.1" 200 0
+[27/Sep/2026 23:37:35] "POST /api/cart/quote/ HTTP/1.1" 200 238
+[27/Sep/2026 23:37:37] "GET /api/users/addresses/ HTTP/1.1" 200 2
+[27/Sep/2026 23:37:50] "GET /api/brands/ HTTP/1.1" 200 2
+[27/Sep/2026 23:37:56] "GET /api/products/?page_size=12 HTTP/1.1" 200 645
+[27/Sep/2026 23:37:56] "GET /api/products/facets/ HTTP/1.1" 200 805
+C:\Users\user\Downloads\timeline-global-systems\backend\config\settings\base.py changed, reloading.
+C:\Users\user\Downloads\timeline-global-systems\backend\config\settings\base.py changed, reloading.
+Watching for file changes with StatReloader
+Watching for file changes with StatReloader
+C:\Users\user\Downloads\timeline-global-systems\backend\venv\Lib\site-packages\jwt\api_jwt.py:370: InsecureKeyLengthWarning: The HMAC key is 31 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+  decoded = self.decode_complete(
+[27/Sep/2026 23:40:08] "PATCH /api/users/profile/ HTTP/1.1" 200 251
+[27/Sep/2026 23:45:19] "GET /api/products/?page_size=12 HTTP/1.1" 200 645
+[27/Sep/2026 23:45:20] "GET /api/products/facets/ HTTP/1.1" 200 805
+[27/Sep/2026 23:45:31] "OPTIONS /api/products/?ordering=-created_at&page_size=12 HTTP/1.1" 200 0
+[27/Sep/2026 23:45:33] "GET /api/products/?ordering=-created_at&page_size=12 HTTP/1.1" 200 645
+[27/Sep/2026 23:45:34] "OPTIONS /api/products/?ordering=effective_price&page_size=12 HTTP/1.1" 200 0
+[27/Sep/2026 23:45:36] "GET /api/products/?ordering=effective_price&page_size=12 HTTP/1.1" 200 645
+[27/Sep/2026 23:45:42] "GET /api/products/?ordering=-created_at&page=1&page_size=24 HTTP/1.1" 200 645
+[27/Sep/2026 23:45:53] "OPTIONS /api/products/sign-probe/ HTTP/1.1" 200 0
+[27/Sep/2026 23:45:54] "GET /api/products/sign-probe/ HTTP/1.1" 200 867
+[27/Sep/2026 23:45:54] "OPTIONS /api/products/sign-probe/related/ HTTP/1.1" 200 0
+[27/Sep/2026 23:45:54] "OPTIONS /api/products/?slugs=b2-live-laptop,kaspersky-standard-1-device-1-year,sony-dualsense-wireless-controller,samsung-t7-portable-ssd-1tb&page_size=4 HTTP/1.1" 200 0
+[27/Sep/2026 23:45:56] "GET /api/products/?slugs=b2-live-laptop,kaspersky-standard-1-device-1-year,sony-dualsense-wireless-controller,samsung-t7-portable-ssd-1tb&page_size=4 HTTP/1.1" 200 99
+[27/Sep/2026 23:45:56] "GET /api/products/sign-probe/related/ HTTP/1.1" 200 2
+[27/Sep/2026 23:46:16] "OPTIONS /api/reviews/?product=sign-probe&page=1&page_size=5 HTTP/1.1" 200 0
+[27/Sep/2026 23:46:16] "OPTIONS /api/reviews/eligibility/?product=sign-probe HTTP/1.1" 200 0
+[27/Sep/2026 23:46:18] "GET /api/reviews/?product=sign-probe&page=1&page_size=5 HTTP/1.1" 200 99
+[27/Sep/2026 23:46:18] "GET /api/reviews/eligibility/?product=sign-probe HTTP/1.1" 200 89
+[27/Sep/2026 23:48:16] "OPTIONS /api/cart/items/ HTTP/1.1" 200 0
+[27/Sep/2026 23:48:22] "POST /api/cart/items/ HTTP/1.1" 201 935
+[27/Sep/2026 23:48:23] "OPTIONS /api/payments/config/ HTTP/1.1" 200 0
+[27/Sep/2026 23:48:24] "GET /api/payments/config/ HTTP/1.1" 200 92
+[27/Sep/2026 23:48:24] "GET /api/users/addresses/ HTTP/1.1" 200 2
+[27/Sep/2026 23:48:25] "POST /api/cart/quote/ HTTP/1.1" 200 244
+[27/Sep/2026 23:48:39] "POST /api/cart/quote/ HTTP/1.1" 200 247
+[27/Sep/2026 23:49:35] "POST /api/cart/quote/ HTTP/1.1" 200 253
+[27/Sep/2026 23:49:38] "POST /api/cart/quote/ HTTP/1.1" 200 244
+[27/Sep/2026 23:50:09] "OPTIONS /api/orders/ HTTP/1.1" 200 0
+[27/Sep/2026 23:50:13] "POST /api/orders/ HTTP/1.1" 201 1676
+[27/Sep/2026 23:50:13] "OPTIONS /api/payments/initialize/ HTTP/1.1" 200 0
+[27/Sep/2026 23:50:15] "POST /api/payments/initialize/ HTTP/1.1" 200 162
+[27/Sep/2026 23:50:15] "GET /api/cart/ HTTP/1.1" 200 164
+[27/Sep/2026 23:50:18,394] - Broken pipe from ('127.0.0.1', 65317)
+[27/Sep/2026 23:50:19] "GET /api/users/profile/ HTTP/1.1" 200 251
+[27/Sep/2026 23:50:19] "GET /api/store-info/ HTTP/1.1" 200 1328
+[27/Sep/2026 23:50:19] "GET /api/categories/?root=true HTTP/1.1" 200 1681
+[27/Sep/2026 23:50:20] "GET /api/users/profile/ HTTP/1.1" 200 251
+[27/Sep/2026 23:50:20] "OPTIONS /api/payments/verify/TGS-260927-2HQTL-B2ED72FE/ HTTP/1.1" 200 0
+[27/Sep/2026 23:50:21] "GET /api/wishlist/ HTTP/1.1" 200 39
+[27/Sep/2026 23:50:21] "GET /api/cart/ HTTP/1.1" 200 164
+[27/Sep/2026 23:50:23] "GET /api/payments/verify/TGS-260927-2HQTL-B2ED72FE/ HTTP/1.1" 200 197
+[27/Sep/2026 23:50:24] "GET /api/cart/ HTTP/1.1" 200 164
+[27/Sep/2026 23:50:33] "OPTIONS /api/orders/TGS-260927-2HQTL/ HTTP/1.1" 200 0
+[27/Sep/2026 23:50:35] "GET /api/orders/TGS-260927-2HQTL/ HTTP/1.1" 200 1924
+[27/Sep/2026 23:51:37] "GET /api/users/dashboard/ HTTP/1.1" 200 583

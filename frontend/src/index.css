@@ -13,13 +13,22 @@
     -webkit-tap-highlight-color: transparent;
     scroll-behavior: smooth;
     /* Clip any accidental horizontal overflow rather than letting the page
-       pan sideways on a phone. */
+       pan sideways on a phone.
+
+       `clip`, not `hidden`: `overflow-x: hidden` forces the paired
+       `overflow-y: visible` to compute to `auto`, which turns <html> and
+       <body> into scroll containers. Sticky sidebars then resolve against
+       that inner scrollport instead of the viewport and scroll away with the
+       page. `clip` clips without establishing a scroll container. The `hidden`
+       line stays as a fallback for engines without `clip`. */
     overflow-x: hidden;
+    overflow-x: clip;
   }
   body {
     @apply bg-white font-sans text-ink-900 antialiased;
     text-rendering: optimizeLegibility;
     overflow-x: hidden;
+    overflow-x: clip;
     /* Stop rubber-band scrolling revealing the page background on iOS. */
     overscroll-behavior-y: none;
     -webkit-text-size-adjust: 100%;
@@ -28,7 +37,11 @@
   h2,
   h3,
   h4 {
-    @apply font-display text-ink-900;
+    /* Colour is intentionally NOT set here. Forcing it on the element beats an
+       inherited colour from a dark ancestor, which made headings invisible on
+       dark plates. Colour now inherits: ink-900 from <body> on light surfaces,
+       or the container's own text colour (e.g. text-white) on dark ones. */
+    @apply font-display;
     text-wrap: balance;
   }
   :focus-visible {
@@ -174,8 +187,47 @@
   .no-scrollbar-x {
     overflow-x: hidden;
   }
+  /* Keep a scroll gesture inside a nested scrollport. Without this, a wheel
+     gesture that runs out of room in a sidebar keeps going and drags the whole
+     page, which reads as the sidebar scrolling away. */
+  .overscroll-contain {
+    overscroll-behavior: contain;
+  }
   /* Hairline that sits on top of a dark background. */
   .rule-dark {
     @apply border-white/10;
+  }
+}
+
+/* A sidebar or secondary column that must never scroll with the page.
+
+   Pinned below the site chrome, capped to the viewport, and given its own
+   scrollport. `overscroll-behavior: contain` is the load-bearing part: a wheel
+   gesture that reaches the end of the panel stops there instead of chaining to
+   the document, so scrolling *inside* a sidebar moves the sidebar while
+   scrolling anywhere else moves the page.
+
+   `align-self: start` matters too — a grid/flex child defaults to
+   `align-self: stretch`, which fills the row and leaves sticky no travel.
+
+   Desktop-only via a media query rather than a `lg:` variant: hand-written CSS
+   inside `@layer utilities` does not get variant support in Tailwind v3, and
+   on mobile a single-column layout must not become a nested scroll box. The
+   breakpoint matches Tailwind's default `lg`. */
+@media (min-width: 1024px) {
+  .pinned-panel {
+    position: sticky;
+    top: var(--chrome-top, 0px);
+    align-self: start;
+    max-height: calc(100svh - var(--chrome-top, 0px) - var(--pinned-gap, 1rem));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    /* Reserve the scrollbar so pinning does not shift the layout sideways. */
+    scrollbar-gutter: stable;
+  }
+  /* Flush variant for panels that should meet the viewport edge, such as the
+     full-height account rail. */
+  .pinned-panel-flush {
+    --pinned-gap: 0px;
   }
 }

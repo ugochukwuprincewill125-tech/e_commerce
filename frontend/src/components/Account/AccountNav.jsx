@@ -153,8 +153,9 @@ export function AccountRail() {
   }
 
   return (
-    <aside className="hidden w-[264px] flex-none border-r border-line bg-ink-950 lg:block lg:sticky lg:top-0 lg:h-svh lg:self-start">
-      <div className="flex h-full flex-col overflow-y-auto p-5">
+      <aside className="pinned-panel pinned-panel-flush hidden w-[264px] flex-none border-r border-line bg-ink-950 lg:block">
+        <div className="flex h-full flex-col overflow-y-auto overscroll-contain p-5">
+
         <div className="border-b border-white/10 pb-5">
           <Logo onDark size="sm" />
         </div>

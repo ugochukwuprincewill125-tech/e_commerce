@@ -11,6 +11,17 @@ import ScrollToTop from './components/Routing/ScrollToTop'
 
 // Code-split every page so the first load stays small.
 const Home = lazy(() => import('./pages/Home/Home'))
+const AdminLayout = lazy(() => import('./pages/Admin/AdminLayout'))
+const AdminHome = lazy(() => import('./pages/Admin/AdminHome'))
+const AdminProducts = lazy(() => import('./pages/Admin/AdminProducts'))
+const AdminOrders = lazy(() => import('./pages/Admin/AdminOrders'))
+const AdminRoute = lazy(() => import('./pages/Admin/AdminRoute'))
+const AdminCategories = lazy(() => import('./pages/Admin/AdminTaxonomy').then((m) => ({ default: m.AdminCategories })))
+const AdminBrands = lazy(() => import('./pages/Admin/AdminTaxonomy').then((m) => ({ default: m.AdminBrands })))
+const AdminCustomers = lazy(() => import('./pages/Admin/AdminPeople').then((m) => ({ default: m.AdminCustomers })))
+const AdminReviews = lazy(() => import('./pages/Admin/AdminPeople').then((m) => ({ default: m.AdminReviews })))
+const AdminMessages = lazy(() => import('./pages/Admin/AdminPeople').then((m) => ({ default: m.AdminMessages })))
+const AdminCoupons = lazy(() => import('./pages/Admin/AdminCoupons'))
 const Shop = lazy(() => import('./pages/Shop/Shop'))
 const ProductDetails = lazy(() => import('./pages/ProductDetails/ProductDetails'))
 const Categories = lazy(() => import('./pages/Categories/Categories'))
@@ -79,6 +90,17 @@ export default function App() {
               <Route path="wishlist" element={<Wishlist />} />
               <Route path="profile" element={<Profile />} />
               <Route path="addresses" element={<Addresses />} />
+            </Route>
+            <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
+              <Route index element={<AdminHome />} />
+              <Route path="/admin/products" element={<AdminProducts />} />
+              <Route path="/admin/categories" element={<AdminCategories />} />
+              <Route path="/admin/brands" element={<AdminBrands />} />
+              <Route path="/admin/orders" element={<AdminOrders />} />
+              <Route path="/admin/customers" element={<AdminCustomers />} />
+              <Route path="/admin/reviews" element={<AdminReviews />} />
+              <Route path="/admin/messages" element={<AdminMessages />} />
+              <Route path="/admin/coupons" element={<AdminCoupons />} />
             </Route>
             <Route path="/about" element={<Page><About /></Page>} />
             <Route path="/contact" element={<Page><Contact /></Page>} />

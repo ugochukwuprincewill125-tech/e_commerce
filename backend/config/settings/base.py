@@ -121,8 +121,30 @@ DATABASES = {
 B2_APPLICATION_KEY_ID = os.getenv("B2_APPLICATION_KEY_ID", "")
 B2_APPLICATION_KEY = os.getenv("B2_APPLICATION_KEY", "")
 B2_BUCKET_NAME = os.getenv("B2_BUCKET_NAME", "")
-B2_ENDPOINT_URL = os.getenv("B2_ENDPOINT_URL", "")
+# Accept both B2_ENDPOINT_URL and B2_ENDPOINT (optionally derived from B2_REGION)
+B2_ENDPOINT_URL = (
+    os.getenv("B2_ENDPOINT_URL")
+    or (f"https://s3.{os.getenv('B2_REGION').strip()}.backblazeb2.com" if os.getenv("B2_REGION") else "")
+    or os.getenv("B2_ENDPOINT", "")
+)
 B2_PUBLIC_BASE_URL = os.getenv("B2_PUBLIC_BASE_URL", "").rstrip("/")  # bucket/CDN public base, no trailing slash
+
+# django-storages reads AWS_* settings — map our B2_* values onto them so the
+# default media storage (multipart fallback path) writes to the same bucket.
+AWS_ACCESS_KEY_ID = B2_APPLICATION_KEY_ID
+AWS_SECRET_ACCESS_KEY = B2_APPLICATION_KEY
+AWS_STORAGE_BUCKET_NAME = B2_BUCKET_NAME
+AWS_S3_ENDPOINT_URL = B2_ENDPOINT_URL
+AWS_S3_REGION_NAME = B2_ENDPOINT_URL.split("//")[1].split(".")[1] if B2_ENDPOINT_URL else None
+AWS_S3_ADDRESSING_STYLE = "path"  # B2 requires path-style, not virtual-hosted
+AWS_S3_FILE_OVERWRITE = False
+AWS_DEFAULT_ACL = "public-read"
+AWS_QUERYSTRING_AUTH = False
+# Serve images from the friendly download URL (or a CDN) when provided —
+# avoids signed URLs entirely. Set via B2_PUBLIC_BASE_URL in .env.
+AWS_S3_CUSTOM_DOMAIN = (
+    B2_PUBLIC_BASE_URL.replace("https://", "").replace("http://", "") or None
+) if B2_PUBLIC_BASE_URL else None
 
 if B2_APPLICATION_KEY_ID and B2_APPLICATION_KEY and B2_BUCKET_NAME and B2_ENDPOINT_URL:
     MEDIA_BACKEND = "apps.core.storage.BackblazeMediaStorage"
