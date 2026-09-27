@@ -1,0 +1,155 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-white font-sans text-ink-900 antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-display text-ink-900;
+    text-wrap: balance;
+  }
+  :focus-visible {
+    @apply outline-none ring-2 ring-brand-600 ring-offset-2 ring-offset-white;
+  }
+  input[type='search']::-webkit-search-cancel-button,
+  input[type='search']::-webkit-search-decoration {
+    -webkit-appearance: none;
+  }
+  ::selection {
+    @apply bg-ink-900 text-white;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* ---------------------------------------------------------------------
+     Buttons — square-ish, solid fills, no glow. Hierarchy comes from fill
+     weight (ink > brand > outline > ghost), never from gradients.
+     ------------------------------------------------------------------- */
+  .btn {
+    @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-md border border-transparent px-4 py-2.5 text-sm font-semibold leading-none transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-ink-900 text-white hover:bg-ink-800;
+  }
+  .btn-accent {
+    @apply btn bg-brand-600 text-white hover:bg-brand-700;
+  }
+  .btn-outline {
+    @apply btn border-line-strong bg-white text-ink-900 hover:border-ink-900 hover:bg-metal-50;
+  }
+  .btn-ghost {
+    @apply btn text-ink-800 hover:bg-metal-100;
+  }
+  .btn-inverse {
+    @apply btn border border-white/25 bg-transparent text-white hover:border-white hover:bg-white hover:text-ink-900;
+  }
+
+  /* ---------------------------------------------------------------------
+     Surfaces — flat panels defined by a single hairline border.
+     ------------------------------------------------------------------- */
+  .card {
+    @apply rounded-lg border border-line bg-white;
+  }
+  .card-pad {
+    @apply card p-5 sm:p-6;
+  }
+  .panel {
+    @apply rounded-lg border border-line bg-white;
+  }
+  .panel-sunken {
+    @apply rounded-lg border border-line bg-metal-50;
+  }
+
+  /* ---------------------------------------------------------------------
+     Forms
+     ------------------------------------------------------------------- */
+  .label {
+    @apply mb-1.5 block text-[13px] font-semibold leading-none text-ink-800;
+  }
+  .hint {
+    @apply mt-1.5 text-xs leading-relaxed text-metal-500;
+  }
+  .input {
+    @apply block w-full rounded-md border-line bg-white px-3.5 py-2.5 text-sm text-ink-900 shadow-none transition-colors placeholder:text-metal-400 focus:border-ink-900 focus:ring-0;
+  }
+  .input-error {
+    @apply border-danger focus:border-danger;
+  }
+
+  /* ---------------------------------------------------------------------
+     Small parts
+     ------------------------------------------------------------------- */
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-xs px-2 py-0.5 text-[11px] font-semibold uppercase leading-5 tracking-wider;
+  }
+  .eyebrow {
+    @apply inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-metal-500;
+  }
+  .eyebrow::before {
+    content: '';
+    @apply block h-2.5 w-2.5 flex-none bg-brand-600;
+  }
+  .eyebrow-plain {
+    @apply text-[11px] font-semibold uppercase tracking-widest text-metal-500;
+  }
+  .rule {
+    @apply border-t border-line;
+  }
+
+  /* ---------------------------------------------------------------------
+     Data display — retailers sell on facts, so make them easy to scan.
+     ------------------------------------------------------------------- */
+  .spec-row {
+    @apply flex items-baseline justify-between gap-4 border-b border-line py-2.5 text-sm last:border-b-0;
+  }
+  .spec-key {
+    @apply flex-none text-metal-500;
+  }
+  .spec-value {
+    @apply min-w-0 break-words text-right font-medium text-ink-900;
+  }
+}
+
+@layer utilities {
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .text-balance {
+    text-wrap: balance;
+  }
+  .no-scrollbar-x {
+    overflow-x: hidden;
+  }
+  /* Hairline that sits on top of a dark background. */
+  .rule-dark {
+    @apply border-white/10;
+  }
+}

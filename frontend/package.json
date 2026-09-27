@@ -1,0 +1,32 @@
+{
+  "name": "timeline-global-systems-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run audit:routes && npm run test:nav && vite build",
+    "preview": "vite preview",
+    "audit:routes": "node tools/audit-routes.cjs",
+    "test:nav": "node tools/test-navigation.cjs"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.103.2",
+    "axios": "^1.20.0",
+    "framer-motion": "^13.4.3",
+    "lucide-react": "^1.48.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-helmet-async": "^3.0.0",
+    "react-hook-form": "^7.88.0",
+    "react-router-dom": "^6.30.6"
+  },
+  "devDependencies": {
+    "@tailwindcss/forms": "^0.5.11",
+    "@vitejs/plugin-react": "^4.7.0",
+    "autoprefixer": "^10.6.1",
+    "postcss": "^8.5.28",
+    "tailwindcss": "^3.4.19",
+    "vite": "^5.4.21"
+  }
+}

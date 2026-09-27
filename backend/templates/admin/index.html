@@ -1,0 +1,37 @@
+{% extends "admin/index.html" %}
+{% load humanize %}
+
+{% block content %}
+{% if inventory %}
+<style>
+  .tgs-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:0 0 20px}
+  .tgs-card{background:var(--darkened-bg);border:1px solid var(--hairline-color);border-radius:10px;padding:14px 16px}
+  .tgs-card .k{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--body-quiet-color)}
+  .tgs-card .v{font-size:22px;font-weight:700;margin-top:4px}
+  .tgs-warn{color:#b45309}.tgs-bad{color:#b91c1c}.tgs-ok{color:#047857}
+  .tgs-list{margin:6px 0 0;padding-left:18px}
+  .tgs-panels{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-bottom:24px}
+</style>
+<div class="tgs-grid">
+  <div class="tgs-card"><div class="k">Revenue (paid orders)</div><div class="v">₦{{ sales.revenue|floatformat:0|intcomma }}</div></div>
+  <div class="tgs-card"><div class="k">Orders to fulfil</div><div class="v"><a href="{% url 'admin:orders_order_changelist' %}?status__in=payment_confirmed,processing,ready_for_delivery">{{ sales.to_fulfil }}</a></div></div>
+  <div class="tgs-card"><div class="k">Awaiting payment</div><div class="v">{{ sales.awaiting_payment }}</div></div>
+  <div class="tgs-card"><div class="k">Low stock (≤ {{ inventory.threshold }})</div><div class="v tgs-warn"><a href="{% url 'admin:products_product_changelist' %}?stock=low">{{ inventory.low_count }}</a></div></div>
+  <div class="tgs-card"><div class="k">Out of stock</div><div class="v tgs-bad"><a href="{% url 'admin:products_product_changelist' %}?stock=out">{{ inventory.out_count }}</a></div></div>
+  <div class="tgs-card"><div class="k">Unresolved messages</div><div class="v"><a href="{% url 'admin:core_contactmessage_changelist' %}?is_resolved__exact=0">{{ sales.unread_messages }}</a></div></div>
+</div>
+<div class="tgs-panels">
+  <div class="tgs-card">
+    <div class="k tgs-warn">⚠ Low Stock</div>
+    {% if inventory.low %}<ul class="tgs-list">{% for p in inventory.low %}<li><a href="{% url 'admin:products_product_change' p.pk %}">{{ p.name }}</a> — {{ p.stock_quantity }} left</li>{% endfor %}</ul>
+    {% else %}<p class="tgs-ok">All products are above the threshold.</p>{% endif %}
+  </div>
+  <div class="tgs-card">
+    <div class="k tgs-bad">⛔ Out of Stock</div>
+    {% if inventory.out %}<ul class="tgs-list">{% for p in inventory.out %}<li><a href="{% url 'admin:products_product_change' p.pk %}">{{ p.name }}</a></li>{% endfor %}</ul>
+    {% else %}<p class="tgs-ok">Nothing is out of stock.</p>{% endif %}
+  </div>
+</div>
+{% endif %}
+{{ block.super }}
+{% endblock %}
