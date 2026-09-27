@@ -3,13 +3,26 @@
 @tailwind utilities;
 
 @layer base {
+  /* Height of any chrome that is fixed above the content (the site navbar).
+     The account shell renders no navbar, so it overrides this to 0px and every
+     sticky offset below follows automatically instead of guessing. */
+  :root {
+    --chrome-top: 0px;
+  }
   html {
     -webkit-tap-highlight-color: transparent;
     scroll-behavior: smooth;
+    /* Clip any accidental horizontal overflow rather than letting the page
+       pan sideways on a phone. */
+    overflow-x: hidden;
   }
   body {
     @apply bg-white font-sans text-ink-900 antialiased;
     text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+    /* Stop rubber-band scrolling revealing the page background on iOS. */
+    overscroll-behavior-y: none;
+    -webkit-text-size-adjust: 100%;
   }
   h1,
   h2,
@@ -133,6 +146,10 @@
 }
 
 @layer utilities {
+  /* Sticky offset that clears whatever chrome is actually present. */
+  .sticky-chrome {
+    top: calc(var(--chrome-top, 0px) + 1rem);
+  }
   .scrollbar-none {
     scrollbar-width: none;
   }
@@ -141,6 +158,15 @@
   }
   .pb-safe {
     padding-bottom: env(safe-area-inset-bottom);
+  }
+  /* Minimum comfortable tap target on touch devices. */
+  .tap {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  .tap-sm {
+    min-height: 40px;
+    min-width: 40px;
   }
   .text-balance {
     text-wrap: balance;

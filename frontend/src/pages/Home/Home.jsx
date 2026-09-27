@@ -118,7 +118,7 @@ function PromoStrip() {
             <Link to={to} className={cn('group flex h-full min-h-[164px] flex-col justify-between rounded-md p-6 text-white transition-colors', plate)}>
               <p className="text-[11px] font-semibold uppercase tracking-widest text-brand-300">{eyebrow}</p>
               <div>
-                <h3 className="text-[17px] font-semibold leading-snug tracking-tight">{title}</h3>
+                <h3 className="text-[17px] font-semibold leading-snug tracking-tight text-white">{title}</h3>
                 <p className="mt-1.5 text-[13px] leading-relaxed text-white/70">{text}</p>
                 <span className="mt-4 inline-flex items-center gap-1.5 border-t border-white/20 pt-3 text-[13px] font-semibold">
                   {cta}

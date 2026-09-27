@@ -1,7 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom'
 
 import { useAuth } from '../../context/AuthContext'
-import { currentTarget, safeNext, withNext } from '../../utils/navigation'
+import { ACCOUNT_HOME, currentTarget, safeNext, withNext } from '../../utils/navigation'
 import { PageLoader } from '../Loader/Skeleton'
 
 /** Requires a session. Guests are sent to sign in and returned afterwards. */
@@ -34,6 +34,6 @@ export function GuestOnlyRoute({ children }) {
 export function GuestLandingRoute({ children }) {
   const { user, initialising } = useAuth()
   if (initialising) return <PageLoader />
-  if (user) return <Navigate to="/account" replace />
+  if (user) return <Navigate to={ACCOUNT_HOME} replace />
   return children
 }

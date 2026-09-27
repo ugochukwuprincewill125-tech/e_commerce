@@ -1,93 +1,20 @@
 import { useQuery } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ChevronDown, Headphones, Heart, LayoutDashboard, LogOut, Menu, Package, Search, ShoppingCart, Store, Truck, User, X } from 'lucide-react'
+import { ChevronDown, Heart, LayoutDashboard, LogOut, Menu, Package, Search, ShoppingCart, User, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '../../context/AuthContext'
+import { useChrome } from '../../context/ChromeContext'
 import { useCart } from '../../context/CartContext'
 import { useWishlist } from '../../context/WishlistContext'
 import { catalogService } from '../../services/productService'
-import { categoryIcon } from '../../utils/icons'
 import { cn } from '../../utils/format'
+import { GUEST_LINKS, MEMBER_LINKS } from '../../utils/navConfig'
 import Logo from '../Logo/Logo'
 import SearchBar from '../SearchBar/SearchBar'
-import MobileMenu from './MobileMenu'
 
-const UTILITY_LINKS = [
-  { to: '/contact', label: 'Help & Support' },
-  { to: '/track-order', label: 'Track Order' },
-  { to: '/about', label: 'About Us' },
-]
 
-/**
- * Primary navigation. The landing page is guest-only, so a signed-in user's
- * first destination is their account rather than a page that would redirect.
- */
-const GUEST_LINKS = [
-  { to: '/', label: 'Home', end: true },
-  { to: '/shop', label: 'Shop' },
-  { to: '/categories', label: 'Categories', mega: true },
-  { to: '/brands', label: 'Brands' },
-  { to: '/about', label: 'About' },
-  { to: '/contact', label: 'Contact' },
-]
-
-const MEMBER_LINKS = [
-  { to: '/account', label: 'My Account', end: true },
-  { to: '/shop', label: 'Shop' },
-  { to: '/categories', label: 'Categories', mega: true },
-  { to: '/brands', label: 'Brands' },
-  { to: '/about', label: 'About' },
-  { to: '/contact', label: 'Contact' },
-]
-
-/** Jumia-style category strip: icon + label tiles under the header. */
-function CategoryStrip() {
-  const { data: categories = [] } = useQuery({
-    queryKey: ['categories', 'root'],
-    queryFn: () => catalogService.categories({ root: true }),
-    staleTime: 600_000,
-  })
-  const { pathname } = useLocation()
-  if (!categories.length) return null
-
-  return (
-    <nav aria-label="Product categories" className="border-t border-line bg-white">
-      <div className="container">
-        <ul className="scrollbar-none flex items-stretch gap-1 overflow-x-auto">
-          {categories.map((c) => {
-            const Icon = categoryIcon(c.icon)
-            const active = pathname === `/category/${c.slug}`
-            return (
-              <li key={c.slug} className="flex-none">
-                <Link
-                  to={`/category/${c.slug}`}
-                  className={cn(
-                    'flex items-center gap-2 whitespace-nowrap border-b-2 px-3 py-3 text-[13px] font-medium transition-colors',
-                    active ? 'border-brand-600 text-brand-700' : 'border-transparent text-metal-600 hover:border-line-strong hover:text-ink-900',
-                  )}
-                >
-                  <Icon className="h-4 w-4" strokeWidth={1.75} />
-                  {c.name}
-                </Link>
-              </li>
-            )
-          })}
-          <li className="ml-auto hidden flex-none items-center lg:flex">
-            <Link
-              to="/categories"
-              className="flex items-center gap-2 whitespace-nowrap border-b-2 border-transparent px-3 py-3 text-[13px] font-semibold text-ink-900 transition-colors hover:border-brand-600 hover:text-brand-700"
-            >
-              <Store className="h-4 w-4" strokeWidth={1.75} />
-              All Categories
-            </Link>
-          </li>
-        </ul>
-      </div>
-    </nav>
-  )
-}
 
 function CountBadge({ count, bumpKey }) {
   return (
@@ -249,53 +176,21 @@ function SearchWithCategory({ onNavigate, className }) {
   )
 }
 
-export default function Navbar({ onOpenSearch }) {
+export default function Navbar() {
   const { user } = useAuth()
+  const { openMenu, openSearch } = useChrome()
   const { itemCount, openDrawer, bump } = useCart()
   const { count: wishCount } = useWishlist()
-  const [mobileOpen, setMobileOpen] = useState(false)
   const { pathname } = useLocation()
 
   const navLinks = user ? MEMBER_LINKS : GUEST_LINKS
 
-  useEffect(() => {
-    setMobileOpen(false)
-  }, [pathname])
-
   return (
     <>
-      {/* Utility bar */}
-      <div className="hidden bg-ink-950 text-metal-400 lg:block">
-        <div className="container flex h-8 items-center justify-between text-[11px]">
-          <ul className="flex items-center gap-5">
-            {UTILITY_LINKS.map((l) => (
-              <li key={l.to}>
-                <Link to={l.to} className="transition-colors hover:text-white">
-                  {l.label}
-                </Link>
-              </li>
-            ))}
-            <li className="flex items-center gap-1.5 text-brand-300">
-              <Truck className="h-3.5 w-3.5" aria-hidden />
-              Nationwide delivery &amp; store pickup
-            </li>
-          </ul>
-          <div className="flex items-center gap-5">
-            <a href="mailto:timelinegadget@gmail.com" className="transition-colors hover:text-white">
-              timelinegadget@gmail.com
-            </a>
-            <a href="tel:+2348000000000" className="flex items-center gap-1.5 transition-colors hover:text-white">
-              <Headphones className="h-3.5 w-3.5" aria-hidden />
-              Contact us
-            </a>
-          </div>
-        </div>
-      </div>
-
       {/* Main header */}
-      <header className="border-b border-line bg-white">
-        <div className="container flex items-center gap-4 py-3 lg:gap-6">
-          <button type="button" onClick={() => setMobileOpen(true)} className="-ml-2 rounded p-2 text-ink-900 hover:bg-metal-100 lg:hidden" aria-label="Open menu">
+      <header className="sticky top-0 z-50 border-b border-line bg-white">
+        <div className="container flex h-16 items-center gap-4 lg:h-[68px] lg:gap-6">
+          <button type="button" onClick={openMenu} className="-ml-2 flex h-10 w-10 flex-none items-center justify-center rounded text-ink-900 transition-colors hover:bg-metal-100 lg:hidden" aria-label="Open menu">
             <Menu className="h-5 w-5" strokeWidth={1.75} />
           </button>
 
@@ -314,7 +209,7 @@ export default function Navbar({ onOpenSearch }) {
           </div>
 
           <div className="ml-auto flex items-center gap-1 sm:gap-3">
-            <button type="button" onClick={onOpenSearch} className="flex h-10 w-10 items-center justify-center rounded text-ink-800 transition-colors hover:bg-metal-100 md:hidden" aria-label="Search">
+            <button type="button" onClick={openSearch} className="flex h-10 w-10 flex-none items-center justify-center rounded text-ink-800 transition-colors hover:bg-metal-100 md:hidden" aria-label="Search">
               <Search className="h-5 w-5" strokeWidth={1.75} />
             </button>
 
@@ -349,10 +244,6 @@ export default function Navbar({ onOpenSearch }) {
           </div>
         </div>
       </header>
-
-      <CategoryStrip />
-
-      <MobileMenu open={mobileOpen} onClose={() => setMobileOpen(false)} links={navLinks} />
     </>
   )
 }

@@ -112,6 +112,26 @@ All endpoints require `Authorization: Bearer <access>` from an account with
 |---|---|
 | `GET /api/admin-api/stats/` | Revenue (today/month), order & product counts, low stock, pending reviews/messages, top products, recent orders |
 
+### Image uploads — direct to Backblaze (Vercel-safe)
+
+Product photos never pass through the API server (which has a ~4.5MB body
+cap on serverless hosts). The admin panel uploads **straight to B2**:
+
+1. `POST /api/admin-api/uploads/sign/` — tiny JSON request:
+   `{"items": [{"filename": "macbook.jpg", "content_type": "image/jpeg", "product_id": 7}]}`
+   → returns `{uploads: [{upload_url, key, headers, expires_in, storage}]}` (≤20 files at once)
+2. `PUT upload_url` with the raw file bytes + the returned `headers` —
+   browser → Backblaze directly. (In B2 mode this needs **no auth header**;
+   the URL itself is the credential. Local fallback mode sends the JWT.)
+3. Include the returned `key` values in product create/update via
+   `uploaded_images: ["media/products/7/<rand>-macbook.jpg", …]` — each key is
+   verified (well-formed **and** present in the bucket) before attaching.
+
+Constraints enforced server-side: JPEG/PNG/WebP/AVIF only, 10MB per file,
+keys scoped to `media/products/<id>/…`, signatures expire in 15 minutes.
+The old multipart path (`images[]` files on POST/PATCH, 5MB each) still works
+for quick single-file edits.
+
 ### Products — create, edit, delete, upload
 | Endpoint | Description |
 |---|---|

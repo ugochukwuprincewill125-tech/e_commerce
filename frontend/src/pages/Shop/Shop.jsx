@@ -153,8 +153,17 @@ export default function Shop() {
 
       <div className="bg-metal-50 py-6">
         <div className="container grid gap-5 lg:grid-cols-[250px_1fr] xl:grid-cols-[270px_1fr]">
-          <aside className="hidden lg:block" aria-label="Filters">
-            <div className="sticky top-32">{panel}</div>
+          {/* Sticky lives on the aside itself: on a self-start grid item an
+              inner sticky child has no room to travel. */}
+          <aside className="sticky-chrome hidden lg:block lg:self-start" aria-label="Filters">
+            {/* Labelled panel so it reads as a distinct surface from the
+                account rail and from the product cards. */}
+            <div className="overflow-hidden rounded-md border border-line bg-white">
+              <h2 className="border-b border-line px-4 py-3 text-[13px] font-semibold uppercase tracking-wide text-ink-900">
+                Filters
+              </h2>
+              <div className="max-h-[calc(100svh-9rem)] overflow-y-auto px-4 pb-2 pt-1">{panel}</div>
+            </div>
           </aside>
 
           <div className="min-w-0">

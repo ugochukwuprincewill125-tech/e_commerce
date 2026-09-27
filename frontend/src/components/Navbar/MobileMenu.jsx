@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ChevronRight, LogOut, Package, User, X } from 'lucide-react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { useEffect } from 'react'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '../../context/AuthContext'
 import useLockBody from '../../hooks/useLockBody'
@@ -14,7 +15,15 @@ import Logo from '../Logo/Logo'
 export default function MobileMenu({ open, onClose, links }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   useLockBody(open)
+
+  // Navigating from inside the drawer must dismiss it.
+  useEffect(() => {
+    if (open) onClose()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname])
+
   const { data: categories = [] } = useQuery({
     queryKey: ['categories', 'root'],
     queryFn: () => catalogService.categories({ root: true }),

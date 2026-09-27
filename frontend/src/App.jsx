@@ -2,6 +2,7 @@ import { AnimatePresence } from 'framer-motion'
 import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 
+import AccountShell from './components/Account/AccountShell'
 import Layout from './components/Layout/Layout'
 import { PageLoader } from './components/Loader/Skeleton'
 import PageTransition from './components/Motion/PageTransition'
@@ -23,6 +24,8 @@ const ForgotPassword = lazy(() => import('./pages/Login/ForgotPassword'))
 const ResetPassword = lazy(() => import('./pages/Login/ResetPassword'))
 const VerifyEmail = lazy(() => import('./pages/Login/VerifyEmail'))
 const Dashboard = lazy(() => import('./pages/Dashboard/Dashboard'))
+const HomeFeed = lazy(() => import('./pages/Dashboard/HomeFeed'))
+const CategoryDirectory = lazy(() => import('./pages/Dashboard/CategoryDirectory'))
 const Overview = lazy(() => import('./pages/Dashboard/Overview'))
 const Orders = lazy(() => import('./pages/Orders/Orders'))
 const OrderDetails = lazy(() => import('./pages/Orders/OrderDetails'))
@@ -51,24 +54,26 @@ export default function App() {
         <AnimatePresence mode="wait" initial={false}>
           <Routes location={location} key={key}>
             <Route path="/" element={<GuestLandingRoute><Page><Home /></Page></GuestLandingRoute>} />
-            <Route path="/shop" element={<Page><Shop /></Page>} />
-            <Route path="/category/:categorySlug" element={<Page><Shop /></Page>} />
-            <Route path="/brands" element={<Page><Brands /></Page>} />
-            <Route path="/brands/:brandSlug" element={<Page><Shop /></Page>} />
-            <Route path="/categories" element={<Page><Categories /></Page>} />
-            <Route path="/products/:slug" element={<Page><ProductDetails /></Page>} />
-            <Route path="/cart" element={<Page><Cart /></Page>} />
-            <Route path="/checkout" element={<ProtectedRoute><Page><Checkout /></Page></ProtectedRoute>} />
-            <Route path="/payment/callback" element={<ProtectedRoute><Page><PaymentCallback /></Page></ProtectedRoute>} />
+            <Route path="/shop" element={<Page><AccountShell><Shop /></AccountShell></Page>} />
+            <Route path="/category/:categorySlug" element={<Page><AccountShell><Shop /></AccountShell></Page>} />
+            <Route path="/brands" element={<Page><AccountShell><Brands /></AccountShell></Page>} />
+            <Route path="/brands/:brandSlug" element={<Page><AccountShell><Shop /></AccountShell></Page>} />
+            <Route path="/categories" element={<Page><AccountShell><Categories /></AccountShell></Page>} />
+            <Route path="/products/:slug" element={<Page><AccountShell><ProductDetails /></AccountShell></Page>} />
+            <Route path="/cart" element={<Page><AccountShell><Cart /></AccountShell></Page>} />
+            <Route path="/checkout" element={<ProtectedRoute><Page><AccountShell><Checkout /></AccountShell></Page></ProtectedRoute>} />
+            <Route path="/payment/callback" element={<ProtectedRoute><Page><AccountShell><PaymentCallback /></AccountShell></Page></ProtectedRoute>} />
             <Route path="/login" element={<GuestOnlyRoute><Page><Login /></Page></GuestOnlyRoute>} />
             <Route path="/register" element={<GuestOnlyRoute><Page><Register /></Page></GuestOnlyRoute>} />
             <Route path="/forgot-password" element={<Page><ForgotPassword /></Page>} />
             <Route path="/reset-password/:uid/:token" element={<Page><ResetPassword /></Page>} />
             <Route path="/verify-email/:uid/:token" element={<Page><VerifyEmail /></Page>} />
-            <Route path="/track-order" element={<Page><TrackOrder /></Page>} />
+            <Route path="/track-order" element={<Page><AccountShell><TrackOrder /></AccountShell></Page>} />
             <Route path="/wishlist" element={<Navigate to="/account/wishlist" replace />} />
             <Route path="/account" element={<ProtectedRoute><Page><Dashboard /></Page></ProtectedRoute>}>
               <Route index element={<Overview />} />
+              <Route path="home" element={<HomeFeed />} />
+              <Route path="categories" element={<CategoryDirectory />} />
               <Route path="orders" element={<Orders />} />
               <Route path="orders/:orderNumber" element={<OrderDetails />} />
               <Route path="wishlist" element={<Wishlist />} />

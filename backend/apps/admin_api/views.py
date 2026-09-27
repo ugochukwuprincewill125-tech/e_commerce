@@ -11,7 +11,7 @@ from django.db.models import Count, DecimalField, Max, Prefetch, Sum
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters, permissions, status, viewsets
+from rest_framework import filters, parsers, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
@@ -19,6 +19,7 @@ from rest_framework.views import APIView
 
 from apps.brands.models import Brand
 from apps.categories.models import Category
+from apps.core import uploads
 from apps.core.models import ContactMessage
 from apps.orders.models import Order, OrderStatus, PaymentStatus
 from apps.orders.services import cancel_order, mark_order_paid, restore_stock
@@ -73,7 +74,31 @@ VARIANT_FIELDS = {
 }
 
 
-def _save_product_children(product, images=None, variants=None):
+def _attach_uploaded_images(product, keys):
+    """Attach images uploaded directly to B2 (or local fallback) via `uploaded_images`.
+    Each key is verified against the signer's key space AND existence in the
+    bucket before a ProductImage row is created."""
+    if not keys:
+        return
+    start = (product.images.aggregate(m=Max("display_order"))["m"] or 0) + 1
+    rows = []
+    for index, key in enumerate(keys):
+        if not uploads.key_is_wellformed(key):
+            raise ValidationError(f"Upload key {key!r} was not issued by this API.")
+        if not uploads.object_exists(key):
+            raise ValidationError(
+                f"Upload for {key!r} not found — upload the file to the signed URL first."
+            )
+        name = uploads.key_to_field_name(key)
+        stem = name.rsplit("/", 1)[-1].rsplit(".", 1)[0]
+        safe_stem = stem.split("-", 1)[-1] or stem
+        rows.append(ProductImage(product=product, image=name,
+                                  alt_text=safe_stem.replace("-", " ")[:200],
+                                  display_order=start + index))
+    ProductImage.objects.bulk_create(rows)
+
+
+def _save_product_children(product, images=None, variants=None, uploaded_images=None):
     """Apply image/variant writes after the product row is saved.
 
     images:   [{"id": 4, "alt_text": "…", "display_order": 1}, …] — metadata
@@ -108,7 +133,10 @@ def _save_product_children(product, images=None, variants=None):
                     display_order=payload.get("display_order", 0),
                 )
             else:
-                raise ValidationError("Only existing images can be updated here; upload new ones via images[].")
+                raise ValidationError("Only existing images can be updated here; upload new ones via images[] or uploaded_images.")
+
+
+MAX_PRODUCT_IMAGE_BYTES = 5 * 1024 * 1024  # 5MB per product image
 
 
 class AdminProductViewSet(viewsets.ModelViewSet):
@@ -163,6 +191,9 @@ class AdminProductViewSet(viewsets.ModelViewSet):
         files = self.request.FILES.getlist("images") or self.request.FILES.getlist("images[]")
         if not files:
             return
+        for file in files:
+            if file.size > MAX_PRODUCT_IMAGE_BYTES:
+                raise ValidationError(f'{file.name} is larger than 5MB. Please compress it before uploading.')
         try:
             alt_texts = self._parse_json_list("image_alt_texts") or []
         except ValidationError:
@@ -184,6 +215,7 @@ class AdminProductViewSet(viewsets.ModelViewSet):
         product = serializer.save()
         self._handle_uploads(product)
         _save_product_children(product, variants=self._parse_json_list("variants"))
+        _attach_uploaded_images(product, self._parse_json_list("uploaded_images"))
         product = self.queryset.get(pk=product.pk)  # fresh copy, relations not stale
         return Response(
             s.AdminProductDetailSerializer(product, context={"request": request}).data,
@@ -203,7 +235,8 @@ class AdminProductViewSet(viewsets.ModelViewSet):
             images=self._parse_json_list("images"),
             variants=self._parse_json_list("variants"),
         )
-        product = self.queryset.get(pk=product.pk)  # fresh copy, relations not stale
+        _attach_uploaded_images(product, self._parse_json_list("uploaded_images"))
+        product = self.queryset.get(pk=product.pk)  # fresh product, relations not stale
         return Response(s.AdminProductDetailSerializer(product, context={"request": request}).data)
 
     def destroy(self, request, *args, **kwargs):
@@ -231,6 +264,83 @@ class AdminProductViewSet(viewsets.ModelViewSet):
         product.featured = bool(request.data.get("featured", not product.featured))
         product.save(update_fields=["featured", "updated_at"])
         return Response({"detail": f"{product.name}: featured={product.featured}"})
+
+
+class DirectUploadView(APIView):
+    """
+    POST /api/admin-api/uploads/sign/
+    {"items": [{"filename": "macbook.jpg", "content_type": "image/jpeg", "product_id": 7}, …]}
+    -> {"uploads": [{"upload_url", "key", "headers", "expires_in", "storage"}, …]}
+
+    Issues presigned PUT URLs so the browser uploads images straight to
+    Backblaze (server never sees the bytes — critical on Vercel's ~4.5MB body
+    cap). Echo the returned `key` values back via `uploaded_images` on the
+    product create/update call.
+    """
+
+    permission_classes = [IsStaff]
+
+    def post(self, request):
+        items = request.data.get("items")
+        if not isinstance(items, list) or not items or len(items) > 20:
+            raise ValidationError("Provide `items`: a list of 1-20 {filename, content_type, product_id} objects.")
+        results = []
+        for item in items:
+            if not isinstance(item, dict):
+                raise ValidationError("Each item must be an object.")
+            product_id = item.get("product_id")
+            filename = str(item.get("filename") or "")
+            content_type = str(item.get("content_type") or "").lower()
+            if not isinstance(product_id, int):
+                raise ValidationError("Each item needs an integer product_id (create the product first, then add images).")
+            if not Product.objects.filter(pk=product_id).exists():
+                raise ValidationError(f"Product {product_id} does not exist.")
+            try:
+                signed = uploads.sign_product_image(product_id, filename, content_type)
+            except ValueError as exc:
+                raise ValidationError(str(exc))
+            # Local fallback URLs are relative (same origin); make them absolute
+            # so the browser can PUT directly to whatever host signed them.
+            if signed["upload_url"].startswith("/"):
+                signed["upload_url"] = request.build_absolute_uri(signed["upload_url"])
+            results.append(signed)
+        return Response({"uploads": results})
+
+
+class RawBodyParser(parsers.BaseParser):
+    """Passes the request body through as raw bytes."""
+
+    media_type = "*/*"
+
+    def parse(self, stream, media_type=None, parser_context=None):
+        return stream.read()
+
+
+class LocalUploadPutView(APIView):
+    """
+    PUT /api/admin-api/uploads/local/?key=…  (local-dev fallback only)
+    Receives the raw file when B2 is not configured; writes into local media.
+    Staff-only, key must be one this API signed.
+    """
+
+    permission_classes = [IsStaff]
+    parser_classes = [RawBodyParser]
+
+    def put(self, request):
+        if uploads.b2_configured():
+            return Response({"detail": "Local uploads are disabled once Backblaze is configured."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        key = request.query_params.get("key", "")
+        if not uploads.key_is_wellformed(key):
+            raise ValidationError("Invalid or unsigned key.")
+        data = request.data if isinstance(request.data, (bytes, bytearray)) else b""
+        if len(data) > uploads.MAX_DIRECT_UPLOAD_BYTES:
+            raise ValidationError("File exceeds the 10MB direct-upload limit.")
+        content_type = (request.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+        if content_type not in uploads.ALLOWED_CONTENT_TYPES:
+            raise ValidationError("Unsupported image type.")
+        uploads.write_local(key, data, content_type)
+        return Response({"detail": "Stored.", "key": key}, status=status.HTTP_200_OK)
 
 
 class AdminProductImageViewSet(viewsets.ModelViewSet):

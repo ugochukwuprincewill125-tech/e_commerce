@@ -8,6 +8,13 @@ import Button from '../../components/Button/Button'
 import { productService } from '../../services/productService'
 import { cn, formatNaira } from '../../utils/format'
 
+/**
+ * Campaign slides. Every plate is dark, so the heading colour is set
+ * explicitly on the h1 rather than inherited: the global
+ * `h1 { color: ink-900 }` base rule in index.css applies to the element and
+ * would otherwise beat the container's `text-white`, rendering near-black
+ * text on a near-black plate.
+ */
 const SLIDES = [
   {
     eyebrow: 'Work · Study · Create',
@@ -71,7 +78,7 @@ export default function Hero() {
       aria-roledescription="carousel"
       aria-label="Featured promotions"
     >
-      <div className={cn('relative overflow-hidden text-white', slide.plate)}>
+      <div className={cn('relative overflow-hidden text-white transition-colors duration-300', slide.plate)}>
         <div className="container grid min-h-[380px] items-center gap-10 py-12 lg:grid-cols-[1.1fr_0.9fr] lg:py-16">
           <AnimatePresence mode="wait">
             <motion.div
@@ -82,7 +89,7 @@ export default function Hero() {
               transition={{ duration: 0.28, ease: 'easeOut' }}
             >
               <p className="eyebrow-plain text-brand-300">{slide.eyebrow}</p>
-              <h1 className="mt-4 max-w-2xl text-display-sm sm:text-display">{slide.title}</h1>
+              <h1 className="mt-4 max-w-2xl text-display-sm text-white sm:text-display">{slide.title}</h1>
               <p className="mt-5 max-w-lg text-[15px] leading-relaxed text-white/70">{slide.body}</p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Button to={slide.cta.to} variant="accent" size="lg" iconRight={ArrowRight}>
@@ -163,7 +170,8 @@ export default function Hero() {
               type="button"
               onClick={() => setIndex((i) => (i - 1 + SLIDES.length) % SLIDES.length)}
               aria-label="Previous slide"
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-white/25 text-white transition-colors hover:bg-white hover:text-ink-900"
+              className="tap-sm flex h-8 w-8 items-center justify-center rounded-full border border-white/25 text-white transition-colors hover:bg-white hover:text-ink-900"
+
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
@@ -171,7 +179,8 @@ export default function Hero() {
               type="button"
               onClick={() => setIndex((i) => (i + 1) % SLIDES.length)}
               aria-label="Next slide"
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-white/25 text-white transition-colors hover:bg-white hover:text-ink-900"
+              className="tap-sm flex h-8 w-8 items-center justify-center rounded-full border border-white/25 text-white transition-colors hover:bg-white hover:text-ink-900"
+
             >
               <ChevronRight className="h-4 w-4" />
             </button>

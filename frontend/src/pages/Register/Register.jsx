@@ -8,7 +8,7 @@ import Seo from '../../components/Seo/Seo'
 import { useAuth } from '../../context/AuthContext'
 import { useToast } from '../../context/ToastContext'
 import { errorMessage, fieldErrors } from '../../services/api'
-import { safeNext } from '../../utils/navigation'
+import { ACCOUNT_HOME, safeNext } from '../../utils/navigation'
 import AuthShell from '../Login/AuthShell'
 
 export default function Register() {
@@ -17,7 +17,7 @@ export default function Register() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const [error, setError] = useState('')
-  const next = safeNext(params.get('next'), '/account')
+  const next = safeNext(params.get('next'), ACCOUNT_HOME)
   const {
     register,
     handleSubmit,

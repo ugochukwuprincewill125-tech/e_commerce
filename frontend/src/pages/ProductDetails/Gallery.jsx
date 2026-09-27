@@ -26,7 +26,7 @@ export default function Gallery({ product }) {
   }
 
   return (
-    <div className="lg:sticky lg:top-24">
+    <div className="lg:sticky lg:sticky-chrome lg:self-start">
       <div
         className="group relative aspect-square cursor-zoom-in overflow-hidden rounded-lg bg-metal-50"
         onMouseMove={onMove}

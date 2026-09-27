@@ -3,13 +3,21 @@
  */
 
 /**
+ * Where a signed-in user lands: the "Home" tab of the account shell, which
+ * lists the most recently added products across every category. Used as the
+ * default `next` target and by the guest-landing guard so the post-auth
+ * destination can never drift between call sites.
+ */
+export const ACCOUNT_HOME = '/account/home'
+
+/**
  * Validate a `?next=` redirect target.
  *
  * Only same-origin absolute paths are allowed. Rejects protocol-relative URLs
  * (`//evil.com`) and backslash variants (`/\evil.com`) — both of which start
  * with `/` and would otherwise send the user to another origin.
  */
-export function safeNext(value, fallback = '/account') {
+export function safeNext(value, fallback = ACCOUNT_HOME) {
   if (typeof value !== 'string') return fallback
   const target = value.trim()
   if (!target.startsWith('/')) return fallback
