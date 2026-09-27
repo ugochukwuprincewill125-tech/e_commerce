@@ -23,7 +23,7 @@ export default function Brands() {
       <section className="bg-ink-950 text-white">
         <div className="container py-14 sm:py-20">
           <Breadcrumbs items={[{ label: 'Brands' }]} dark />
-          <h1 className="mt-5 text-display-sm">Shop by brand</h1>
+          <h1 className="mt-5 text-display-sm text-white">Shop by brand</h1>
           <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-metal-400">
             Brands currently stocked across our stores and online store. Select a brand to view available products.
           </p>

@@ -31,7 +31,7 @@ export default function About() {
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
-            className="mt-6 max-w-3xl text-display-sm sm:text-display"
+            className="mt-6 max-w-3xl text-display-sm text-white sm:text-display"
           >
             A technology supplier based in Computer Village, Ikeja.
           </motion.h1>

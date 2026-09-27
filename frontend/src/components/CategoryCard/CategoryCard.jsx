@@ -51,7 +51,8 @@ export default function CategoryCard({ category, variant = 'tile', className }) 
         <ArrowUpRight className="h-4 w-4 text-metal-500 transition-colors group-hover:text-white" aria-hidden />
       </div>
       <div className="relative mt-auto pt-16">
-        <h3 className="text-base font-semibold leading-snug">{category.name}</h3>
+                <h3 className="text-base font-semibold leading-snug text-white">{category.name}</h3>
+
         <p className="mt-1.5 text-xs text-metal-400">
           {category.product_count} product{category.product_count === 1 ? '' : 's'}
         </p>
