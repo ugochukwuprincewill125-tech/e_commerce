@@ -445,8 +445,8 @@ class AdminProductImageViewSet(viewsets.ModelViewSet):
         start = (product.images.aggregate(m=Max("display_order"))["m"] or 0) + 1
         serializer.save(product=product, display_order=self.request.data.get("display_order", start))
 
-    @action(detail=True, methods=["post"])
-    def reorder(self, request, product_pk=None, pk=None):
+    @action(detail=False, methods=["post"])
+    def reorder(self, request, product_pk=None):
         """POST {image_ids: [3, 1, 2]} — assigns display_order by position."""
         image_ids = request.data.get("image_ids") or []
         product = Product.objects.filter(pk=product_pk).first()

@@ -1,13 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ChevronDown, Heart, LayoutDashboard, LogOut, Menu, Package, Search, ShoppingCart, User, X } from 'lucide-react'
+import { ChevronDown, Heart, LayoutDashboard, LogOut, Menu, Package, Search, User, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '../../context/AuthContext'
 import { useChrome } from '../../context/ChromeContext'
-import { useCart } from '../../context/CartContext'
-import { useWishlist } from '../../context/WishlistContext'
 import { catalogService } from '../../services/productService'
 import { cn } from '../../utils/format'
 import { GUEST_LINKS, MEMBER_LINKS } from '../../utils/navConfig'
@@ -16,24 +14,6 @@ import SearchBar from '../SearchBar/SearchBar'
 
 
 
-function CountBadge({ count, bumpKey }) {
-  return (
-    <AnimatePresence>
-      {count > 0 && (
-        <motion.span
-          key={bumpKey}
-          initial={{ scale: 0.4 }}
-          animate={{ scale: [1.3, 1] }}
-          exit={{ scale: 0 }}
-          transition={{ duration: 0.25 }}
-          className="absolute -right-2 -top-2 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-brand-600 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white"
-        >
-          {count > 99 ? '99+' : count}
-        </motion.span>
-      )}
-    </AnimatePresence>
-  )
-}
 
 /** Jumia-style account block: stacked greeting + action, with a dropdown. */
 function AccountBlock() {
@@ -178,9 +158,7 @@ function SearchWithCategory({ onNavigate, className }) {
 
 export default function Navbar() {
   const { user } = useAuth()
-  const { openMenu, openSearch } = useChrome()
-  const { itemCount, openDrawer, bump } = useCart()
-  const { count: wishCount } = useWishlist()
+  const { openMenu } = useChrome()
   const { pathname } = useLocation()
 
   const navLinks = user ? MEMBER_LINKS : GUEST_LINKS
@@ -196,51 +174,10 @@ export default function Navbar() {
 
           <Logo />
 
-          {/* Scoped search + SEARCH button */}
-          <div className="hidden min-w-0 flex-1 items-stretch md:flex">
-            <SearchWithCategory />
-            <Link
-              to="/shop"
-              className="flex h-11 flex-none items-center gap-2 rounded-r-md bg-brand-600 px-7 text-sm font-semibold uppercase tracking-wide text-white transition-colors hover:bg-brand-700"
-            >
-              <Search className="h-4 w-4" strokeWidth={2.25} />
-              Search
-            </Link>
-          </div>
-
           <div className="ml-auto flex items-center gap-1 sm:gap-3">
-            <button type="button" onClick={openSearch} className="flex h-10 w-10 flex-none items-center justify-center rounded text-ink-800 transition-colors hover:bg-metal-100 md:hidden" aria-label="Search">
-              <Search className="h-5 w-5" strokeWidth={1.75} />
-            </button>
-
-            <Link to="/account/wishlist" className="relative hidden h-10 w-10 items-center justify-center rounded text-ink-800 transition-colors hover:bg-metal-100 lg:flex" aria-label={`Wishlist (${wishCount})`}>
-              <Heart className="h-5 w-5" strokeWidth={1.75} />
-              <CountBadge count={wishCount} bumpKey={wishCount} />
-            </Link>
-
             <div className="hidden lg:block">
               <AccountBlock />
             </div>
-
-            <span className="hidden h-8 w-px bg-line lg:block" aria-hidden />
-
-            <button
-              type="button"
-              onClick={openDrawer}
-              className="relative flex items-center gap-2 rounded px-1 py-1.5 text-ink-900 transition-colors hover:bg-metal-50"
-              aria-label={`Cart (${itemCount} items)`}
-            >
-              <span className="relative">
-                <motion.span key={bump} animate={bump ? { rotate: [0, -12, 10, -5, 0] } : undefined} transition={{ duration: 0.4 }} className="block">
-                  <ShoppingCart className="h-6 w-6" strokeWidth={1.6} />
-                </motion.span>
-                <CountBadge count={itemCount} bumpKey={`${itemCount}-${bump}`} />
-              </span>
-              <span className="hidden text-left leading-tight sm:block">
-                <span className="block text-[11px] text-metal-500">Cart</span>
-                <span className="block text-[13px] font-semibold tabular-nums text-ink-900">{itemCount} item{itemCount === 1 ? '' : 's'}</span>
-              </span>
-            </button>
           </div>
         </div>
       </header>

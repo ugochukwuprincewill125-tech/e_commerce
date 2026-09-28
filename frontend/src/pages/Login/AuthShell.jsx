@@ -1,10 +1,13 @@
 import { motion } from 'framer-motion'
+import { ArrowLeft } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 /**
  * Shell for every authentication screen.
  *
- * Deliberately minimal: the navbar (rendered by Layout) and the form. No
- * marketing panel, no site footer — an auth screen should do one job.
+ * Deliberately minimal: the form alone. No navbar, no marketing panel, no site
+ * footer — an auth screen should do one job. A single "Back to store" link
+ * keeps the page from becoming a dead end without reintroducing site chrome.
  *
  * Colour comes from three flat, solid zones rather than decoration or
  * gradients: a soft neutral canvas, an ink header block that carries the
@@ -12,7 +15,7 @@ import { motion } from 'framer-motion'
  */
 export default function AuthShell({ title, subtitle, children, footer }) {
   return (
-    <div className="flex min-h-[calc(100svh-7rem)] items-center justify-center bg-metal-50 px-4 py-12 lg:py-16">
+    <div className="flex min-h-svh items-center justify-center bg-metal-50 px-4 py-12 lg:py-16">
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -43,7 +46,13 @@ export default function AuthShell({ title, subtitle, children, footer }) {
           )}
         </div>
 
-        <p className="mt-6 text-center text-xs text-metal-500">Computer Village, Ikeja, Lagos</p>
+        <div className="mt-6 flex flex-col items-center gap-3 text-center">
+          <p className="text-xs text-metal-500">Computer Village, Ikeja, Lagos</p>
+          <Link to="/" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-ink-900 transition-colors hover:text-brand-700">
+            <ArrowLeft className="h-3.5 w-3.5" strokeWidth={2} />
+            Back to store
+          </Link>
+        </div>
       </motion.div>
     </div>
   )

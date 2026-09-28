@@ -245,7 +245,11 @@ export default function AdminProducts() {
         </AdminCard>
       )}
 
+      {/* Keyed by product so the quantity input re-seeds from the product's
+          real stock every time the dialog opens (a stale `0` invite saved over
+          a product's stock). */}
       <StockDialog
+        key={stockFor?.id ?? "none"}
         product={stockFor}
         onClose={() => setStockFor(null)}
         onDone={invalidate}

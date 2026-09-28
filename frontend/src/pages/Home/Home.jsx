@@ -6,58 +6,12 @@ import Button from '../../components/Button/Button'
 import ProductCarousel from '../../components/Carousel/ProductCarousel'
 import { ErrorState } from '../../components/EmptyState/EmptyState'
 import InstagramIcon from '../../components/Icons/InstagramIcon'
-import { Skeleton } from '../../components/Loader/Skeleton'
 import Reveal from '../../components/Motion/Reveal'
 import Seo from '../../components/Seo/Seo'
 import useStoreInfo from '../../hooks/useStoreInfo'
 import { catalogService, productService } from '../../services/productService'
-import { categoryIcon } from '../../utils/icons'
 import { cn } from '../../utils/format'
 import Hero from './Hero'
-
-/** Jumia-style category grid: icon tile + label + result count. */
-function CategoryGrid() {
-  const { data, isLoading } = useQuery({ queryKey: ['categories', 'featured'], queryFn: () => catalogService.categories({ featured: true }) })
-  const cats = (data || []).slice(0, 10)
-
-  return (
-    <section className="border-b border-line bg-white py-9">
-      <div className="container">
-        <div className="mb-6 flex items-end justify-between gap-4">
-          <h2 className="text-[19px] font-semibold tracking-tight text-ink-900">Shop by category</h2>
-          <Link to="/categories" className="text-[13px] font-semibold text-brand-700 transition-colors hover:text-brand-800">
-            All categories →
-          </Link>
-        </div>
-
-        {isLoading ? (
-          <div className="grid grid-cols-3 gap-4 sm:grid-cols-5 lg:grid-cols-10">
-            {Array.from({ length: 10 }).map((_, i) => (
-              <Skeleton key={i} className="h-24 rounded-md" />
-            ))}
-          </div>
-        ) : (
-          <ul className="grid grid-cols-3 gap-x-4 gap-y-6 sm:grid-cols-5 lg:grid-cols-10">
-            {cats.map((c) => {
-              const Icon = categoryIcon(c.icon)
-              return (
-                <li key={c.slug}>
-                  <Link to={`/category/${c.slug}`} className="group flex flex-col items-center gap-2 text-center">
-                    <span className="flex h-16 w-16 items-center justify-center rounded-full border border-line bg-metal-50 transition-colors group-hover:border-brand-600 group-hover:bg-brand-50">
-                      <Icon className="h-7 w-7 text-ink-800 transition-colors group-hover:text-brand-700" strokeWidth={1.5} />
-                    </span>
-                    <span className="line-clamp-2 text-[12px] font-medium leading-tight text-ink-900">{c.name}</span>
-                    <span className="text-[11px] text-metal-400">{c.product_count}</span>
-                  </Link>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-      </div>
-    </section>
-  )
-}
 
 function BrandStrip() {
   const { data = [] } = useQuery({ queryKey: ['brands'], queryFn: () => catalogService.brands() })
@@ -262,7 +216,6 @@ export default function Home() {
     <>
       <Seo />
       <Hero />
-      <CategoryGrid />
       <PromoStrip />
       <div className="bg-white">
         <CollectionCarousels />

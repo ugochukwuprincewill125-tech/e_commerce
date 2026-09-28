@@ -93,7 +93,8 @@ export default function Layout({ children }) {
   // instead, so nothing needs reserving at the bottom of the page.
 
   // No navbar over the account shell: its sidebar owns the full viewport height.
-  const showNavbar = !shellActive
+  // Auth screens render with no chrome at all — just the form.
+  const showNavbar = !shellActive && !bare
 
   return (
     <ChromeProvider>
