@@ -4,14 +4,16 @@ Every view requires an authenticated user with `is_staff=True`. The admin
 frontend sends `Authorization: Bearer <access>` just like the customer API.
 """
 import json
+from datetime import timedelta
 
 import django_filters
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Count, DecimalField, Max, Prefetch, Sum
-from django.db.models.functions import Coalesce
+from django.db.models.functions import Coalesce, TruncDate
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters, parsers, permissions, status, viewsets
+from rest_framework import filters, mixins, parsers, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
@@ -21,7 +23,7 @@ from apps.brands.models import Brand
 from apps.categories.models import Category
 from apps.core import uploads
 from apps.core.models import ContactMessage
-from apps.orders.models import Order, OrderStatus, PaymentStatus
+from apps.orders.models import Order, OrderItem, OrderStatus, PaymentStatus
 from apps.orders.services import cancel_order, mark_order_paid, restore_stock
 from apps.products.filters import CharInFilter, search_q
 from apps.products.models import Availability, Product, ProductImage, ProductVariant
@@ -39,6 +41,20 @@ class IsStaff(permissions.IsAdminUser):
         return bool(request.user and request.user.is_authenticated and request.user.is_staff)
 
 
+class IsSuperuser(permissions.BasePermission):
+    """For privilege changes only.
+
+    `is_staff` is the single gate on every admin endpoint, so letting any staff
+    member grant it would hand out the whole admin area. Only a superuser may
+    promote or demote staff.
+    """
+
+    message = "Only a superuser can change staff privileges."
+
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated and request.user.is_superuser)
+
+
 # ---------------------------------------------------------------------------
 # Products
 # ---------------------------------------------------------------------------
@@ -54,10 +70,18 @@ class AdminProductFilter(django_filters.FilterSet):
     bestseller = django_filters.BooleanFilter()
     new_arrival = django_filters.BooleanFilter()
     is_active = django_filters.BooleanFilter()
+    low_stock = django_filters.BooleanFilter(method="filter_low_stock")
 
     class Meta:
         model = Product
         fields = []
+
+    def filter_low_stock(self, queryset, name, value):
+        """The restock worklist: at or under the threshold, but not sold out."""
+        if not value:
+            return queryset
+        threshold = getattr(settings, "LOW_STOCK_THRESHOLD", 5)
+        return queryset.filter(stock_quantity__lte=threshold).exclude(stock_quantity=0)
 
     def filter_search(self, queryset, name, value):
         value = value.strip()
@@ -265,6 +289,67 @@ class AdminProductViewSet(viewsets.ModelViewSet):
         product.save(update_fields=["featured", "updated_at"])
         return Response({"detail": f"{product.name}: featured={product.featured}"})
 
+    @action(detail=True, methods=["post"])
+    @transaction.atomic
+    def adjust_stock(self, request, pk=None):
+        """Set or nudge the stock level after a delivery or stock count.
+
+        `delta` moves the count by a signed amount (a correction, shrinkage or
+        top-up); `quantity` sets it outright. Recalculating `availability` is
+        what keeps the Low Stock / Out of Stock badges honest.
+        """
+        product = self.get_object()
+        has_delta = "delta" in request.data
+        has_quantity = "quantity" in request.data
+
+        if has_delta == has_quantity:
+            raise ValidationError("Send either `delta` (signed change) or `quantity` (set outright), not both.")
+
+        before = product.stock_quantity
+        if has_delta:
+            try:
+                delta = int(request.data["delta"])
+            except (TypeError, ValueError):
+                raise ValidationError("`delta` must be a whole number.")
+            new_stock = before + delta
+        else:
+            try:
+                new_stock = int(request.data["quantity"])
+            except (TypeError, ValueError):
+                raise ValidationError("`quantity` must be a whole number.")
+
+        if new_stock < 0:
+            raise ValidationError("Stock cannot go below zero.")
+
+        product.stock_quantity = new_stock
+        product.save(update_fields=["stock_quantity", "availability", "updated_at"])
+
+        variant_id = request.data.get("variant_id")
+        touched = "product"
+        if variant_id:
+            variant = product.variants.filter(pk=variant_id).first()
+            if not variant:
+                raise ValidationError(f"Variant {variant_id} does not belong to {product.name}.")
+            variant.stock_quantity = new_stock
+            variant.save(update_fields=["stock_quantity"])
+            touched = f"variant {variant.label}"
+
+        return Response({
+            "detail": f"{touched} stock: {before} → {new_stock} ({product.get_availability_display()}).",
+            "stock_quantity": product.stock_quantity,
+            "availability": product.availability,
+        })
+
+    @action(detail=False, methods=["get"])
+    def low_stock(self, request):
+        """GET /api/admin-api/products/low_stock/ — the restock worklist."""
+        qs = (self.get_queryset()
+              .filter(is_active=True, stock_quantity__lte=getattr(settings, "LOW_STOCK_THRESHOLD", 5))
+              .order_by("stock_quantity"))
+        page = self.paginate_queryset(qs)
+        serializer = s.AdminProductListSerializer(page, many=True, context={"request": request})
+        return self.get_paginated_response(serializer.data)
+
 
 class DirectUploadView(APIView):
     """
@@ -419,22 +504,55 @@ class AdminCouponViewSet(viewsets.ModelViewSet):
 # ---------------------------------------------------------------------------
 # Orders
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Orders
+# ---------------------------------------------------------------------------
+
+# Staff may only ever move an order forward, one step at a time, or cancel it.
+# Without this a mistyped dropdown could jump `placed` straight to `delivered`,
+# or resurrect a cancelled order after its stock was already returned.
+ALLOWED_NEXT_STATUS = {
+    OrderStatus.PLACED: {OrderStatus.PAYMENT_CONFIRMED, OrderStatus.PROCESSING, OrderStatus.CANCELLED},
+    OrderStatus.PAYMENT_CONFIRMED: {OrderStatus.PROCESSING, OrderStatus.CANCELLED},
+    OrderStatus.PROCESSING: {OrderStatus.READY_FOR_DELIVERY, OrderStatus.CANCELLED},
+    OrderStatus.READY_FOR_DELIVERY: {OrderStatus.SHIPPED, OrderStatus.CANCELLED},
+    OrderStatus.SHIPPED: {OrderStatus.DELIVERED},
+    OrderStatus.DELIVERED: set(),
+    OrderStatus.CANCELLED: set(),
+}
+
+
 class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
     """
-    GET   /api/admin/orders/       ?status=&payment_status=&delivery_method=&ordering=
+    GET   /api/admin/orders/       ?status=&payment_status=&delivery_method=
+                                     &tracking=true|false&search=&ordering=
     GET   /api/admin/orders/<id>/
     PATCH /api/admin/orders/<id>/status/     {status, note?}
+    PATCH /api/admin/orders/<id>/tracking/   {carrier, tracking_number, mark_shipped?}
+    POST  /api/admin/orders/<id>/refund/     {amount, reason?, reference?, restore_stock?}
     PATCH /api/admin/orders/<id>/payment/    {payment_status, payment_reference?, note?}
     """
     permission_classes = [IsStaff]
-    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
-    filterset_fields = ["status", "payment_status", "delivery_method"]
-    ordering_fields = ["created_at", "total", "status"]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["order_number", "email", "phone", "first_name", "last_name", "tracking_number"]
+    filterset_fields = ["status", "payment_status", "delivery_method", "is_refunded"]
+    ordering_fields = ["created_at", "total", "status", "shipped_at", "delivered_at"]
     ordering = ["-created_at"]
 
     queryset = Order.objects.select_related("user", "coupon").prefetch_related(
         "items__product__images", "items__variant", "history"
     )
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        # `tracking=true` lists parcels that have a courier reference, `false`
+        # lists the fulfilment backlog — orders staff still have to ship.
+        tracking = self.request.query_params.get("tracking")
+        if tracking in ("true", "1"):
+            qs = qs.exclude(tracking_number="")
+        elif tracking in ("false", "0"):
+            qs = qs.filter(tracking_number="")
+        return qs
 
     def get_serializer_class(self):
         return s.AdminOrderDetailSerializer if self.action == "retrieve" else s.AdminOrderListSerializer
@@ -457,9 +575,82 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
                                 status=status.HTTP_400_BAD_REQUEST)
             cancel_order(order, note=note or "Cancelled by store staff.")
         else:
+            # Only ever move forward through the fulfilment flow. Skipping steps
+            # or walking a cancelled order back into shipping would desync stock
+            # and the customer timeline.
+            if new_status not in ALLOWED_NEXT_STATUS.get(order.status, set()):
+                return Response(
+                    {"detail": f"Cannot move an order from {order.get_status_display()} "
+                               f"to {OrderStatus(new_status).label}. Allowed next: "
+                               f"{sorted(ALLOWED_NEXT_STATUS.get(order.status, set())) or ['none — this is a final state']}."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             order.status = new_status
-            order.save(update_fields=["status", "updated_at"])
+            touched = ["status", "updated_at"]
+            if new_status == OrderStatus.SHIPPED and not order.shipped_at:
+                order.shipped_at = timezone.now()
+                touched.append("shipped_at")
+            if new_status == OrderStatus.DELIVERED:
+                order.delivered_at = order.delivered_at or timezone.now()
+                touched.append("delivered_at")
+            order.save(update_fields=touched)
             order.add_history(new_status, note or f"Status set to {order.get_status_display()} by staff.")
+        order = self.queryset.get(pk=order.pk)
+        return Response(s.AdminOrderDetailSerializer(order, context={"request": request}).data)
+
+    @action(detail=True, methods=["patch", "post"])
+    @transaction.atomic
+    def tracking(self, request, pk=None):
+        """Record the courier reference for a parcel, and optionally mark it shipped."""
+        order = self.get_object()
+        serializer = s.OrderTrackingUpdateSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        for field in ("carrier", "tracking_number", "staff_note"):
+            if field in data:
+                setattr(order, field, data[field])
+
+        mark_shipped = data.get("mark_shipped")
+        if mark_shipped:
+            if order.status not in (OrderStatus.READY_FOR_DELIVERY, OrderStatus.PROCESSING, OrderStatus.PAYMENT_CONFIRMED, OrderStatus.PLACED):
+                return Response({"detail": "Only an order that is still in the warehouse can be marked shipped."},
+                                status=status.HTTP_400_BAD_REQUEST)
+            if not order.is_tracked:
+                return Response({"detail": "Add a carrier and tracking number before marking the order shipped."},
+                                status=status.HTTP_400_BAD_REQUEST)
+            order.status = OrderStatus.SHIPPED
+            order.shipped_at = order.shipped_at or timezone.now()
+            order.add_history(OrderStatus.SHIPPED, "Parcel handed to the courier.")
+
+        order.save()
+        order = self.queryset.get(pk=order.pk)
+        return Response(s.AdminOrderDetailSerializer(order, context={"request": request}).data)
+
+    @action(detail=True, methods=["post"])
+    @transaction.atomic
+    def refund(self, request, pk=None):
+        """Refund all or part of a paid order. Returns stock when asked to."""
+        order = self.get_object()
+        serializer = s.OrderRefundSerializer(data=request.data, context={"order": order})
+        serializer.is_valid(raise_exception=True)
+        amount = serializer.validated_data["amount"]
+
+        order.payment_status = PaymentStatus.REFUNDED
+        order.refund_amount = amount
+        order.refund_reason = serializer.validated_data.get("reason", "")
+        order.refund_reference = serializer.validated_data.get("reference", "")
+        order.refunded_at = timezone.now()
+        order.save(update_fields=["payment_status", "refund_amount", "refund_reason",
+                                  "refund_reference", "refunded_at", "updated_at"])
+
+        if serializer.validated_data.get("restore_stock", True) and not order.stock_restored:
+            restore_stock(order)
+
+        order.add_history(
+            order.status,
+            serializer.validated_data.get("note") or f"Refunded {amount} by store staff.",
+        )
         order = self.queryset.get(pk=order.pk)
         return Response(s.AdminOrderDetailSerializer(order, context={"request": request}).data)
 
@@ -468,6 +659,13 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
     def payment(self, request, pk=None):
         """Record a payment outcome. `refunded` also returns reserved stock."""
         order = self.get_object()
+
+        if request.data.get("payment_status") == PaymentStatus.REFUNDED:
+            return Response(
+                {"detail": "Use the refund action so the amount and reason are recorded."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         serializer = s.PaymentStatusUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         new_payment = serializer.validated_data["payment_status"]
@@ -488,10 +686,7 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
             if serializer.validated_data.get("payment_reference"):
                 order.payment_reference = serializer.validated_data["payment_reference"]
                 fields.append("payment_reference")
-            if new_payment == PaymentStatus.REFUNDED and not order.stock_restored:
-                restore_stock(order)
-                order.add_history(order.status, note or "Stock returned to inventory after refund.")
-            elif note:
+            if note:
                 order.add_history(order.status, note)
             order.save(update_fields=fields)
         order = self.queryset.get(pk=order.pk)
@@ -501,19 +696,26 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
 # ---------------------------------------------------------------------------
 # Customers
 # ---------------------------------------------------------------------------
-class AdminCustomerViewSet(viewsets.ReadOnlyModelViewSet):
+class AdminCustomerViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    viewsets.GenericViewSet,
+):
     """
     GET   /api/admin/customers/    ?search=<name/email/phone>&is_active=&ordering=
     GET   /api/admin/customers/<id>/
     PATCH /api/admin/customers/<id>/            edit basic details
     POST  /api/admin/customers/<id>/set_active/ {is_active}
-    POST  /api/admin/customers/<id>/set_staff/  {is_staff}
+    POST  /api/admin/customers/<id>/set_staff/  {is_staff}   (superuser only)
     """
     permission_classes = [IsStaff]
-    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["email", "first_name", "last_name", "phone"]
     filterset_fields = ["is_active", "is_staff", "email_verified"]
     ordering_fields = ["date_joined", "email", "total_spent", "order_count"]
     ordering = ["-date_joined"]
+    http_method_names = ["get", "patch", "put", "head", "options"]
 
     def get_queryset(self):
         spent = Sum("orders__total", output_field=DecimalField())
@@ -535,6 +737,11 @@ class AdminCustomerViewSet(viewsets.ReadOnlyModelViewSet):
         if user.is_superuser:
             return Response({"detail": "Superusers cannot be modified from the API."},
                             status=status.HTTP_400_BAD_REQUEST)
+        # Never let staff lock themselves out mid-session, which would leave the
+        # store with no way back in through this API.
+        if user.pk == request.user.pk and field == "is_active" and not bool(request.data.get(field, True)):
+            return Response({"detail": "You cannot deactivate your own account."},
+                            status=status.HTTP_400_BAD_REQUEST)
         value = bool(request.data.get(field, not getattr(user, field)))
         setattr(user, field, value)
         user.save(update_fields=[field])
@@ -544,7 +751,7 @@ class AdminCustomerViewSet(viewsets.ReadOnlyModelViewSet):
     def set_active(self, request, pk=None):
         return self._toggle(request, "is_active")
 
-    @action(detail=True, methods=["post"])
+    @action(detail=True, methods=["post"], permission_classes=[IsSuperuser])
     def set_staff(self, request, pk=None):
         return self._toggle(request, "is_staff")
 
@@ -552,7 +759,12 @@ class AdminCustomerViewSet(viewsets.ReadOnlyModelViewSet):
 # ---------------------------------------------------------------------------
 # Reviews & messages
 # ---------------------------------------------------------------------------
-class AdminReviewViewSet(viewsets.ReadOnlyModelViewSet):
+class AdminReviewViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
+):
     """
     GET    /api/admin/reviews/    ?is_approved=&rating=&ordering=
     PATCH  /api/admin/reviews/<id>/approve/  {is_approved}
@@ -560,7 +772,8 @@ class AdminReviewViewSet(viewsets.ReadOnlyModelViewSet):
     """
     permission_classes = [IsStaff]
     serializer_class = s.AdminReviewSerializer
-    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["comment", "title"]
     filterset_fields = ["is_approved", "rating", "is_verified_purchase"]
     ordering_fields = ["created_at", "rating"]
     ordering = ["-created_at"]
@@ -607,6 +820,9 @@ class AdminStatsView(APIView):
         now = timezone.now()
         today = now.date()
         month_start = today.replace(day=1)
+        # Read the threshold from settings so this card always agrees with the
+        # "Low Stock" badge on the product and with Django admin.
+        low_threshold = getattr(settings, "LOW_STOCK_THRESHOLD", 5)
 
         orders = Order.objects.all()
         products = Product.objects.all()
@@ -625,23 +841,142 @@ class AdminStatsView(APIView):
         )
         recent_orders = orders.order_by("-created_at")[:8]
 
+        # The handful of items most at risk of running out, so staff can
+        # reorder without hunting through the catalogue. Match the Low Stock
+        # badge exactly: at or under the threshold, but not yet zero.
+        low_stock_items = (
+            products.filter(is_active=True, stock_quantity__lte=low_threshold)
+            .exclude(stock_quantity=0)
+            .order_by("stock_quantity")
+            .values("id", "name", "slug", "stock_quantity", "price")[:8]
+        )
+
+        # Fulfilment split: which parcels already have a courier reference and
+        # which are still sitting in the warehouse waiting to be shipped.
+        shipped_or_tracked = orders.exclude(tracking_number="").count()
+
         return Response({
-            "customers": User.objects.filter(is_superuser=False).count(),
+            "customers": {
+                "total": User.objects.filter(is_superuser=False).count(),
+                "active": User.objects.filter(is_superuser=False, is_active=True).count(),
+                "new_this_month": User.objects.filter(is_superuser=False, date_joined__gte=month_start).count(),
+                "staff": User.objects.filter(is_staff=True, is_superuser=False).count(),
+            },
             "products": {
                 "total": products.count(),
                 "active": products.filter(is_active=True).count(),
-                "low_stock": products.filter(is_active=True, stock_quantity__lte=5).exclude(availability=Availability.OUT_OF_STOCK).count(),
+                "archived": products.filter(is_active=False).count(),
+                "low_stock": products.filter(is_active=True, stock_quantity__lte=low_threshold)
+                .exclude(availability=Availability.OUT_OF_STOCK)
+                .count(),
                 "out_of_stock": products.filter(is_active=True, availability=Availability.OUT_OF_STOCK).count(),
+                "low_stock_threshold": low_threshold,
+                "low_stock_items": list(low_stock_items),
             },
             "orders": {
                 "total": orders.count(),
                 "pending": orders.filter(status__in=[OrderStatus.PLACED, OrderStatus.PAYMENT_CONFIRMED, OrderStatus.PROCESSING]).count(),
+                "ready_to_ship": orders.filter(status=OrderStatus.READY_FOR_DELIVERY).count(),
                 "awaiting_payment": orders.filter(payment_status=PaymentStatus.PENDING).count(),
+                "paid": orders.filter(payment_status=PaymentStatus.PAID).count(),
+                "delivered": orders.filter(status=OrderStatus.DELIVERED).count(),
+                "cancelled": orders.filter(status=OrderStatus.CANCELLED).count(),
+                "refunded": orders.filter(payment_status=PaymentStatus.REFUNDED).count(),
+                "tracked": shipped_or_tracked,
+                "untracked": orders.filter(tracking_number="").count(),
                 "status_counts": status_counts,
             },
-            "revenue": {"today": revenue_today or 0, "this_month": revenue_month or 0},
+            "revenue": {
+                "today": revenue_today or 0,
+                "this_month": revenue_month or 0,
+                "average_order": (paid_orders.aggregate(t=Sum("total"))["t"] or 0) / (paid_orders.count() or 1),
+            },
             "reviews_pending": Review.objects.filter(is_approved=False).count(),
             "messages_unresolved": ContactMessage.objects.filter(is_resolved=False).count(),
             "top_products": list(top_products),
             "recent_orders": s.AdminOrderListSerializer(recent_orders, many=True, context={"request": request}).data,
+        })
+
+
+# ---------------------------------------------------------------------------
+# Reports
+# ---------------------------------------------------------------------------
+class AdminReportsView(APIView):
+    """GET /api/admin-api/reports/?days=30
+
+    Sales performance over a window: revenue trend, best sellers, best
+    customers, coupon performance and where orders are stuck in fulfilment.
+    """
+
+    permission_classes = [IsStaff]
+
+    def get(self, request):
+        try:
+            days = max(1, min(int(request.query_params.get("days", 30)), 365))
+        except (TypeError, ValueError):
+            raise ValidationError("`days` must be a whole number between 1 and 365.")
+
+        since = timezone.now() - timedelta(days=days)
+        paid = Order.objects.filter(payment_status=PaymentStatus.PAID, created_at__gte=since)
+        window = Order.objects.filter(created_at__gte=since)
+
+        # One bucket per day, zero-filled, so the chart has no gaps.
+        revenue_by_day = {
+            (row["created_at"].date().isoformat()): row["total"]
+            for row in paid.annotate(d=TruncDate("created_at"))
+            .values("d")
+            .annotate(total=Sum("total"))
+        }
+        orders_by_day = {
+            (row["created_at"].date().isoformat()): row["c"]
+            for row in window.annotate(d=TruncDate("created_at")).values("d").annotate(c=Count("id"))
+        }
+        today = timezone.localdate()
+        series = []
+        for offset in range(days - 1, -1, -1):
+            day = (today - timedelta(days=offset)).isoformat()
+            series.append({
+                "date": day,
+                "revenue": float(revenue_by_day.get(day) or 0),
+                "orders": orders_by_day.get(day, 0),
+            })
+
+        best_sellers = (
+            paid.filter(items__product__isnull=False)
+            .values("items__product__id", "items__product__name", "items__product__slug")
+            .annotate(units=Sum("items__quantity"), revenue=Sum("items__total_price"))
+            .order_by("-units")[:10]
+        )
+
+        best_customers = (
+            paid.values("user_id", "email", "first_name", "last_name")
+            .annotate(orders=Count("id", distinct=True), spend=Sum("total"))
+            .order_by("-spend")[:10]
+        )
+
+        coupon_performance = (
+            Order.objects.filter(created_at__gte=since, coupon_code__gt="")
+            .values("coupon_code")
+            .annotate(orders=Count("id"), revenue=Sum("total"), discount=Sum("discount"))
+            .order_by("-orders")[:10]
+        )
+
+        return Response({
+            "days": days,
+            "since": since,
+            "totals": {
+                "revenue": float(paid.aggregate(t=Sum("total"))["t"] or 0),
+                "orders": window.count(),
+                "paid_orders": paid.count(),
+                "average_order": float(paid.aggregate(t=Sum("total"))["t"] or 0) / (paid.count() or 1),
+                "units": sum(i.quantity for i in OrderItem.objects.filter(order__in=paid)),
+                "discount_given": float(window.aggregate(d=Sum("discount"))["d"] or 0),
+            },
+            "by_status": dict(window.values_list("status").annotate(c=Count("id"))),
+            "by_payment": dict(window.values_list("payment_status").annotate(c=Count("id"))),
+            "by_delivery_method": dict(window.values_list("delivery_method").annotate(c=Count("id"))),
+            "series": series,
+            "best_sellers": list(best_sellers),
+            "best_customers": list(best_customers),
+            "coupon_performance": list(coupon_performance),
         })

@@ -1,4 +1,6 @@
 """Serializers for the admin API (staff-only endpoints)."""
+from decimal import Decimal
+
 from rest_framework import serializers
 
 from apps.brands.models import Brand
@@ -53,6 +55,7 @@ class AdminProductListSerializer(serializers.ModelSerializer):
     current_price = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
     discount_percent = serializers.IntegerField(read_only=True)
     availability_display = serializers.CharField(source="get_availability_display", read_only=True)
+    is_low_stock = serializers.BooleanField(read_only=True)
     product_type_display = serializers.CharField(source="get_product_type_display", read_only=True)
     image = serializers.SerializerMethodField()
 
@@ -62,8 +65,8 @@ class AdminProductListSerializer(serializers.ModelSerializer):
             "id", "name", "slug", "sku", "short_description", "brand", "category",
             "product_type", "product_type_display", "price", "discount_price", "current_price",
             "discount_percent", "stock_quantity", "availability", "availability_display",
-            "featured", "bestseller", "new_arrival", "is_active", "rating", "review_count",
-            "image", "created_at", "updated_at",
+            "is_low_stock", "featured", "bestseller", "new_arrival", "is_active",
+            "rating", "review_count", "image", "created_at", "updated_at",
         )
 
     def get_image(self, obj):
@@ -184,6 +187,8 @@ class AdminOrderListSerializer(serializers.ModelSerializer):
     customer_id = serializers.IntegerField(source="user_id", read_only=True)
     item_count = serializers.SerializerMethodField()
     items = OrderItemSerializer(many=True, read_only=True)
+    is_tracked = serializers.BooleanField(read_only=True)
+    is_refunded = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Order
@@ -192,6 +197,8 @@ class AdminOrderListSerializer(serializers.ModelSerializer):
             "status", "status_display", "payment_status", "payment_status_display",
             "payment_reference", "delivery_method", "subtotal", "shipping_fee",
             "discount", "total", "coupon_code", "item_count", "items",
+            "carrier", "tracking_number", "is_tracked",
+            "refund_amount", "refund_reason", "refunded_at", "is_refunded",
             "created_at", "updated_at",
         )
 
@@ -207,7 +214,9 @@ class AdminOrderDetailSerializer(AdminOrderListSerializer):
 
     class Meta(AdminOrderListSerializer.Meta):
         fields = AdminOrderListSerializer.Meta.fields + (
-            "pickup_location", "shipping_address", "customer_note", "paid_at", "history", "tracking",
+            "pickup_location", "shipping_address", "customer_note", "staff_note",
+            "paid_at", "shipped_at", "delivered_at", "refund_reference",
+            "history", "tracking",
         )
 
     def get_history(self, obj):
@@ -229,6 +238,46 @@ class PaymentStatusUpdateSerializer(serializers.Serializer):
     payment_status = serializers.ChoiceField(choices=PaymentStatus.choices)
     payment_reference = serializers.CharField(required=False, allow_blank=True, max_length=100)
     note = serializers.CharField(required=False, allow_blank=True, max_length=255)
+
+
+class OrderTrackingUpdateSerializer(serializers.Serializer):
+    """Carrier details staff record when a parcel leaves the store."""
+
+    carrier = serializers.CharField(required=False, allow_blank=True, max_length=80)
+    tracking_number = serializers.CharField(required=False, allow_blank=True, max_length=120)
+    staff_note = serializers.CharField(required=False, allow_blank=True, max_length=2000)
+    mark_shipped = serializers.BooleanField(required=False, default=False)
+
+    def validate(self, attrs):
+        # A reference with no carrier is a typo the customer cannot act on, so
+        # require the pair together.
+        carrier = attrs.get("carrier", "").strip()
+        number = attrs.get("tracking_number", "").strip()
+        if bool(carrier) != bool(number):
+            raise serializers.ValidationError(
+                "Enter both a carrier and a tracking number, or leave both blank."
+            )
+        return attrs
+
+
+class OrderRefundSerializer(serializers.Serializer):
+    """Refund an order, optionally in part."""
+
+    amount = serializers.DecimalField(max_digits=14, decimal_places=2, min_value=Decimal("0.01"))
+    reason = serializers.CharField(max_length=255, allow_blank=True)
+    reference = serializers.CharField(required=False, allow_blank=True, max_length=120)
+    restore_stock = serializers.BooleanField(required=False, default=True)
+    note = serializers.CharField(required=False, allow_blank=True, max_length=255)
+
+    def validate_amount(self, value):
+        order = self.context["order"]
+        if order.payment_status != PaymentStatus.PAID:
+            raise serializers.ValidationError("Only a paid order can be refunded.")
+        if value > order.total:
+            raise serializers.ValidationError(
+                f"Refund cannot be more than the order total ({order.total})."
+            )
+        return value
 
 
 # ---------------------------------------------------------------------------
@@ -260,9 +309,17 @@ class AdminCustomerDetailSerializer(AdminCustomerListSerializer):
 
 
 class AdminCustomerUpdateSerializer(serializers.ModelSerializer):
+    """Basic profile edits staff may make.
+
+    `is_staff` is deliberately absent. Granting staff is a privilege change, not
+    a profile edit, so it stays behind the superuser-only `set_staff` action.
+    Exposing it here would let any staff PATCH a colleague (or themselves) up to
+    full admin with a single request.
+    """
+
     class Meta:
         model = User
-        fields = ("first_name", "last_name", "phone", "is_active", "is_staff")
+        fields = ("first_name", "last_name", "phone", "is_active")
 
 
 # ---------------------------------------------------------------------------

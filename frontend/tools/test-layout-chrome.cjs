@@ -44,13 +44,30 @@ check(
   /\{showFooter && <Footer \/>\}/.test(layout),
 )
 
-console.log('\nMobile tab bar follows the same rule')
-check('showMobileNav is declared', /const showMobileNav = /.test(layout))
-check('MobileBottomNav is conditional', /\{showMobileNav && \(/.test(layout))
-check(
-  'main padding is tied to the tab bar',
-  /shellActive \? 'flex-1' : showMobileNav \? 'flex-1 pb-16 sm:pb-0' : 'flex-1'/.test(flat),
-)
+console.log('\nNo fixed mobile bottom bar — the hamburger owns mobile navigation')
+check('MobileBottomNav is not imported', !/MobileBottomNav/.test(layout))
+check('MobileBottomNav is not rendered', !/<MobileBottomNav/.test(layout))
+check('no showMobileNav flag remains', !/showMobileNav/.test(layout))
+check('no reserved bottom gutter on main', !/pb-16/.test(layout))
+check('no spacer element reserved for a tab bar', !/h-16 sm:hidden/.test(layout))
+check('main is flex-1 only', /<main[\s\S]{0,220}className="flex-1"/.test(layout))
+check('the component file is deleted', !fs.existsSync(path.join(SRC, 'components', 'Navbar', 'MobileBottomNav.jsx')))
+
+console.log('\nThe hamburger carries every sidebar destination')
+check('Layout imports the sidebar link arrays', /import \{ ACCOUNT_NAV, SHOP_NAV \} from '\.\.\/Account\/AccountNav'/.test(layout))
+check('Layout builds grouped sections', /function menuSections\(user\)/.test(layout))
+check('guests get the storefront links', /\{ title: null, links: GUEST_LINKS \}/.test(flat))
+check('members get the account section', /title: 'My account', links: ACCOUNT_NAV/.test(flat))
+check('members get the shop section', /title: 'Shop', links: SHOP_NAV/.test(flat))
+check('the drawer receives sections', /<MobileMenu [^>]*sections=\{menuSections\(user\)\}/.test(layout))
+const menu = fs.readFileSync(path.join(SRC, 'components', 'Navbar', 'MobileMenu.jsx'), 'utf8')
+check('drawer renders sections', /sections\.map\(/.test(menu))
+check('drawer scrolls internally only', /overflow-y-auto overscroll-contain/.test(menu))
+check('drawer link rows are touch sized', /min-h-\[44px\]/.test(menu))
+check('drawer is phone-width only', /lg:hidden/.test(menu))
+const shellSrc2 = fs.readFileSync(path.join(SRC, 'components', 'Account', 'AccountShell.jsx'), 'utf8')
+check('no horizontal account strip on mobile', !/variant="strip"/.test(shellSrc2))
+check('AccountNav no longer takes a variant', !/variant === 'strip'/.test(fs.readFileSync(path.join(SRC, 'components', 'Account', 'AccountNav.jsx'), 'utf8')))
 
 console.log('\nAuthentication screens stay bare')
 const BARE = ['/login', '/register', '/forgot-password', '/reset-password', '/verify-email']
@@ -67,7 +84,7 @@ check('navbar is gated on shellActive', /const showNavbar = !shellActive/.test(l
 check('<Navbar /> is conditional', /\{showNavbar && <Navbar /.test(layout))
 check('navbar renders exactly once', (layout.match(/<Navbar /g) || []).length === 1)
 check('shell is viewport height', /shellActive \? 'flex min-h-svh flex-col'/.test(layout))
-check('main is unpadded inside the shell', /shellActive \? 'flex-1' :/.test(layout))
+check('main is a bare flex child', /className="flex-1"/.test(layout))
 check('chrome-top is driven by navbar visibility', /'--chrome-top': showNavbar \? '68px' : '0px'/.test(layout))
 check('search overlay is owned by Layout', (layout.match(/<SearchOverlay /g) || []).length === 1)
 check('mobile menu is owned by Layout', (layout.match(/<MobileMenu /g) || []).length === 1)
@@ -213,7 +230,7 @@ for (const [r, label] of ROUTES) {
   console.log('  ' + w(r, 30) + w(guard, 12) + l(outcome(r, false), 26) + l(outcome(r, true), 30) + label)
 }
 console.log('\n  Footer renders ONLY in the "page + footer" column above.')
-console.log('  Mobile tab bar follows the identical rule.')
+console.log('  There is no fixed mobile bottom bar; the hamburger carries all navigation.')
 
 console.log(failed === 0 ? '\nPASS - layout chrome rule intact' : '\nFAIL - ' + failed + ' check(s)')
 process.exit(failed ? 1 : 0)

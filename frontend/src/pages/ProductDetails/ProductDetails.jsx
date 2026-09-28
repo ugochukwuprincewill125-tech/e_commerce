@@ -17,7 +17,6 @@ import Seo from '../../components/Seo/Seo'
 import VariantPicker from '../../components/Variants/VariantPicker'
 import WishlistButton from '../../components/WishlistButton/WishlistButton'
 import { useCart } from '../../context/CartContext'
-import { useAuth } from '../../context/AuthContext'
 import useRecentlyViewed from '../../hooks/useRecentlyViewed'
 import useStoreInfo from '../../hooks/useStoreInfo'
 import { productService } from '../../services/productService'
@@ -99,7 +98,6 @@ function RecentlyViewed({ slugs, current }) {
 export default function ProductDetails() {
   const { slug } = useParams()
   const navigate = useNavigate()
-  const { user } = useAuth()
   const { addItem, pending } = useCart()
   const { slugs: recent, track } = useRecentlyViewed()
   const [recentSnapshot] = useState(recent)
@@ -188,7 +186,7 @@ export default function ProductDetails() {
         jsonLd={jsonLd}
       />
 
-      <div className="container py-6 sm:py-8">
+      <div className="container py-6 pb-24 sm:py-8 sm:pb-0">
         <Breadcrumbs items={crumbs} />
 
         <div className="mt-6 grid gap-8 lg:grid-cols-2 lg:gap-14">
@@ -319,16 +317,13 @@ export default function ProductDetails() {
 
       <RecentlyViewed slugs={recentSnapshot} current={product.slug} />
 
-      {/* Sticky mobile purchase bar. Signed-in users get the account shell,
-          which renders no bottom tab bar, so the bar sits flush to the
-          viewport edge for them and above the tab bar for guests. */}
+      {/* Sticky mobile purchase bar. Flush to the viewport edge: there is no
+          fixed bottom tab bar, so nothing needs clearing underneath it. */}
       <Reveal
-        className={cn(
-          'fixed inset-x-0 z-30 border-t border-line bg-white p-3 sm:hidden',
-          user ? 'bottom-0' : 'bottom-16',
-        )}
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-white p-3 pb-safe sm:hidden"
         y={40}
       >
+
         <div className="flex items-center gap-3">
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs text-metal-500">{product.name}</p>

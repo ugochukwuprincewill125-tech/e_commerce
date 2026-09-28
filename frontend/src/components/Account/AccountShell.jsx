@@ -4,7 +4,7 @@ import { useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useCart } from '../../context/CartContext'
 import { useChrome } from '../../context/ChromeContext'
-import AccountNav, { AccountRail, activeLabel } from './AccountNav'
+import { AccountRail, activeLabel } from './AccountNav'
 
 /**
  * Account shell — the coloured rail plus a content column, with no site navbar
@@ -31,7 +31,9 @@ export default function AccountShell({ children }) {
 
       <div className="flex min-w-0 flex-1 flex-col bg-metal-50">
         {/* Mobile bar: hamburger, greeting, search, cart — the account shell has
-            no site navbar, so these controls live here instead. */}
+            no site navbar, so these controls live here instead. The hamburger
+            carries every sidebar destination, so there is no horizontal link
+            strip underneath it. */}
         <div className="sticky top-0 z-40 border-b border-line bg-white lg:hidden">
           <div className="flex items-center gap-1 px-2 py-2">
             <button
@@ -71,7 +73,6 @@ export default function AccountShell({ children }) {
               )}
             </button>
           </div>
-          <AccountNav variant="strip" />
         </div>
 
         {/* Page header, offset right of the rail */}

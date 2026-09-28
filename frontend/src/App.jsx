@@ -22,6 +22,7 @@ const AdminCustomers = lazy(() => import('./pages/Admin/AdminPeople').then((m) =
 const AdminReviews = lazy(() => import('./pages/Admin/AdminPeople').then((m) => ({ default: m.AdminReviews })))
 const AdminMessages = lazy(() => import('./pages/Admin/AdminPeople').then((m) => ({ default: m.AdminMessages })))
 const AdminCoupons = lazy(() => import('./pages/Admin/AdminCoupons'))
+const AdminReports = lazy(() => import('./pages/Admin/AdminReports'))
 const Shop = lazy(() => import('./pages/Shop/Shop'))
 const ProductDetails = lazy(() => import('./pages/ProductDetails/ProductDetails'))
 const Categories = lazy(() => import('./pages/Categories/Categories'))
@@ -93,14 +94,15 @@ export default function App() {
             </Route>
             <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
               <Route index element={<AdminHome />} />
+              <Route path="/admin/orders" element={<AdminOrders />} />
               <Route path="/admin/products" element={<AdminProducts />} />
               <Route path="/admin/categories" element={<AdminCategories />} />
               <Route path="/admin/brands" element={<AdminBrands />} />
-              <Route path="/admin/orders" element={<AdminOrders />} />
               <Route path="/admin/customers" element={<AdminCustomers />} />
               <Route path="/admin/reviews" element={<AdminReviews />} />
               <Route path="/admin/messages" element={<AdminMessages />} />
               <Route path="/admin/coupons" element={<AdminCoupons />} />
+              <Route path="/admin/reports" element={<AdminReports />} />
             </Route>
             <Route path="/about" element={<Page><About /></Page>} />
             <Route path="/contact" element={<Page><Contact /></Page>} />

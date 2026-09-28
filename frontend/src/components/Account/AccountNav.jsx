@@ -55,12 +55,15 @@ export function activeLabel(pathname) {
 }
 
 /**
- * Account navigation, rendered two ways from one source of truth:
- *  - `rail`  — the full-height coloured sidebar (large screens)
- *  - `strip` — a horizontal scroller (small screens, where a rail is unusable)
+ * Account navigation for the full-height sidebar (large screens).
+ *
+ * On small screens there is no second rendering: the sidebar is `hidden
+ * lg:block`, and the hamburger carries every link in `ALL_NAV` instead. The
+ * link arrays stay exported so the drawer and the sidebar cannot drift apart.
  */
-export default function AccountNav({ variant }) {
+export default function AccountNav() {
   const { logout } = useAuth()
+
   const { itemCount } = useCart()
   const navigate = useNavigate()
 
@@ -90,27 +93,6 @@ export default function AccountNav({ variant }) {
           ? 'border-transparent text-metal-400 hover:bg-white/5 hover:text-white'
           : 'border-line bg-white text-metal-600 hover:border-ink-900 hover:text-ink-900',
     )
-
-  if (variant === 'strip') {
-    return (
-      <nav className="scrollbar-none -mx-4 flex gap-1 overflow-x-auto px-4 py-2" aria-label="Account">
-        {ALL_NAV.map((item) => (
-          <NavLink key={item.to} to={item.to} end={item.end} className={({ isActive }) => linkClass(isActive, false)}>
-            <item.icon className="h-4 w-4 flex-none" strokeWidth={1.75} />
-            {item.label}
-            {badge(item)}
-          </NavLink>
-        ))}
-        <button
-          type="button"
-          onClick={signOut}
-          className="flex flex-none items-center gap-2 whitespace-nowrap rounded border border-line bg-white px-3 py-2 text-[13px] font-medium text-metal-600 transition-colors hover:border-danger hover:text-danger"
-        >
-          <LogOut className="h-4 w-4 flex-none" strokeWidth={1.75} /> Sign out
-        </button>
-      </nav>
-    )
-  }
 
   return (
     <nav className="flex flex-col gap-5" aria-label="Account">
@@ -161,7 +143,7 @@ export function AccountRail() {
         </div>
 
         <div className="mt-6 flex-1">
-          <AccountNav variant="rail" />
+          <AccountNav />
         </div>
 
         <div className="mt-6 border-t border-white/10 pt-4">

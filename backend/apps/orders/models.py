@@ -74,9 +74,30 @@ class Order(TimeStampedModel):
     paid_at = models.DateTimeField(null=True, blank=True)
     stock_restored = models.BooleanField(default=False, editable=False)
 
+    # Fulfilment tracking. Staff fill these in when the parcel leaves, so a
+    # shopper and the store can both see the same reference. `tracking_number`
+    # is what makes an order "tracked" — see the `is_tracked` property.
+    carrier = models.CharField(max_length=80, blank=True)
+    tracking_number = models.CharField(max_length=120, blank=True, db_index=True)
+    shipped_at = models.DateTimeField(null=True, blank=True)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+    staff_note = models.TextField(blank=True, max_length=2000)
+
+    # Refunds. A refund is a real event, not just a payment_status flip, so the
+    # amount, reference, reason and moment are all recorded for the books.
+    refund_amount = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+    refund_reference = models.CharField(max_length=120, blank=True)
+    refund_reason = models.CharField(max_length=255, blank=True)
+    refunded_at = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         ordering = ("-created_at",)
-        indexes = [models.Index(fields=["user", "-created_at"]), models.Index(fields=["status"]), models.Index(fields=["payment_status"])]
+        indexes = [
+            models.Index(fields=["user", "-created_at"]),
+            models.Index(fields=["status"]),
+            models.Index(fields=["payment_status"]),
+            models.Index(fields=["tracking_number"]),
+        ]
 
     def __str__(self):
         return self.order_number
@@ -96,6 +117,19 @@ class Order(TimeStampedModel):
     @property
     def is_paid(self):
         return self.payment_status == PaymentStatus.PAID
+
+    @property
+    def is_tracked(self):
+        """True once staff have logged a carrier reference for this parcel.
+
+        An order that is still in the warehouse has nothing to track yet, so the
+        admin can list tracked and untracked fulfilment work separately.
+        """
+        return bool(self.tracking_number.strip())
+
+    @property
+    def is_refunded(self):
+        return self.payment_status == PaymentStatus.REFUNDED
 
     @property
     def can_cancel(self):

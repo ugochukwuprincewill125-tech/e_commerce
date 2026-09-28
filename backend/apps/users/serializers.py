@@ -20,8 +20,12 @@ class UserSerializer(serializers.ModelSerializer):
         fields = (
             "id", "first_name", "last_name", "full_name", "email", "phone",
             "profile_image", "email_verified", "date_joined", "is_staff",
+            # Read-only, and only used by the admin UI to decide whether to
+            # offer the "grant staff access" control. The server still enforces
+            # the rule — this only stops the button appearing for non-owners.
+            "is_superuser",
         )
-        read_only_fields = ("id", "email_verified", "date_joined", "is_staff")
+        read_only_fields = ("id", "email_verified", "date_joined", "is_staff", "is_superuser")
 
 
 class ProfileUpdateSerializer(serializers.ModelSerializer):

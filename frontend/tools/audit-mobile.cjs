@@ -70,9 +70,21 @@ for (const [rule, items] of [...byRule].sort((a, b) => b[1].length - a[1].length
 
 // Global guards that must exist in the stylesheet.
 const css = read(path.join(SRC, 'index.css'))
+const bare = css.replace(/\/\*[\s\S]*?\*\//g, '')
 console.log('GLOBAL GUARDS')
 const guards = [
-  ['html/body overflow-x is clipped', /overflow-x:\s*hidden/.test(css)],
+  // `clip`, not `hidden`: `overflow-x: hidden` makes html/body scroll
+  // containers, which breaks every pinned sidebar. `hidden` is kept only as a
+  // fallback declaration, so check the effective (last) value.
+  [
+    'html/body overflow-x resolves to clip',
+    ['html', 'body'].every((sel) => {
+      const m = bare.match(new RegExp('\\b' + sel + '\\s*\\{([^}]*)\\}'))
+      if (!m) return false
+      const decls = [...m[1].matchAll(/overflow-x:\s*([^;]+);/g)].map((d) => d[1].trim())
+      return decls[decls.length - 1] === 'clip'
+    }),
+  ],
   ['viewport meta present', /width=device-width/.test(read(path.join(SRC, '..', 'index.html')))],
   ['viewport-fit=cover for safe areas', /viewport-fit=cover/.test(read(path.join(SRC, '..', 'index.html')))],
   ['tap highlight suppressed', /-webkit-tap-highlight-color/.test(css)],

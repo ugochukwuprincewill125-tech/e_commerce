@@ -37,13 +37,31 @@ export async function uploadProductImages(productId, files, onProgress) {
     // Local fallback URLs live on our API and need the JWT (interceptor adds it).
     const isLocal = signed.storage === 'local'
     const headers = { ...signed.headers }
-    if (!isLocal) headers.Authorization = undefined // presigned URL must stay unmodified
+    if (!isLocal) {
+      // A presigned URL must go out byte-identical to what the signer signed.
+      // Setting the key to `undefined` would stringify to the literal text
+      // "undefined" and invalidate the signature, so delete the header instead.
+      delete headers.Authorization
+    }
     await fetch(signed.upload_url, { method: 'PUT', headers, body: file })
     keys.push(signed.key)
     onProgress?.((i + 1) / uploads.length)
   }
   return keys
 }
+
+/** Nudge or set a product's stock after a delivery or a stock count. */
+export const adjustProductStock = (id, payload) =>
+  api.post(`/admin-api/products/${id}/adjust_stock/`, payload).then((r) => r.data)
+export const setProductFeatured = (id, featured) =>
+  api.post(`/admin-api/products/${id}/set_featured/`, { featured }).then((r) => r.data)
+export const fetchLowStock = (params) => api.get('/admin-api/products/low_stock/', { params }).then((r) => r.data)
+export const reorderProductImages = (productId, imageIds) =>
+  api.post(`/admin-api/products/${productId}/images/reorder/`, { image_ids: imageIds }).then((r) => r.data)
+export const deleteProductImage = (productId, imageId) =>
+  api.delete(`/admin-api/products/${productId}/images/${imageId}/`).then((r) => r.data)
+export const updateProductImage = (productId, imageId, payload) =>
+  api.patch(`/admin-api/products/${productId}/images/${imageId}/`, payload).then((r) => r.data)
 
 /* ---------------------------- categories/brands --------------------------- */
 export const fetchAdminCategories = () => api.get('/admin-api/categories/').then((r) => r.data)
@@ -61,12 +79,17 @@ export const fetchAdminOrders = (params) => api.get('/admin-api/orders/', { para
 export const fetchAdminOrder = (id) => api.get(`/admin-api/orders/${id}/`).then((r) => r.data)
 export const setOrderStatus = (id, payload) => api.patch(`/admin-api/orders/${id}/status/`, payload).then((r) => r.data)
 export const setOrderPayment = (id, payload) => api.patch(`/admin-api/orders/${id}/payment/`, payload).then((r) => r.data)
+/** Log the courier reference for a parcel; `mark_shipped` closes the fulfilment step. */
+export const setOrderTracking = (id, payload) => api.patch(`/admin-api/orders/${id}/tracking/`, payload).then((r) => r.data)
+export const refundOrder = (id, payload) => api.post(`/admin-api/orders/${id}/refund/`, payload).then((r) => r.data)
 
 /* -------------------------------- customers ------------------------------- */
 export const fetchAdminCustomers = (params) => api.get('/admin-api/customers/', { params }).then((r) => r.data)
 export const fetchAdminCustomer = (id) => api.get(`/admin-api/customers/${id}/`).then((r) => r.data)
 export const updateAdminCustomer = (id, payload) => api.patch(`/admin-api/customers/${id}/`, payload).then((r) => r.data)
 export const setCustomerActive = (id, is_active) => api.post(`/admin-api/customers/${id}/set_active/`, { is_active }).then((r) => r.data)
+/** Superuser-only on the server: promotes or demotes a staff member. */
+export const setCustomerStaff = (id, is_staff) => api.post(`/admin-api/customers/${id}/set_staff/`, { is_staff }).then((r) => r.data)
 
 /* --------------------------- reviews & messages --------------------------- */
 export const fetchAdminReviews = (params) => api.get('/admin-api/reviews/', { params }).then((r) => r.data)
@@ -80,3 +103,6 @@ export const fetchAdminCoupons = () => api.get('/admin-api/coupons/').then((r) =
 export const createAdminCoupon = (payload) => api.post('/admin-api/coupons/', payload).then((r) => r.data)
 export const updateAdminCoupon = (id, payload) => api.patch(`/admin-api/coupons/${id}/`, payload).then((r) => r.data)
 export const deleteAdminCoupon = (id) => api.delete(`/admin-api/coupons/${id}/`).then((r) => r.data)
+
+/* --------------------------------- reports -------------------------------- */
+export const fetchAdminReports = (params) => api.get('/admin-api/reports/', { params }).then((r) => r.data)

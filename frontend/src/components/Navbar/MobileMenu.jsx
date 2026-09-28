@@ -12,7 +12,7 @@ import { cn } from '../../utils/format'
 import InstagramIcon from '../Icons/InstagramIcon'
 import Logo from '../Logo/Logo'
 
-export default function MobileMenu({ open, onClose, links }) {
+export default function MobileMenu({ open, onClose, sections = [] }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -53,19 +53,31 @@ export default function MobileMenu({ open, onClose, links }) {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-3 py-4">
+            <div className="flex-1 overflow-y-auto overscroll-contain px-3 py-4">
               <nav aria-label="Mobile">
-                {links.map((link, i) => (
-                  <motion.div key={link.to} initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.04 * i }}>
-                    <NavLink
-                      to={link.to}
-                      end={link.end}
-                      className={({ isActive }) => cn('flex items-center justify-between rounded-xl px-3 py-3 text-[15px] font-semibold', isActive ? 'bg-metal-50 text-ink-900' : 'text-ink-800')}
-                    >
-                      {link.label}
-                      <ChevronRight className="h-4 w-4 text-metal-300" />
-                    </NavLink>
-                  </motion.div>
+                {sections.map((section, s) => (
+                  <div key={section.title || 'primary'} className={s > 0 ? 'mt-6' : ''}>
+                    {section.title && (
+                      <p className="mb-1 px-3 text-xs font-semibold uppercase tracking-wider text-metal-400">{section.title}</p>
+                    )}
+                    {section.links.map((link, i) => (
+                      <motion.div
+                        key={link.to}
+                        initial={{ opacity: 0, x: -12 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.03 * (s * 8 + i) }}
+                      >
+                        <NavLink
+                          to={link.to}
+                          end={link.end}
+                          className={({ isActive }) => cn('flex min-h-[44px] items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-[15px] font-semibold', isActive ? 'bg-metal-50 text-ink-900' : 'text-ink-800')}
+                        >
+                          {link.label}
+                          <ChevronRight className="h-4 w-4 flex-none text-metal-300" />
+                        </NavLink>
+                      </motion.div>
+                    ))}
+                  </div>
                 ))}
               </nav>
 

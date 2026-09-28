@@ -126,6 +126,13 @@ console.log('\nRule 4 - the sidebars that must be pinned')
     const src = fs.readFileSync(path.join(SRC, f), 'utf8')
     check(`${label} uses .pinned-panel`, /pinned-panel/.test(src), f)
   }
+
+  // The mobile buy bar is the one fixed-bottom element left. With no tab bar
+  // it must be flush, and the page must reserve its own room for it.
+  const pdp = fs.readFileSync(path.join(SRC, 'pages', 'ProductDetails', 'ProductDetails.jsx'), 'utf8')
+  check('mobile buy bar is flush (no dead bottom gap)', /fixed inset-x-0 bottom-0/.test(pdp), 'expected no bottom-16 offset')
+  check('product page reserves room for the buy bar', /container py-6 pb-24/.test(pdp) && /sm:pb-0/.test(pdp))
+  check('buy bar no longer branches on the session', !/bottom-16/.test(pdp))
 }
 
 /* ---- 5. chrome offset plumbing ---- */
