@@ -8,28 +8,51 @@ import { errorMessage } from '../../services/api'
 import { useToast } from '../../context/ToastContext'
 import { cn } from '../../utils/format'
 
-/** Page shell: heading, optional description, and a right-aligned action row. */
+/**
+ * Page shell: a roomy heading block, then the page body on a wider vertical
+ * rhythm. The layout owns horizontal padding and max-width; this only stacks.
+ */
 export function AdminPage({ title, description, actions, children }) {
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <h1 className="font-display text-xl font-bold text-ink-950 sm:text-2xl">{title}</h1>
-          {description && <p className="mt-1 max-w-2xl text-[13px] text-metal-500">{description}</p>}
+          {description && <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-metal-500">{description}</p>}
         </div>
         {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
       </div>
-      {children}
+      <div className="space-y-8 pb-4">{children}</div>
     </div>
+  )
+}
+
+/**
+ * A labelled group of cards. Long admin pages read as one endless stack of
+ * identical panels; a small caps heading breaks them into named chunks the
+ * eye can jump between.
+ */
+export function AdminSection({ icon: Icon, title, action, children }) {
+  return (
+    <section>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-metal-600">
+          {Icon && <Icon className="h-4 w-4 text-brand-600" strokeWidth={2.25} />}
+          {title}
+        </h2>
+        {action}
+      </div>
+      {children}
+    </section>
   )
 }
 
 export function AdminCard({ title, action, children, className }) {
   return (
-    <section className={cn('card overflow-hidden', className)}>
+    <section className={cn('card overflow-hidden shadow-card', className)}>
       {(title || action) && (
-        <header className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
-          <h2 className="text-[13px] font-semibold uppercase tracking-wide text-ink-900">{title}</h2>
+        <header className="flex items-center justify-between gap-3 border-b border-line px-5 py-3.5">
+          <h3 className="text-[13px] font-semibold uppercase tracking-wide text-ink-900">{title}</h3>
           {action}
         </header>
       )}
@@ -39,14 +62,27 @@ export function AdminCard({ title, action, children, className }) {
 }
 
 const TONES = {
-  neutral: 'border-line bg-white',
+  neutral: 'border-line-soft bg-white shadow-card',
   brand: 'border-brand-200 bg-brand-50',
   good: 'border-emerald-200 bg-emerald-50',
   warn: 'border-amber-200 bg-amber-50',
   bad: 'border-red-200 bg-red-50',
 }
 
-/** One headline number. `hint` is the sub-line; `tone` colours the card. */
+/** Icon chips echo the card tone so a coloured card reads as one object. */
+const CHIP_TONES = {
+  neutral: 'bg-metal-100 text-metal-600',
+  brand: 'bg-brand-100 text-brand-700',
+  good: 'bg-emerald-100 text-emerald-700',
+  warn: 'bg-amber-100 text-amber-700',
+  bad: 'bg-red-100 text-red-700',
+}
+
+/**
+ * One headline number: an icon chip, a label, the number. Cards in a section
+ * should form a quiet row of white tiles — colour is reserved for cards whose
+ * tone itself is information (warn/bad/good).
+ */
 export function StatCard({ label, value, hint, tone = 'neutral', icon: Icon, onClick }) {
   const Wrapper = onClick ? 'button' : 'div'
   return (
@@ -54,17 +90,21 @@ export function StatCard({ label, value, hint, tone = 'neutral', icon: Icon, onC
       type={onClick ? 'button' : undefined}
       onClick={onClick}
       className={cn(
-        'flex w-full flex-col gap-1 rounded-lg border p-4 text-left transition',
+        'flex w-full items-start gap-3 rounded-lg border p-4 text-left transition',
         TONES[tone] || TONES.neutral,
         onClick && 'hover:border-ink-900 focus-visible:border-ink-900',
       )}
     >
-      <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-metal-500">
-        {Icon && <Icon className="h-3.5 w-3.5" strokeWidth={2} />}
-        {label}
+      {Icon && (
+        <span className={cn('flex h-10 w-10 flex-none items-center justify-center rounded-lg', CHIP_TONES[tone] || CHIP_TONES.neutral)}>
+          <Icon className="h-5 w-5" strokeWidth={2} />
+        </span>
+      )}
+      <span className="min-w-0">
+        <span className="block text-xs font-semibold uppercase leading-snug tracking-wider text-metal-500">{label}</span>
+        <span className="mt-1.5 block font-display text-2xl font-bold leading-none text-ink-950 tabular-nums">{value}</span>
+        {hint && <span className="mt-1.5 block text-xs leading-snug text-metal-500">{hint}</span>}
       </span>
-      <span className="font-display text-2xl font-bold leading-none text-ink-950 tabular-nums">{value}</span>
-      {hint && <span className="text-xs text-metal-500">{hint}</span>}
     </Wrapper>
   )
 }
@@ -88,11 +128,57 @@ export function AdminError({ error, onRetry }) {
 
 export function AdminEmpty({ children, action }) {
   return (
-    <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
-      <p className="text-sm text-metal-500">{children}</p>
+    <div className="flex min-h-48 flex-col items-center justify-center gap-3 px-6 py-12 text-center">
+      <p className="max-w-sm text-sm leading-relaxed text-metal-500">{children}</p>
       {action}
     </div>
   )
+}
+
+/* ------------------------------------------------------------------ pills */
+
+/** Full-colour status chips so an orders table scans by colour at a glance. */
+const STATUS_TONES = {
+  placed: 'bg-brand-100 text-brand-800',
+  payment_confirmed: 'bg-emerald-100 text-emerald-700',
+  processing: 'bg-sky-100 text-sky-700',
+  ready_for_delivery: 'bg-amber-100 text-amber-700',
+  shipped: 'bg-violet-100 text-violet-700',
+  delivered: 'bg-emerald-100 text-emerald-700',
+  cancelled: 'bg-red-100 text-red-700',
+}
+
+export const STATUS_LABELS = {
+  placed: 'Placed',
+  payment_confirmed: 'Payment confirmed',
+  processing: 'Processing',
+  ready_for_delivery: 'Ready for delivery',
+  shipped: 'Shipped',
+  delivered: 'Delivered',
+  cancelled: 'Cancelled',
+}
+
+const PAYMENT_TONES = {
+  paid: 'bg-emerald-100 text-emerald-700',
+  refunded: 'bg-red-100 text-red-700',
+  failed: 'bg-red-100 text-red-700',
+  pending: 'bg-amber-100 text-amber-700',
+}
+
+function Pill({ tone, children }) {
+  return (
+    <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold ${tone}`}>
+      {children}
+    </span>
+  )
+}
+
+export function StatusPill({ status, label }) {
+  return <Pill tone={STATUS_TONES[status] || 'bg-metal-100 text-ink-800'}>{label || STATUS_LABELS[status] || status}</Pill>
+}
+
+export function PaymentPill({ status, label }) {
+  return <Pill tone={PAYMENT_TONES[status] || 'bg-metal-100 text-ink-800'}>{label || status}</Pill>
 }
 
 /**
@@ -102,7 +188,7 @@ export function AdminEmpty({ children, action }) {
 export function ConfirmDialog({ open, title, body, confirmLabel = 'Confirm', tone = 'danger', onConfirm, onClose, busy }) {
   return (
     <Modal open={Boolean(open)} onClose={onClose} title={title} size="max-w-md">
-      <div className="p-5">
+      <div className="p-5 sm:p-6">
         <p className="text-sm leading-relaxed text-metal-600">{body}</p>
         <div className="mt-5 flex justify-end gap-2">
           <button type="button" onClick={onClose} className="btn-outline" disabled={busy}>

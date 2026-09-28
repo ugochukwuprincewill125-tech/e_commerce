@@ -14,9 +14,12 @@ import './index.css'
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 60_000,
-      gcTime: 10 * 60_000,
+      // Cache-first: pages open instantly from cache while a silent refresh
+      // runs in the background, instead of flashing a spinner every time.
+      staleTime: 5 * 60_000,
+      gcTime: 30 * 60_000,
       refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
       retry: (count, error) => {
         const status = error?.response?.status
         if (status && status >= 400 && status < 500) return false

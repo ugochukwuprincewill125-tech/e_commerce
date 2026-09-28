@@ -58,7 +58,7 @@ export default function AdminReports() {
         </>
       }
     >
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard label="Revenue" value={formatNaira(t.revenue)} tone="good" icon={TrendingUp} />
         <StatCard label="Orders" value={t.orders} hint={`${t.paid_orders} paid`} />
         <StatCard label="Average order" value={formatNaira(t.average_order)} />
@@ -102,7 +102,7 @@ export default function AdminReports() {
           ) : (
             <ol className="divide-y divide-line">
               {data.best_sellers.map((row, i) => (
-                <li key={row.items__product__id} className="flex items-center gap-3 px-4 py-2.5 text-sm">
+                <li key={row.items__product__id} className="flex items-center gap-3 px-5 py-3 text-sm">
                   <span className="w-5 flex-none tabular-nums text-xs font-bold text-metal-400">{i + 1}</span>
                   <span className="min-w-0 flex-1 truncate text-ink-900">{row.items__product__name}</span>
                   <span className="flex-none tabular-nums text-ink-900">{row.units}</span>
@@ -119,7 +119,7 @@ export default function AdminReports() {
           ) : (
             <ol className="divide-y divide-line">
               {data.best_customers.map((row) => (
-                <li key={row.user_id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                <li key={row.user_id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
                   <span className="min-w-0">
                     <span className="block truncate text-ink-900">{`${row.first_name || ''} ${row.last_name || ''}`.trim() || row.email}</span>
                     <span className="block truncate text-xs text-metal-500">{row.email}</span>

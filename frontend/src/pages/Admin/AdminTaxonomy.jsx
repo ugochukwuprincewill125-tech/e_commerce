@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { ArrowRight, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 import {
   AdminCard, AdminEmpty, AdminError, AdminPage, ConfirmDialog, useAdminMutation,
@@ -69,7 +70,16 @@ export function AdminCategories() {
                     <tr key={c.id} className="border-b border-line last:border-0 hover:bg-metal-50">
                       <td className="px-4 py-3 font-semibold text-ink-900">{c.name}</td>
                       <td className="px-4 py-3 text-metal-500">{c.slug}</td>
-                      <td className="px-4 py-3 tabular-nums text-ink-900">{c.product_count}</td>
+                      <td className="px-4 py-3">
+                        {/* Drill straight into this category's products. */}
+                        <Link
+                          to={`/admin/products?category=${c.slug}`}
+                          className="inline-flex items-center gap-1 tabular-nums text-ink-900 transition hover:text-brand-600 hover:underline"
+                        >
+                          {c.product_count}
+                          <ArrowRight className="h-3.5 w-3.5 text-metal-400" />
+                        </Link>
+                      </td>
                       <td className="px-4 py-3 text-right whitespace-nowrap">
                         <button type="button" onClick={() => setEditing(c)} className="rounded p-1.5 text-brand-600 transition hover:bg-brand-50" aria-label={`Edit ${c.name}`}>
                           <Pencil className="h-4 w-4" />

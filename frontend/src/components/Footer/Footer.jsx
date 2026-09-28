@@ -18,29 +18,12 @@ const COLUMNS = [
     ],
   },
   {
-    title: 'Shop With Us',
-    links: [
-      { to: '/account', label: 'My Account' },
-      { to: '/account/orders', label: 'My Orders' },
-      { to: '/account/wishlist', label: 'My Wishlist' },
-      { to: '/cart', label: 'My Cart' },
-    ],
-  },
-  {
     title: 'Company',
     links: [
       { to: '/about', label: 'About Us' },
       { to: '/contact#locations', label: 'Our Locations' },
       { to: '/brands', label: 'Brands' },
       { to: '/categories', label: 'All Categories' },
-    ],
-  },
-  {
-    title: 'Make Money',
-    links: [
-      { to: '/contact', label: 'Sell to Timeline' },
-      { to: '/contact', label: 'Bulk & Corporate Orders' },
-      { to: '/contact', label: 'Partnerships' },
     ],
   },
 ]
@@ -79,7 +62,7 @@ export default function Footer() {
       <div className="container py-12">
         <div className="grid gap-10 lg:grid-cols-12 lg:gap-8">
           {/* Link columns */}
-          <div className="grid grid-cols-2 gap-8 sm:grid-cols-4 lg:col-span-8">
+          <div className="grid grid-cols-2 gap-8 lg:col-span-6">
             {COLUMNS.map((col) => (
               <div key={col.title}>
                 <h3 className="text-[11px] font-semibold uppercase tracking-widest text-white">{col.title}</h3>
@@ -97,7 +80,7 @@ export default function Footer() {
           </div>
 
           {/* Store details */}
-          <div className="lg:col-span-4">
+          <div className="lg:col-span-6">
             <Logo onDark size="lg" />
             <div className="mt-6 space-y-2.5 text-[13px]">
               <p className="font-semibold text-white">{company.name}</p>

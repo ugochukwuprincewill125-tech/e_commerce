@@ -1,9 +1,14 @@
-import { Link, Navigate, Outlet } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 
 import { useAuth } from '../../context/AuthContext'
 import { PageLoader } from '../../components/Loader/Skeleton'
 
-export default function AdminRoute() {
+/**
+ * Guard that renders its children (the admin layout) only for staff. The
+ * nested admin routes render through the <Outlet /> inside AdminLayout —
+ * NOT through an Outlet here, which would skip the layout entirely.
+ */
+export default function AdminRoute({ children }) {
   const { user, initialising } = useAuth()
 
   if (initialising) return <PageLoader />
@@ -19,5 +24,5 @@ export default function AdminRoute() {
       </div>
     )
   }
-  return <Outlet />
+  return children
 }

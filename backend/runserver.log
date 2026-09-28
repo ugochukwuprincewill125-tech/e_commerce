@@ -1,218 +1,50 @@
 Performing system checks...
 
 System check identified no issues (0 silenced).
-September 27, 2026 - 23:36:31
+September 28, 2026 - 13:43:32
 Django version 5.2.17, using settings 'config.settings.dev'
 Starting development server at http://127.0.0.1:8000/
 Quit the server with CTRL-BREAK.
 
 WARNING: This is a development server. Do not use it in a production setting. Use a production WSGI or ASGI server instead.
 For more information on production servers see: https://docs.djangoproject.com/en/5.2/howto/deployment/
-Performing system checks...
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+Subject: Verify your Timeline account
+From: Timeline Global Systems <timelinegadget@gmail.com>
+To: ada.marathon@example.com
+Date: Mon, 28 Sep 2026 13:06:16 -0000
+Message-ID: <179060077647.12604.3400688917383659227@Xmarshal>
 
-System check identified no issues (0 silenced).
-September 27, 2026 - 23:39:27
-Django version 5.2.17, using settings 'config.settings.dev'
-Starting development server at http://127.0.0.1:8000/
-Quit the server with CTRL-BREAK.
+Hi Ada,
 
-WARNING: This is a development server. Do not use it in a production setting. Use a production WSGI or ASGI server instead.
-For more information on production servers see: https://docs.djangoproject.com/en/5.2/howto/deployment/
-Performing system checks...
+Welcome to Timeline Global Systems — Home of Quality Gadgets.
 
-Performing system checks...
+Please confirm your email address by opening this link:
+http://localhost:5173/verify-email/MTQ/dfmcig-2b5c4ca36741cea0961ac6683b616785
 
-System check identified no issues (0 silenced).
-September 28, 2026 - 00:17:13
-Django version 5.2.17, using settings 'config.settings.dev'
-Starting development server at http://127.0.0.1:8000/
-Quit the server with CTRL-BREAK.
+If you didn't create an account, you can ignore this email.
 
-WARNING: This is a development server. Do not use it in a production setting. Use a production WSGI or ASGI server instead.
-For more information on production servers see: https://docs.djangoproject.com/en/5.2/howto/deployment/
-Performing system checks...
+— Timeline Global Systems Limited
+-------------------------------------------------------------------------------
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+Subject: Reset your Timeline password
+From: Timeline Global Systems <timelinegadget@gmail.com>
+To: ada.marathon@example.com
+Date: Mon, 28 Sep 2026 13:11:43 -0000
+Message-ID: <179060110334.12604.2713103306322978467@Xmarshal>
 
-System check identified no issues (0 silenced).
-September 28, 2026 - 00:17:42
-Django version 5.2.17, using settings 'config.settings.dev'
-Starting development server at http://127.0.0.1:8000/
-Quit the server with CTRL-BREAK.
+Hi Ada,
 
-WARNING: This is a development server. Do not use it in a production setting. Use a production WSGI or ASGI server instead.
-For more information on production servers see: https://docs.djangoproject.com/en/5.2/howto/deployment/
-Performing system checks...
+We received a request to reset the password for your Timeline account.
 
-Performing system checks...
+Reset your password here:
+http://localhost:5173/reset-password/MTQ/dfmcrj-9aff067d966dd17a25e386db5818448e
 
-System check identified no issues (0 silenced).
-September 28, 2026 - 00:18:30
-Django version 5.2.17, using settings 'config.settings.dev'
-Starting development server at http://127.0.0.1:8000/
-Quit the server with CTRL-BREAK.
+This link expires automatically. If you didn't request it, no action is needed.
 
-WARNING: This is a development server. Do not use it in a production setting. Use a production WSGI or ASGI server instead.
-For more information on production servers see: https://docs.djangoproject.com/en/5.2/howto/deployment/
-Performing system checks...
-
-System check identified no issues (0 silenced).
-September 28, 2026 - 00:18:49
-Django version 5.2.17, using settings 'config.settings.dev'
-Starting development server at http://127.0.0.1:8000/
-Quit the server with CTRL-BREAK.
-
-WARNING: This is a development server. Do not use it in a production setting. Use a production WSGI or ASGI server instead.
-For more information on production servers see: https://docs.djangoproject.com/en/5.2/howto/deployment/
-Performing system checks...
-
-System check identified no issues (0 silenced).
-September 28, 2026 - 00:18:58
-Django version 5.2.17, using settings 'config.settings.dev'
-Starting development server at http://127.0.0.1:8000/
-Quit the server with CTRL-BREAK.
-
-WARNING: This is a development server. Do not use it in a production setting. Use a production WSGI or ASGI server instead.
-For more information on production servers see: https://docs.djangoproject.com/en/5.2/howto/deployment/
-Performing system checks...
-
-System check identified no issues (0 silenced).
-September 28, 2026 - 00:19:20
-Django version 5.2.17, using settings 'config.settings.dev'
-Starting development server at http://127.0.0.1:8000/
-Quit the server with CTRL-BREAK.
-
-WARNING: This is a development server. Do not use it in a production setting. Use a production WSGI or ASGI server instead.
-For more information on production servers see: https://docs.djangoproject.com/en/5.2/howto/deployment/
-Performing system checks...
-
-System check identified no issues (0 silenced).
-September 28, 2026 - 00:19:45
-Django version 5.2.17, using settings 'config.settings.dev'
-Starting development server at http://127.0.0.1:8000/
-Quit the server with CTRL-BREAK.
-
-WARNING: This is a development server. Do not use it in a production setting. Use a production WSGI or ASGI server instead.
-For more information on production servers see: https://docs.djangoproject.com/en/5.2/howto/deployment/
-Performing system checks...
-
-System check identified no issues (0 silenced).
-September 28, 2026 - 00:19:59
-Django version 5.2.17, using settings 'config.settings.dev'
-Starting development server at http://127.0.0.1:8000/
-Quit the server with CTRL-BREAK.
-
-WARNING: This is a development server. Do not use it in a production setting. Use a production WSGI or ASGI server instead.
-For more information on production servers see: https://docs.djangoproject.com/en/5.2/howto/deployment/
-Performing system checks...
-
-System check identified no issues (0 silenced).
-September 28, 2026 - 00:20:16
-Django version 5.2.17, using settings 'config.settings.dev'
-Starting development server at http://127.0.0.1:8000/
-Quit the server with CTRL-BREAK.
-
-WARNING: This is a development server. Do not use it in a production setting. Use a production WSGI or ASGI server instead.
-For more information on production servers see: https://docs.djangoproject.com/en/5.2/howto/deployment/
-Performing system checks...
-
-System check identified no issues (0 silenced).
-
-You have 1 unapplied migration(s). Your project may not work properly until you apply the migrations for app(s): orders.
-Run 'python manage.py migrate' to apply them.
-September 28, 2026 - 00:21:29
-Django version 5.2.17, using settings 'config.settings.dev'
-Starting development server at http://127.0.0.1:8000/
-Quit the server with CTRL-BREAK.
-
-WARNING: This is a development server. Do not use it in a production setting. Use a production WSGI or ASGI server instead.
-For more information on production servers see: https://docs.djangoproject.com/en/5.2/howto/deployment/
-Performing system checks...
-
-System check identified no issues (0 silenced).
-
-You have 1 unapplied migration(s). Your project may not work properly until you apply the migrations for app(s): orders.
-Run 'python manage.py migrate' to apply them.
-September 28, 2026 - 00:21:38
-Django version 5.2.17, using settings 'config.settings.dev'
-Starting development server at http://127.0.0.1:8000/
-Quit the server with CTRL-BREAK.
-
-WARNING: This is a development server. Do not use it in a production setting. Use a production WSGI or ASGI server instead.
-For more information on production servers see: https://docs.djangoproject.com/en/5.2/howto/deployment/
-Performing system checks...
-
-System check identified no issues (0 silenced).
-
-You have 1 unapplied migration(s). Your project may not work properly until you apply the migrations for app(s): orders.
-Run 'python manage.py migrate' to apply them.
-September 28, 2026 - 00:24:33
-Django version 5.2.17, using settings 'config.settings.dev'
-Starting development server at http://127.0.0.1:8000/
-Quit the server with CTRL-BREAK.
-
-WARNING: This is a development server. Do not use it in a production setting. Use a production WSGI or ASGI server instead.
-For more information on production servers see: https://docs.djangoproject.com/en/5.2/howto/deployment/
-Performing system checks...
-
-System check identified no issues (0 silenced).
-
-You have 1 unapplied migration(s). Your project may not work properly until you apply the migrations for app(s): orders.
-Run 'python manage.py migrate' to apply them.
-September 28, 2026 - 00:24:41
-Django version 5.2.17, using settings 'config.settings.dev'
-Starting development server at http://127.0.0.1:8000/
-Quit the server with CTRL-BREAK.
-
-WARNING: This is a development server. Do not use it in a production setting. Use a production WSGI or ASGI server instead.
-For more information on production servers see: https://docs.djangoproject.com/en/5.2/howto/deployment/
-Performing system checks...
-
-System check identified no issues (0 silenced).
-
-You have 1 unapplied migration(s). Your project may not work properly until you apply the migrations for app(s): orders.
-Run 'python manage.py migrate' to apply them.
-September 28, 2026 - 00:24:54
-Django version 5.2.17, using settings 'config.settings.dev'
-Starting development server at http://127.0.0.1:8000/
-Quit the server with CTRL-BREAK.
-
-WARNING: This is a development server. Do not use it in a production setting. Use a production WSGI or ASGI server instead.
-For more information on production servers see: https://docs.djangoproject.com/en/5.2/howto/deployment/
-Performing system checks...
-
-System check identified no issues (0 silenced).
-
-You have 1 unapplied migration(s). Your project may not work properly until you apply the migrations for app(s): orders.
-Run 'python manage.py migrate' to apply them.
-September 28, 2026 - 00:25:03
-Django version 5.2.17, using settings 'config.settings.dev'
-Starting development server at http://127.0.0.1:8000/
-Quit the server with CTRL-BREAK.
-
-WARNING: This is a development server. Do not use it in a production setting. Use a production WSGI or ASGI server instead.
-For more information on production servers see: https://docs.djangoproject.com/en/5.2/howto/deployment/
-Performing system checks...
-
-System check identified no issues (0 silenced).
-
-You have 1 unapplied migration(s). Your project may not work properly until you apply the migrations for app(s): orders.
-Run 'python manage.py migrate' to apply them.
-September 28, 2026 - 00:29:42
-Django version 5.2.17, using settings 'config.settings.dev'
-Starting development server at http://127.0.0.1:8000/
-Quit the server with CTRL-BREAK.
-
-WARNING: This is a development server. Do not use it in a production setting. Use a production WSGI or ASGI server instead.
-For more information on production servers see: https://docs.djangoproject.com/en/5.2/howto/deployment/
-Performing system checks...
-
-System check identified no issues (0 silenced).
-
-You have 1 unapplied migration(s). Your project may not work properly until you apply the migrations for app(s): orders.
-Run 'python manage.py migrate' to apply them.
-September 28, 2026 - 00:29:51
-Django version 5.2.17, using settings 'config.settings.dev'
-Starting development server at http://127.0.0.1:8000/
-Quit the server with CTRL-BREAK.
-
-WARNING: This is a development server. Do not use it in a production setting. Use a production WSGI or ASGI server instead.
-For more information on production servers see: https://docs.djangoproject.com/en/5.2/howto/deployment/
+— Timeline Global Systems Limited
+-------------------------------------------------------------------------------

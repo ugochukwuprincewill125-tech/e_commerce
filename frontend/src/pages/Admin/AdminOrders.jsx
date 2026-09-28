@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Eye, Printer, Search, Truck, Undo2 } from 'lucide-react'
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Eye, Loader2, Printer, Search, Truck, Undo2 } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import {
   AdminCard, AdminEmpty, AdminError, AdminPage, ExportButton,
-  TableFooter, exportCsv, useAdminMutation,
+  PaymentPill, STATUS_LABELS, TableFooter, exportCsv, useAdminMutation,
 } from '../../components/Admin/AdminUI'
 import Modal from '../../components/Modal/Modal'
 import useDebounce from '../../hooks/useDebounce'
@@ -34,16 +34,6 @@ const NEXT_STATUS = {
   cancelled: [],
 }
 
-const pill = (tone, label) =>
-  `inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${tone}`
-
-const PAYMENT_TONES = {
-  paid: 'bg-emerald-100 text-emerald-700',
-  refunded: 'bg-red-100 text-red-700',
-  failed: 'bg-red-100 text-red-700',
-  pending: 'bg-amber-100 text-amber-700',
-}
-
 const csvColumns = [
   { label: 'Order', get: (o) => o.order_number },
   { label: 'Customer', get: (o) => o.customer_name },
@@ -54,6 +44,17 @@ const csvColumns = [
   { label: 'Tracking', get: (o) => o.tracking_number },
   { label: 'Date', get: (o) => o.created_at },
 ]
+
+/** Text colours matching the shared pill tones, for the inline status switch. */
+const STATUS_TEXT = {
+  placed: 'text-brand-700',
+  payment_confirmed: 'text-emerald-700',
+  processing: 'text-sky-700',
+  ready_for_delivery: 'text-amber-700',
+  shipped: 'text-violet-700',
+  delivered: 'text-emerald-700',
+  cancelled: 'text-red-700',
+}
 
 export default function AdminOrders() {
   const qc = useQueryClient()
@@ -81,14 +82,33 @@ export default function AdminOrders() {
   if (tracking) query.tracking = tracking
   if (debounced) query.search = debounced
 
-  const { data, isLoading, isError, error, refetch } = useQuery({
+  const { data, isFetching, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['admin-orders', query],
     queryFn: () => fetchAdminOrders(query),
+    // Keep the previous page on screen while the next one loads — filters and
+    // pagination no longer blank the table.
+    placeholderData: keepPreviousData,
   })
 
   const [openId, setOpenId] = useState(null)
 
   const orders = data?.results || []
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ['admin-orders'] })
+    qc.invalidateQueries({ queryKey: ['admin-stats'] })
+  }
+
+  const statusMut = useAdminMutation({
+    fn: ({ id, value }) => setOrderStatus(id, { status: value }),
+    success: 'Order updated — the customer sees the new status.',
+    onDone: invalidate,
+  })
+
+  const handleStatus = (order, value) => {
+    if (!value || value === order.status) return
+    statusMut.mutate({ id: order.id, value })
+  }
 
   return (
     <AdminPage
@@ -119,7 +139,7 @@ export default function AdminOrders() {
         <select className="input w-auto" value={status} onChange={(e) => setParam('status', e.target.value)} aria-label="Filter by status">
           <option value="">All statuses</option>
           {STATUSES.map((s) => (
-            <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
+            <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>
           ))}
         </select>
         <select className="input w-auto" value={payment} onChange={(e) => setParam('payment', e.target.value)} aria-label="Filter by payment">
@@ -134,6 +154,11 @@ export default function AdminOrders() {
           <option value="false">Untracked only</option>
         </select>
       </div>
+
+      <p className="flex items-center gap-2 text-xs text-metal-500">
+        {isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+        {data ? `${data.count} order(s)` : ''}
+      </p>
 
       {isLoading ? (
         <p className="text-sm text-metal-500">Loading orders…</p>
@@ -167,8 +192,26 @@ export default function AdminOrders() {
                           <p className="text-xs text-metal-500">{o.email}</p>
                         </td>
                         <td className="px-4 py-3 tabular-nums text-ink-900">{formatNaira(o.total)}</td>
-                        <td className="px-4 py-3">{pill('bg-metal-100 text-ink-800', o.status_display)}</td>
-                        <td className="px-4 py-3">{pill(PAYMENT_TONES[o.payment_status] || 'bg-metal-100 text-ink-800', o.payment_status_display)}</td>
+                        <td className="px-4 py-3">
+                          {/* Inline fulfilment switch: pick the next step and it
+                              is saved immediately — the customer's order page
+                              and timeline update the moment it lands. */}
+                          <span className={`inline-flex ${STATUS_TEXT[o.status] || 'text-ink-900'}`}>
+                            <select
+                              className="w-auto max-w-[170px] border-none bg-transparent py-0.5 pr-6 text-xs font-semibold text-inherit shadow-none focus:ring-0"
+                              value={o.status}
+                              disabled={statusMut.isPending}
+                              onChange={(e) => handleStatus(o, e.target.value)}
+                              aria-label={`Fulfilment status for ${o.order_number}`}
+                            >
+                              <option value={o.status}>{STATUS_LABELS[o.status] || o.status}</option>
+                              {(NEXT_STATUS[o.status] || []).map((s) => (
+                                <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>
+                              ))}
+                            </select>
+                          </span>
+                        </td>
+                        <td className="px-4 py-3"><PaymentPill status={o.payment_status} label={o.payment_status_display} /></td>
                         <td className="px-4 py-3">
                           {o.is_tracked ? (
                             <span className="inline-flex items-center gap-1 text-xs font-semibold text-brand-700">
@@ -375,7 +418,7 @@ function OrderDetail({ order, invalidate }) {
           >
             <option value={order.status}>{order.status_display} (current)</option>
             {allowed.map((s) => (
-              <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
+              <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>
             ))}
           </select>
           {!allowed.length && <span className="mt-1 block text-xs font-normal text-metal-500">This is a final state.</span>}

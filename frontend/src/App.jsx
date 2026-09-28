@@ -14,6 +14,8 @@ const Home = lazy(() => import('./pages/Home/Home'))
 const AdminLayout = lazy(() => import('./pages/Admin/AdminLayout'))
 const AdminHome = lazy(() => import('./pages/Admin/AdminHome'))
 const AdminProducts = lazy(() => import('./pages/Admin/AdminProducts'))
+const AdminProductNew = lazy(() => import('./pages/Admin/AdminProductEditor').then((m) => ({ default: m.AdminProductNew })))
+const AdminProductEdit = lazy(() => import('./pages/Admin/AdminProductEditor').then((m) => ({ default: m.AdminProductEdit })))
 const AdminOrders = lazy(() => import('./pages/Admin/AdminOrders'))
 const AdminRoute = lazy(() => import('./pages/Admin/AdminRoute'))
 const AdminCategories = lazy(() => import('./pages/Admin/AdminTaxonomy').then((m) => ({ default: m.AdminCategories })))
@@ -59,8 +61,8 @@ export default function App() {
   // Animate between top-level sections; nested dashboard routes share one key.
   const key = location.pathname.startsWith('/account') ? '/account' : location.pathname
 
-  return (
-    <Layout>
+  const tree = (
+    <>
       <ScrollToTop />
       <Suspense fallback={<PageLoader />}>
         <AnimatePresence mode="wait" initial={false}>
@@ -96,6 +98,8 @@ export default function App() {
               <Route index element={<AdminHome />} />
               <Route path="/admin/orders" element={<AdminOrders />} />
               <Route path="/admin/products" element={<AdminProducts />} />
+              <Route path="/admin/products/new" element={<AdminProductNew />} />
+              <Route path="/admin/products/:id/edit" element={<AdminProductEdit />} />
               <Route path="/admin/categories" element={<AdminCategories />} />
               <Route path="/admin/brands" element={<AdminBrands />} />
               <Route path="/admin/customers" element={<AdminCustomers />} />
@@ -113,6 +117,11 @@ export default function App() {
           </Routes>
         </AnimatePresence>
       </Suspense>
-    </Layout>
+    </>
   )
+
+  // The admin area is its own application: it renders without the customer
+  // store chrome (navbar, footers, cart drawer). Every other route lives
+  // inside the shop Layout.
+  return location.pathname.startsWith('/admin') ? tree : <Layout>{tree}</Layout>
 }
