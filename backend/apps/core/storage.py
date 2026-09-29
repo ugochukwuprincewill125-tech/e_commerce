@@ -1,33 +1,60 @@
 """
 Media storage for Timeline Global Systems.
 
-Product/category/brand images live in a Backblaze B2 bucket, accessed through
-B2's S3-compatible API (django-storages + boto3). Files are uploaded directly
-by Django and served from the bucket's public endpoint (or a CDN custom domain
-if one is configured).
+Product/category/brand images live in Cloudinary, accessed through
+django-cloudinary-storage. Files are uploaded by Django and served from
+Cloudinary's CDN — public URLs, no bucket-permission plumbing.
 
 Selected automatically when all of these are set in the environment:
-    B2_APPLICATION_KEY_ID
-    B2_APPLICATION_KEY
-    B2_BUCKET_NAME
-    B2_ENDPOINT_URL        e.g. https://s3.us-west-004.backblazeb2.com
+    CLOUDINARY_CLOUD_NAME
+    CLOUDINARY_API_KEY
+    CLOUDINARY_API_SECRET
 
 Without them (local development) Django falls back to FileSystemStorage and
 files land in backend/media/ — no behaviour change for existing code.
 """
-from storages.backends.s3boto3 import S3Boto3Storage
+import os
+
+import cloudinary
+from cloudinary_storage.storage import MediaCloudinaryStorage
 
 
-class StaticMediaStorageMixin:
-    """Shared settings for every Timeline media bucket."""
+class CloudinaryMediaStorage(MediaCloudinaryStorage):
+    """
+    All MEDIA_ROOT-relative uploads go here (products/, users/, …).
 
-    default_acl = "public-read"          # images are browsable by URL
-    querystring_auth = False             # no signed URLs — the bucket is public
-    file_overwrite = False               # keep every upload, never clobber
-    object_parameters = {"CacheControl": "public, max-age=31536000"}  # 1 year
+    The library's default uploader derives the Cloudinary public_id from the
+    filename with a RANDOM suffix and strips the extension, so the name Django
+    stores never matches a key this API signed. Our sign → PUT → attach flow
+    needs the opposite: the exact key that was issued must resolve afterwards
+    (and re-uploads of the same key must overwrite, not duplicate). These
+    overrides pin a deterministic public_id — ``media/<field name>`` minus the
+    extension — making uploads idempotent and verifiable.
+    """
 
+    def _upload(self, name, content):
+        return cloudinary.uploader.upload(
+            content,
+            public_id=self._public_id_for(name),
+            resource_type=self._get_resource_type(name),
+            tags=self.TAG,
+            invalidate=True,
+        )
 
-class BackblazeMediaStorage(StaticMediaStorageMixin, S3Boto3Storage):
-    """All MEDIA_ROOT-relative uploads go here (products/, users/, …)."""
+    def delete(self, name):
+        response = cloudinary.uploader.destroy(
+            self._public_id_for(name),
+            invalidate=True,
+            resource_type=self._get_resource_type(name),
+        )
+        return response.get("result") == "ok"
 
-    location = "media"
+    def _public_id_for(self, name):
+        """'products/76/drone.jpg' → Cloudinary public_id 'media/products/76/drone'.
+
+        The delivery URL keeps the extension (Cloudinary reads it as the
+        format), while the stored resource id carries none — this mirrors how
+        the library itself structures image uploads.
+        """
+        prefixed = self._prepend_prefix(self._normalise_name(name))
+        return os.path.splitext(prefixed)[0]

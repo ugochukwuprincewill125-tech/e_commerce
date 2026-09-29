@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Eye, Loader2, Printer, Search, Truck, Undo2 } from 'lucide-react'
+import { Eye, LayoutGrid, List, Loader2, Printer, Search, Truck, Undo2 } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import {
@@ -20,19 +20,11 @@ const STATUSES = ['placed', 'payment_confirmed', 'processing', 'ready_for_delive
 const PAYMENTS = ['pending', 'paid', 'failed', 'refunded']
 
 /**
- * Which statuses staff may pick next, mirroring the server's
- * ALLOWED_NEXT_STATUS. Offering an illegal option only to have the API reject
- * it is a worse experience than hiding it.
+ * All statuses an admin can move an order to. The server allows any transition
+ * except from cancelled/delivered (final states), so we show everything and
+ * let the API reject invalid moves.
  */
-const NEXT_STATUS = {
-  placed: ['payment_confirmed', 'processing', 'cancelled'],
-  payment_confirmed: ['processing', 'cancelled'],
-  processing: ['ready_for_delivery', 'cancelled'],
-  ready_for_delivery: ['shipped', 'cancelled'],
-  shipped: ['delivered'],
-  delivered: [],
-  cancelled: [],
-}
+const ALL_STATUSES = ['placed', 'payment_confirmed', 'processing', 'ready_for_delivery', 'shipped', 'delivered', 'cancelled']
 
 const csvColumns = [
   { label: 'Order', get: (o) => o.order_number },
@@ -56,10 +48,18 @@ const STATUS_TEXT = {
   cancelled: 'text-red-700',
 }
 
+const BOARD_COLUMNS = [
+  { status: 'processing', label: 'Processing', color: 'border-sky-200 bg-sky-50' },
+  { status: 'ready_for_delivery', label: 'Ready for Delivery', color: 'border-amber-200 bg-amber-50' },
+  { status: 'shipped', label: 'Shipped', color: 'border-violet-200 bg-violet-50' },
+  { status: 'delivered', label: 'Delivered', color: 'border-emerald-200 bg-emerald-50' },
+]
+
 export default function AdminOrders() {
   const qc = useQueryClient()
   const toast = useToast()
   const [params, setParams] = useSearchParams()
+  const [view, setView] = useState('table')
 
   const status = params.get('status') || ''
   const payment = params.get('payment') || ''
@@ -153,6 +153,26 @@ export default function AdminOrders() {
           <option value="true">Tracked only</option>
           <option value="false">Untracked only</option>
         </select>
+        <div className="flex rounded-lg border border-line bg-white p-0.5">
+          <button
+            type="button"
+            onClick={() => setView('table')}
+            className={`rounded-md p-1.5 transition ${view === 'table' ? 'bg-ink-950 text-white' : 'text-metal-500 hover:text-ink-900'}`}
+            aria-label="Table view"
+            title="Table view"
+          >
+            <List className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setView('board')}
+            className={`rounded-md p-1.5 transition ${view === 'board' ? 'bg-ink-950 text-white' : 'text-metal-500 hover:text-ink-900'}`}
+            aria-label="Board view"
+            title="Board view"
+          >
+            <LayoutGrid className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       <p className="flex items-center gap-2 text-xs text-metal-500">
@@ -164,6 +184,13 @@ export default function AdminOrders() {
         <p className="text-sm text-metal-500">Loading orders…</p>
       ) : isError ? (
         <AdminError error={error} onRetry={refetch} />
+      ) : view === 'board' ? (
+        <OrderBoard
+          orders={orders}
+          onStatusChange={handleStatus}
+          onOpenDetail={setOpenId}
+          isPending={statusMut.isPending}
+        />
       ) : (
         <AdminCard>
           {orders.length === 0 ? (
@@ -193,19 +220,15 @@ export default function AdminOrders() {
                         </td>
                         <td className="px-4 py-3 tabular-nums text-ink-900">{formatNaira(o.total)}</td>
                         <td className="px-4 py-3">
-                          {/* Inline fulfilment switch: pick the next step and it
-                              is saved immediately — the customer's order page
-                              and timeline update the moment it lands. */}
                           <span className={`inline-flex ${STATUS_TEXT[o.status] || 'text-ink-900'}`}>
                             <select
                               className="w-auto max-w-[170px] border-none bg-transparent py-0.5 pr-6 text-xs font-semibold text-inherit shadow-none focus:ring-0"
                               value={o.status}
-                              disabled={statusMut.isPending}
+                              disabled={statusMut.isPending || o.status === 'cancelled' || o.status === 'delivered'}
                               onChange={(e) => handleStatus(o, e.target.value)}
                               aria-label={`Fulfilment status for ${o.order_number}`}
                             >
-                              <option value={o.status}>{STATUS_LABELS[o.status] || o.status}</option>
-                              {(NEXT_STATUS[o.status] || []).map((s) => (
+                              {ALL_STATUSES.map((s) => (
                                 <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>
                               ))}
                             </select>
@@ -253,6 +276,76 @@ export default function AdminOrders() {
         }}
       />
     </AdminPage>
+  )
+}
+
+/* ------------------------------------------------------------------ board */
+
+function OrderBoard({ orders, onStatusChange, onOpenDetail, isPending }) {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {BOARD_COLUMNS.map((col) => {
+        const columnOrders = orders.filter((o) => o.status === col.status)
+        return (
+          <div key={col.status} className={`rounded-lg border p-3 ${col.color}`}>
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-xs font-bold uppercase tracking-wide text-ink-900">{col.label}</h3>
+              <span className="rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-metal-600 shadow-sm">
+                {columnOrders.length}
+              </span>
+            </div>
+            <div className="space-y-2">
+              {columnOrders.length === 0 ? (
+                <p className="py-4 text-center text-xs text-metal-400">No orders</p>
+              ) : (
+                columnOrders.map((o) => (
+                  <div key={o.id} className="rounded-lg border border-line bg-white p-3 shadow-sm">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-ink-900">{o.order_number}</p>
+                        <p className="truncate text-xs text-metal-500">{o.customer_name}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onOpenDetail(o.id)}
+                        className="flex-none rounded p-1 text-brand-600 transition hover:bg-brand-50"
+                        title="Manage order"
+                        aria-label={`Manage order ${o.order_number}`}
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <p className="mt-1.5 text-sm font-bold text-ink-900">{formatNaira(o.total)}</p>
+                    <div className="mt-2 flex items-center justify-between">
+                      <PaymentPill status={o.payment_status} label={o.payment_status_display} />
+                      {o.is_tracked && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-700">
+                          <Truck className="h-3 w-3" /> {o.tracking_number}
+                        </span>
+                      )}
+                    </div>
+                    {o.status !== 'cancelled' && o.status !== 'delivered' && (
+                      <select
+                        className="mt-2 w-full rounded border border-line bg-white px-2 py-1.5 text-xs font-medium text-ink-800 shadow-none focus:ring-0 disabled:opacity-50"
+                        value=""
+                        disabled={isPending}
+                        onChange={(e) => onStatusChange(o, e.target.value)}
+                        aria-label={`Move ${o.order_number} to another status`}
+                      >
+                        <option value="">Move to…</option>
+                        {ALL_STATUSES.filter((s) => s !== o.status).map((s) => (
+                          <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )
+      })}
+    </div>
   )
 }
 
@@ -324,8 +417,8 @@ function OrderDetail({ order, invalidate }) {
     onDone: invalidate,
   })
 
-  const allowed = NEXT_STATUS[order.status] || []
   const canRefund = order.payment_status === 'paid'
+  const isFinalState = order.status === 'cancelled' || order.status === 'delivered'
 
   return (
     <div className="space-y-5 p-5">
@@ -406,6 +499,41 @@ function OrderDetail({ order, invalidate }) {
         </p>
       </div>
 
+      {/* Status stepper */}
+      <div className="rounded-lg border border-line p-3">
+        <h3 className="mb-3 text-[13px] font-semibold uppercase tracking-wide text-ink-900">Fulfilment progress</h3>
+        <div className="flex items-center justify-between">
+          {['processing', 'ready_for_delivery', 'shipped', 'delivered'].map((s, i, arr) => {
+            const stepIndex = arr.indexOf(order.status)
+            const isCompleted = i < stepIndex || order.status === 'delivered'
+            const isCurrent = i === stepIndex
+            return (
+              <div key={s} className="flex flex-1 items-center last:flex-none">
+                <div className="flex flex-col items-center">
+                  <span
+                    className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${
+                      isCompleted
+                        ? 'bg-brand-500 text-white'
+                        : isCurrent
+                          ? 'bg-brand-100 text-brand-700 ring-2 ring-brand-500'
+                          : 'bg-metal-100 text-metal-400'
+                    }`}
+                  >
+                    {isCompleted ? '✓' : i + 1}
+                  </span>
+                  <span className={`mt-1.5 text-center text-[10px] font-semibold leading-tight ${isCurrent || isCompleted ? 'text-ink-900' : 'text-metal-400'}`}>
+                    {STATUS_LABELS[s]}
+                  </span>
+                </div>
+                {i < arr.length - 1 && (
+                  <div className={`mx-1 mb-5 h-0.5 flex-1 rounded ${i < stepIndex ? 'bg-brand-500' : 'bg-metal-200'}`} />
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
       {/* Status + payment */}
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-[13px] font-semibold text-ink-900">
@@ -413,15 +541,14 @@ function OrderDetail({ order, invalidate }) {
           <select
             className="input mt-1"
             value={order.status}
-            disabled={!allowed.length || statusMut.isPending}
+            disabled={isFinalState || statusMut.isPending}
             onChange={(e) => statusMut.mutate(e.target.value)}
           >
-            <option value={order.status}>{order.status_display} (current)</option>
-            {allowed.map((s) => (
-              <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>
+            {ALL_STATUSES.map((s) => (
+              <option key={s} value={s}>{STATUS_LABELS[s] || s}{s === order.status ? ' (current)' : ''}</option>
             ))}
           </select>
-          {!allowed.length && <span className="mt-1 block text-xs font-normal text-metal-500">This is a final state.</span>}
+          {isFinalState && <span className="mt-1 block text-xs font-normal text-metal-500">This is a final state.</span>}
         </label>
         <label className="text-[13px] font-semibold text-ink-900">
           Payment

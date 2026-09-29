@@ -4,6 +4,7 @@ from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models.functions import Coalesce
+from django.utils import timezone
 from django.utils.text import slugify
 
 from apps.core.models import TimeStampedModel
@@ -41,6 +42,9 @@ class ProductQuerySet(models.QuerySet):
     def active(self):
         return self.filter(is_active=True, category__is_active=True)
 
+    def archived(self):
+        return self.filter(deleted_at__isnull=False)
+
     def with_effective_price(self):
         return self.annotate(
             effective_price=Coalesce("discount_price", "price")
@@ -69,6 +73,7 @@ class Product(TimeStampedModel):
     bestseller = models.BooleanField(default=False)
     new_arrival = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True, help_text="Untick to hide the product from the store.")
+    deleted_at = models.DateTimeField(null=True, blank=True, editable=False)
 
     rating = models.DecimalField(max_digits=3, decimal_places=2, default=0, editable=False)
     review_count = models.PositiveIntegerField(default=0, editable=False)
@@ -125,6 +130,18 @@ class Product(TimeStampedModel):
     @property
     def is_in_stock(self):
         return self.stock_quantity > 0
+
+    def archive(self):
+        """Soft delete the product."""
+        self.deleted_at = timezone.now()
+        self.is_active = False
+        self.save(update_fields=["deleted_at", "is_active", "updated_at"])
+
+    def restore(self):
+        """Restore a previously archived product."""
+        self.deleted_at = None
+        self.is_active = True
+        self.save(update_fields=["deleted_at", "is_active", "updated_at"])
 
 
 class ProductImage(models.Model):

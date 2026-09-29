@@ -25,7 +25,14 @@ export default function AuthShell({ title, subtitle, children, footer }) {
         <div className="overflow-hidden rounded-xl border border-line bg-white shadow-overlay">
           {/* Ink header block — solid, no gradient */}
           <div className="bg-ink-950 px-7 py-7">
-            <div className="flex items-center gap-2.5">
+            <Link
+              to="/"
+              className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-metal-400 transition-colors hover:text-white"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" strokeWidth={2} />
+              Back to store
+            </Link>
+            <div className="mt-4 flex items-center gap-2.5">
               <span className="block h-2.5 w-2.5 flex-none bg-brand-500" aria-hidden />
               <p className="text-[11px] font-semibold uppercase tracking-widest text-metal-400">
                 Timeline Global Systems
@@ -48,10 +55,6 @@ export default function AuthShell({ title, subtitle, children, footer }) {
 
         <div className="mt-6 flex flex-col items-center gap-3 text-center">
           <p className="text-xs text-metal-500">Computer Village, Ikeja, Lagos</p>
-          <Link to="/" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-ink-900 transition-colors hover:text-brand-700">
-            <ArrowLeft className="h-3.5 w-3.5" strokeWidth={2} />
-            Back to store
-          </Link>
         </div>
       </motion.div>
     </div>

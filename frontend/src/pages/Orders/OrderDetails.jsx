@@ -23,7 +23,12 @@ export default function OrderDetails() {
   const [paying, setPaying] = useState(false)
   const [confirmCancel, setConfirmCancel] = useState(false)
   const [cancelling, setCancelling] = useState(false)
-  const { data: order, isLoading, isError, error, refetch } = useQuery({ queryKey: ['orders', 'detail', orderNumber], queryFn: () => orderService.detail(orderNumber) })
+  const { data: order, isLoading, isError, error, refetch } = useQuery({
+    queryKey: ['orders', 'detail', orderNumber],
+    queryFn: () => orderService.detail(orderNumber),
+    refetchInterval: 30000,
+    refetchIntervalInBackground: true,
+  })
 
   const pay = async () => {
     setPaying(true)
@@ -166,6 +171,13 @@ export default function OrderDetails() {
                 ? pickup?.lines.join(' ')
                 : [order.shipping_address.address, order.shipping_address.city, order.shipping_address.state, order.shipping_address.country].filter(Boolean).join(', ')}
             </p>
+            {(order.carrier || order.tracking_number) && (
+              <p className="mt-3 rounded-xl bg-metal-50 p-3 text-xs text-metal-600">
+                {order.carrier && <span className="font-medium">Carrier: {order.carrier}</span>}
+                {order.carrier && order.tracking_number && ' · '}
+                {order.tracking_number && <span>Tracking number: {order.tracking_number}</span>}
+              </p>
+            )}
             {order.customer_note && <p className="mt-3 rounded-xl bg-metal-50 p-3 text-xs text-metal-600">Note: {order.customer_note}</p>}
           </section>
         </div>

@@ -99,7 +99,7 @@ VARIANT_FIELDS = {
 
 
 def _attach_uploaded_images(product, keys):
-    """Attach images uploaded directly to B2 (or local fallback) via `uploaded_images`.
+    """Attach images uploaded via the sign+PUT flow through `uploaded_images`.
     Each key is verified against the signer's key space AND existence in the
     bucket before a ProductImage row is created."""
     if not keys:
@@ -357,10 +357,9 @@ class DirectUploadView(APIView):
     {"items": [{"filename": "macbook.jpg", "content_type": "image/jpeg", "product_id": 7}, …]}
     -> {"uploads": [{"upload_url", "key", "headers", "expires_in", "storage"}, …]}
 
-    Issues presigned PUT URLs so the browser uploads images straight to
-    Backblaze (server never sees the bytes — critical on Vercel's ~4.5MB body
-    cap). Echo the returned `key` values back via `uploaded_images` on the
-    product create/update call.
+    Issues upload URLs so the browser can PUT image bytes (Cloudinary-backed
+    in production; local media fallback in development). Echo the returned
+    `key` values back via `uploaded_images` on the product create/update call.
     """
 
     permission_classes = [IsStaff]
@@ -403,8 +402,9 @@ class RawBodyParser(parsers.BaseParser):
 
 class LocalUploadPutView(APIView):
     """
-    PUT /api/admin-api/uploads/local/?key=…  (local-dev fallback only)
-    Receives the raw file when B2 is not configured; writes into local media.
+    PUT /api/admin-api/uploads/local/?key=…
+    Receives the raw file bytes from the browser and stores them via the
+    default media storage (Cloudinary when configured, local media otherwise).
     Staff-only, key must be one this API signed.
     """
 
@@ -412,9 +412,6 @@ class LocalUploadPutView(APIView):
     parser_classes = [RawBodyParser]
 
     def put(self, request):
-        if uploads.b2_configured():
-            return Response({"detail": "Local uploads are disabled once Backblaze is configured."},
-                            status=status.HTTP_400_BAD_REQUEST)
         key = request.query_params.get("key", "")
         if not uploads.key_is_wellformed(key):
             raise ValidationError("Invalid or unsigned key.")
@@ -508,18 +505,11 @@ class AdminCouponViewSet(viewsets.ModelViewSet):
 # Orders
 # ---------------------------------------------------------------------------
 
-# Staff may only ever move an order forward, one step at a time, or cancel it.
-# Without this a mistyped dropdown could jump `placed` straight to `delivered`,
-# or resurrect a cancelled order after its stock was already returned.
-ALLOWED_NEXT_STATUS = {
-    OrderStatus.PLACED: {OrderStatus.PAYMENT_CONFIRMED, OrderStatus.PROCESSING, OrderStatus.CANCELLED},
-    OrderStatus.PAYMENT_CONFIRMED: {OrderStatus.PROCESSING, OrderStatus.CANCELLED},
-    OrderStatus.PROCESSING: {OrderStatus.READY_FOR_DELIVERY, OrderStatus.CANCELLED},
-    OrderStatus.READY_FOR_DELIVERY: {OrderStatus.SHIPPED, OrderStatus.CANCELLED},
-    OrderStatus.SHIPPED: {OrderStatus.DELIVERED},
-    OrderStatus.DELIVERED: set(),
-    OrderStatus.CANCELLED: set(),
-}
+# Staff may move an order to any status — forward or backward — except that
+# cancelled and delivered are final states that cannot be changed.
+# This lets the admin undo a mistaken status change (e.g. move a shipped
+# order back to ready_for_delivery) without being locked out.
+BLOCKED_STATUSES = {OrderStatus.CANCELLED, OrderStatus.DELIVERED}
 
 
 class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
@@ -535,7 +525,9 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsStaff]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["order_number", "email", "phone", "first_name", "last_name", "tracking_number"]
-    filterset_fields = ["status", "payment_status", "delivery_method", "is_refunded"]
+    # NOTE: `is_refunded` is a model property, not a DB column — it cannot go
+    # in filterset_fields. Refund filtering works through `payment_status=refunded`.
+    filterset_fields = ["status", "payment_status", "delivery_method"]
     ordering_fields = ["created_at", "total", "status", "shipped_at", "delivered_at"]
     ordering = ["-created_at"]
 
@@ -569,22 +561,18 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
         if new_status == order.status:
             return Response({"detail": f"Order is already {order.get_status_display()}."})
 
+        if order.status in BLOCKED_STATUSES:
+            return Response(
+                {"detail": f"Order is {order.get_status_display().lower()} — this is a final state and cannot be changed."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         if new_status == OrderStatus.CANCELLED:
             if order.payment_status == PaymentStatus.PAID:
                 return Response({"detail": "Paid orders cannot be cancelled — refund them instead."},
                                 status=status.HTTP_400_BAD_REQUEST)
             cancel_order(order, note=note or "Cancelled by store staff.")
         else:
-            # Only ever move forward through the fulfilment flow. Skipping steps
-            # or walking a cancelled order back into shipping would desync stock
-            # and the customer timeline.
-            if new_status not in ALLOWED_NEXT_STATUS.get(order.status, set()):
-                return Response(
-                    {"detail": f"Cannot move an order from {order.get_status_display()} "
-                               f"to {OrderStatus(new_status).label}. Allowed next: "
-                               f"{sorted(ALLOWED_NEXT_STATUS.get(order.status, set())) or ['none — this is a final state']}."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
             order.status = new_status
             touched = ["status", "updated_at"]
             if new_status == OrderStatus.SHIPPED and not order.shipped_at:
@@ -921,14 +909,16 @@ class AdminReportsView(APIView):
         window = Order.objects.filter(created_at__gte=since)
 
         # One bucket per day, zero-filled, so the chart has no gaps.
+        # After .values("d").annotate(...) each row is keyed by the truncated
+        # date (`d`) plus the aggregate — TruncDate rows are date objects.
         revenue_by_day = {
-            (row["created_at"].date().isoformat()): row["total"]
+            row["d"].isoformat(): row["total"]
             for row in paid.annotate(d=TruncDate("created_at"))
             .values("d")
             .annotate(total=Sum("total"))
         }
         orders_by_day = {
-            (row["created_at"].date().isoformat()): row["c"]
+            row["d"].isoformat(): row["c"]
             for row in window.annotate(d=TruncDate("created_at")).values("d").annotate(c=Count("id"))
         }
         today = timezone.localdate()

@@ -111,6 +111,7 @@ function Editor({ productId }) {
   }
 
   const [mutationError, setMutationError] = useState(null)
+  const [saving, setSaving] = useState(false)
 
   const save = async () => {
     let data
@@ -125,14 +126,12 @@ function Editor({ productId }) {
       return
     }
     setMutationError(null)
+    setSaving(true)
     try {
       if (isEdit) {
         await updateAdminProduct(productId, data)
         toast.success('Product updated — live in the store.')
       } else {
-        // Multipart create. Every value is appended as a string — appending
-        // the `specifications` object directly would upload the text
-        // "[object Object]" and the server would reject the product.
         const fd = new FormData()
         Object.entries({ ...data, specifications: JSON.stringify(data.specifications) }).forEach(([k, v]) => {
           if (v !== null && v !== undefined) fd.append(k, typeof v === 'boolean' ? String(v) : v)
@@ -148,6 +147,8 @@ function Editor({ productId }) {
       const message = typeof detail === 'string' ? detail : Object.entries(detail || {}).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join(' · ') || e.message
       setMutationError(message)
       toast.error('Could not save the product.')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -276,52 +277,71 @@ function Editor({ productId }) {
           ))}
         </div>
 
-        {isEdit && (
-          <div className="mt-6 rounded-lg border border-dashed border-line p-4">
-            <p className="mb-2 text-xs font-semibold text-ink-800">Images</p>
-            {product?.images?.length > 0 && (
-              <div className="mb-3 flex flex-wrap gap-2">
-                {product.images.map((img, i) => (
-                  <div key={img.id} className="relative">
-                    <img src={img.image} alt={img.alt_text || ''} className="h-16 w-16 rounded object-cover" />
-                    {i === 0 && <span className="absolute left-0 top-0 bg-ink-900 px-1 text-[10px] font-semibold text-white">Main</span>}
-                    <div className="absolute inset-x-0 bottom-0 flex justify-between">
-                      <button type="button" onClick={() => moveImage(i, -1)} className="bg-white/90 px-1 text-xs" aria-label="Move earlier">←</button>
-                      <button type="button" onClick={() => moveImage(i, 1)} className="bg-white/90 px-1 text-xs" aria-label="Move later">→</button>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeImage(img)}
-                      className="absolute -right-1.5 -top-1.5 rounded-full bg-white p-0.5 text-danger shadow"
-                      aria-label="Delete image"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
+        <div className="mt-6 rounded-lg border border-dashed border-line p-4">
+          <p className="mb-2 text-xs font-semibold text-ink-800">Images</p>
+          {product?.images?.length > 0 && (
+            <div className="mb-3 flex flex-wrap gap-2">
+              {product.images.map((img, i) => (
+                <div key={img.id} className="relative">
+                  <img src={img.image} alt={img.alt_text || ''} className="h-16 w-16 rounded object-cover" />
+                  {i === 0 && <span className="absolute left-0 top-0 bg-ink-900 px-1 text-[10px] font-semibold text-white">Main</span>}
+                  <div className="absolute inset-x-0 bottom-0 flex justify-between">
+                    <button type="button" onClick={() => moveImage(i, -1)} className="bg-white/90 px-1 text-xs" aria-label="Move earlier">←</button>
+                    <button type="button" onClick={() => moveImage(i, 1)} className="bg-white/90 px-1 text-xs" aria-label="Move later">→</button>
                   </div>
-                ))}
-              </div>
-            )}
-            <div className="flex flex-wrap items-center gap-2">
-              <button type="button" onClick={() => fileRef.current?.click()} className="btn-outline">
-                <UploadCloud className="h-4 w-4" /> Choose files
-              </button>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                multiple
-                hidden
-                onChange={(e) => setFiles([...e.target.files])}
-              />
-              {files.length > 0 && (
-                <button type="button" disabled={progress !== null} onClick={upload} className="btn-accent">
-                  {progress === null ? `Upload ${files.length}` : `Uploading ${Math.round(progress * 100)}%`}
-                </button>
-              )}
-              {!product?.images?.length && <span className="text-xs text-metal-500">The first image becomes the product thumbnail.</span>}
+                  <button
+                    type="button"
+                    onClick={() => removeImage(img)}
+                    className="absolute -right-1.5 -top-1.5 rounded-full bg-white p-0.5 text-danger shadow"
+                    aria-label="Delete image"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
             </div>
+          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" onClick={() => fileRef.current?.click()} className="btn-outline">
+              <UploadCloud className="h-4 w-4" /> Choose files
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              multiple
+              hidden
+              onChange={(e) => setFiles([...e.target.files])}
+            />
+            {isEdit && files.length > 0 && (
+              <button type="button" disabled={progress !== null} onClick={upload} className="btn-accent">
+                {progress === null ? `Upload ${files.length}` : `Uploading ${Math.round(progress * 100)}%`}
+              </button>
+            )}
           </div>
-        )}
+          {files.length > 0 && (
+            <ul className="mt-3 flex flex-wrap gap-2 text-xs">
+              {files.map((f, i) => (
+                <li key={`${f.name}-${i}`} className="flex items-center gap-1.5 rounded bg-metal-50 px-2 py-1 text-ink-700">
+                  {f.name}
+                  <button
+                    type="button"
+                    onClick={() => setFiles(files.filter((_, j) => j !== i))}
+                    className="text-danger"
+                    aria-label={`Remove ${f.name}`}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-2 text-xs text-metal-500">
+            {isEdit
+              ? 'The first image becomes the product thumbnail.'
+              : 'JPG, PNG or WebP up to 5MB each — they are attached when you publish the product.'}
+          </p>
+        </div>
 
         {mutationError && (
           <p className="mt-5 rounded border border-red-200 bg-red-50 p-3 text-[13px] text-red-700">{mutationError}</p>
@@ -329,8 +349,8 @@ function Editor({ productId }) {
 
         <div className="mt-6 flex justify-end gap-2 border-t border-line pt-5">
           <Link to="/admin/products" className="btn-outline">Cancel</Link>
-          <button type="button" onClick={save} className="btn-accent">
-            {isEdit ? 'Save changes' : 'Publish product'}
+          <button type="button" onClick={save} disabled={saving} className="btn-accent">
+            {saving ? 'Saving…' : isEdit ? 'Save changes' : 'Publish product'}
           </button>
         </div>
       </div>

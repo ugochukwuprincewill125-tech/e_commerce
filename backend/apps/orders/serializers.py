@@ -60,6 +60,7 @@ class OrderDetailSerializer(OrderListSerializer):
             "subtotal", "shipping_fee", "discount", "coupon_code", "first_name", "last_name", "email", "phone",
             "delivery_method", "delivery_method_display", "pickup_location", "shipping_address",
             "customer_note", "payment_reference", "paid_at", "can_cancel", "history", "tracking", "updated_at",
+            "carrier", "tracking_number",
         )
 
     def get_tracking(self, obj):

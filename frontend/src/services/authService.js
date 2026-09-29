@@ -21,15 +21,15 @@ export const authService = {
   },
   me: () => api.get('/users/profile/').then((r) => r.data),
   updateProfile: (payload) => {
-    const hasFile = payload instanceof FormData
-    return api
-      .patch('/users/profile/', payload, hasFile ? { headers: { 'Content-Type': 'multipart/form-data' } } : undefined)
-      .then((r) => r.data)
+    if (payload instanceof FormData) {
+      return api.patch('/users/profile/', payload).then((r) => r.data)
+    }
+    return api.patch('/users/profile/', payload).then((r) => r.data)
   },
   changePassword: async (payload) => {
-    const { data } = await api.post('/auth/change-password/', payload)
-    tokens.set({ access: data.access, refresh: data.refresh })
-    return data
+    await api.post('/auth/change-password/', payload)
+    tokens.clear()
+    window.dispatchEvent(new Event('tgs:logout'))
   },
   forgotPassword: (email) => api.post('/auth/password-reset/', { email }).then((r) => r.data),
   resetPassword: (payload) => api.post('/auth/password-reset/confirm/', payload).then((r) => r.data),

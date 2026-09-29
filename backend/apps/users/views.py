@@ -145,8 +145,10 @@ class ProfileView(generics.RetrieveUpdateAPIView):
 
     def update(self, request, *args, **kwargs):
         kwargs["partial"] = True
-        super().update(request, *args, **kwargs)
-        return Response(UserSerializer(request.user, context={"request": request}).data)
+        serializer = self.get_serializer(instance=request.user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        updated = serializer.save()
+        return Response(UserSerializer(updated, context={"request": request}).data)
 
 
 class AddressViewSet(viewsets.ModelViewSet):

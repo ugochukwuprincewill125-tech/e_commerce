@@ -34,6 +34,7 @@ export function AuthProvider({ children }) {
       setUser(null)
       queryClient.removeQueries({ queryKey: ['orders'] })
       queryClient.removeQueries({ queryKey: ['dashboard'] })
+      window.location.href = '/login'
     }
     window.addEventListener('tgs:logout', onForcedLogout)
     return () => window.removeEventListener('tgs:logout', onForcedLogout)

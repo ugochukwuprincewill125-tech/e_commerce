@@ -21,9 +21,10 @@ export const restoreAdminProduct = (id) =>
   api.post(`/admin-api/products/${id}/restore/`).then((r) => r.data)
 
 /**
- * Direct-to-Backblaze upload. Signs a batch of files (tiny JSON request —
- * serverless-safe), PUTs each file straight to B2 with its required headers,
- * and returns the keys to attach to the product via uploaded_images.
+ * Product image upload. Asks the server to sign a batch of files (tiny JSON
+ * request), PUTs each file to its upload URL — same-origin (JWT applies) or a
+ * foreign CDN URL (no Authorization header allowed) — and returns the keys to
+ * attach to the product via uploaded_images.
  */
 export async function uploadProductImages(productId, files, onProgress) {
   if (!files?.length) return []
@@ -31,19 +32,19 @@ export async function uploadProductImages(productId, files, onProgress) {
   const { uploads } = await api.post('/admin-api/uploads/sign/', { items }).then((r) => r.data)
 
   const keys = []
+  const apiOrigin = new URL(api.defaults.baseURL || window.location.origin, window.location.origin).origin
   for (let i = 0; i < uploads.length; i += 1) {
     const signed = uploads[i]
     const file = files[i]
-    // Local fallback URLs live on our API and need the JWT (interceptor adds it).
-    const isLocal = signed.storage === 'local'
+    // Same-origin upload URLs live on our API and need the JWT (raw fetch
+    // bypasses the axios interceptor, so set it here); foreign upload URLs
+    // must not carry our Authorization header at all.
+    const isLocal = new URL(signed.upload_url, window.location.origin).origin === apiOrigin
     const headers = { ...signed.headers }
-    if (!isLocal) {
-      // A presigned URL must go out byte-identical to what the signer signed.
-      // Setting the key to `undefined` would stringify to the literal text
-      // "undefined" and invalidate the signature, so delete the header instead.
-      delete headers.Authorization
-    }
-    await fetch(signed.upload_url, { method: 'PUT', headers, body: file })
+    if (isLocal) headers.Authorization = `Bearer ${tokens.access}`
+    else delete headers.Authorization
+    const response = await fetch(signed.upload_url, { method: 'PUT', headers, body: file })
+    if (!response.ok) throw new Error(`Upload failed (${response.status})`)
     keys.push(signed.key)
     onProgress?.((i + 1) / uploads.length)
   }

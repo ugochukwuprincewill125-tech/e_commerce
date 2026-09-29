@@ -71,18 +71,18 @@ class ProductAdmin(admin.ModelAdmin):
     form = ProductAdminForm
     list_display = (
         "thumb", "name", "sku", "brand", "category", "price", "discount_price",
-        "stock_quantity", "stock_badge", "featured", "bestseller", "new_arrival", "is_active",
+        "stock_quantity", "stock_badge", "featured", "bestseller", "new_arrival", "is_active", "deleted_at",
     )
     list_display_links = ("thumb", "name")
     list_editable = ("price", "discount_price", "stock_quantity", "featured", "bestseller", "new_arrival", "is_active")
-    list_filter = (StockLevelFilter, "is_active", "featured", "bestseller", "new_arrival", "product_type", "category", "brand")
+    list_filter = (StockLevelFilter, "is_active", "deleted_at", "featured", "bestseller", "new_arrival", "product_type", "category", "brand")
     list_per_page = 40
     search_fields = ("name", "sku", "description", "brand__name", "category__name")
     prepopulated_fields = {"slug": ("name",)}
     autocomplete_fields = ("category", "brand")
     readonly_fields = ("availability", "rating", "review_count", "created_at", "updated_at")
     inlines = [ProductImageInline, ProductVariantInline]
-    actions = ["mark_featured", "unmark_featured", "restock_20", "deactivate"]
+    actions = ["mark_featured", "unmark_featured", "restock_20", "deactivate", "archive", "restore"]
     save_on_top = True
     fieldsets = (
         ("Product", {"fields": ("name", "slug", "sku", "category", "brand", "product_type", "short_description", "description", "warranty")}),
@@ -106,6 +106,8 @@ class ProductAdmin(admin.ModelAdmin):
 
     @admin.display(description="Status", ordering="availability")
     def stock_badge(self, obj):
+        if obj.deleted_at:
+            return format_html('<span style="padding:2px 8px;border-radius:999px;font-weight:600;color:#dc2626;background:#fee2e2">Archived</span>')
         colours = {
             Availability.IN_STOCK: ("#065f46", "#d1fae5"),
             Availability.LOW_STOCK: ("#92400e", "#fef3c7"),
@@ -135,6 +137,18 @@ class ProductAdmin(admin.ModelAdmin):
     @admin.action(description="Hide selected products from the store")
     def deactivate(self, request, queryset):
         queryset.update(is_active=False)
+
+    @admin.action(description="Archive selected products")
+    def archive(self, request, queryset):
+        for product in queryset:
+            product.archive()
+        self.message_user(request, f"{queryset.count()} product(s) archived.", messages.SUCCESS)
+
+    @admin.action(description="Restore selected products")
+    def restore(self, request, queryset):
+        for product in queryset:
+            product.restore()
+        self.message_user(request, f"{queryset.count()} product(s) restored.", messages.SUCCESS)
 
 
 @admin.register(ProductVariant)
