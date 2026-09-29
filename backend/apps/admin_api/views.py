@@ -35,10 +35,16 @@ from . import serializers as s
 
 
 class IsStaff(permissions.IsAdminUser):
-    """Explicit alias so the permission intent is obvious in every view."""
+    """Admin API gate — superuser-only by design.
+
+    Despite the name (kept so every view reads the same), this checks
+    ``is_superuser``: the store is run by its owner(s), and any staff member
+    who can reach the admin API could otherwise grant themselves the same
+    rights via set_staff. Privilege changes need the same power they grant.
+    """
 
     def has_permission(self, request, view):
-        return bool(request.user and request.user.is_authenticated and request.user.is_staff)
+        return bool(request.user and request.user.is_authenticated and request.user.is_superuser)
 
 
 class IsSuperuser(permissions.BasePermission):
@@ -764,10 +770,13 @@ class AdminCustomerViewSet(
         if user.is_superuser:
             return Response({"detail": "Superusers cannot be modified from the API."},
                             status=status.HTTP_400_BAD_REQUEST)
-        # Never let staff lock themselves out mid-session, which would leave the
-        # store with no way back in through this API.
+        # Never let an admin lock themselves out mid-session, which would leave
+        # the store with no way back in through this API.
         if user.pk == request.user.pk and field == "is_active" and not bool(request.data.get(field, True)):
             return Response({"detail": "You cannot deactivate your own account."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if user.pk == request.user.pk and field in {"is_staff", "is_superuser"}:
+            return Response({"detail": "You cannot change your own admin status."},
                             status=status.HTTP_400_BAD_REQUEST)
         value = bool(request.data.get(field, not getattr(user, field)))
         setattr(user, field, value)
@@ -778,9 +787,21 @@ class AdminCustomerViewSet(
     def set_active(self, request, pk=None):
         return self._toggle(request, "is_active")
 
-    @action(detail=True, methods=["post"], permission_classes=[IsSuperuser])
+    @action(detail=True, methods=["post"])
     def set_staff(self, request, pk=None):
-        return self._toggle(request, "is_staff")
+        """Promote/demote an admin. Grants is_superuser + is_staff together so
+        a promoted account can actually use the admin area; revoking clears both.
+        The whole endpoint is superuser-only via the viewset's IsStaff gate."""
+        value = bool(request.data.get("is_superuser", request.data.get("is_staff", False)))
+        user = self.get_object()
+        if user.is_superuser:
+            return Response({"detail": "Superusers cannot be modified from the API."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        user.is_superuser = value
+        user.is_staff = value
+        user.save(update_fields=["is_superuser", "is_staff"])
+        label = "admin" if value else "customer"
+        return Response({"detail": f"{user.email} is now an {label}.", "is_staff": value, "is_superuser": value})
 
 
 # ---------------------------------------------------------------------------

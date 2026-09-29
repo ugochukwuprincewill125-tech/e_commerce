@@ -293,7 +293,7 @@ class AdminCustomerListSerializer(serializers.ModelSerializer):
         model = User
         fields = (
             "id", "first_name", "last_name", "full_name", "email", "phone",
-            "is_active", "is_staff", "email_verified", "date_joined",
+            "is_active", "is_staff", "is_superuser", "email_verified", "date_joined",
             "order_count", "total_spent",
         )
 

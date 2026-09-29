@@ -1,6 +1,8 @@
 import axios from 'axios'
 
-export const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000/api').replace(/\/$/, '')
+// Defaults to the same origin (production deploys serve the API from the
+// same Vercel domain); local development sets VITE_API_URL in frontend/.env.
+export const API_URL = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '')
 
 const ACCESS_KEY = 'tgs_access'
 const REFRESH_KEY = 'tgs_refresh'

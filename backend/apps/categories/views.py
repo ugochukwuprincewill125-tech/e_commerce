@@ -1,5 +1,5 @@
 from django.db.models import Count, Q
-from rest_framework import viewsets
+from rest_framework import permissions, viewsets
 
 from .models import Category
 from .serializers import CategorySerializer
@@ -13,6 +13,7 @@ class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
     GET /api/categories/<slug>/     a single category
     """
 
+    permission_classes = [permissions.AllowAny]
     serializer_class = CategorySerializer
     lookup_field = "slug"
     pagination_class = None

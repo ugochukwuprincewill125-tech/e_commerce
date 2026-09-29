@@ -1,5 +1,5 @@
 from django.db.models import Count, Q
-from rest_framework import viewsets
+from rest_framework import permissions, viewsets
 
 from .models import Brand
 from .serializers import BrandSerializer
@@ -13,6 +13,7 @@ class BrandViewSet(viewsets.ReadOnlyModelViewSet):
       ?all=true        include brands without products (e.g. for admin tooling)
     """
 
+    permission_classes = [permissions.AllowAny]
     serializer_class = BrandSerializer
     lookup_field = "slug"
     pagination_class = None

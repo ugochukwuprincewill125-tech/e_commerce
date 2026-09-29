@@ -1,0 +1,26 @@
+Method Not Allowed: /api/products/
+Method Not Allowed: /api/products/
+[29/Sep/2026 13:46:01] "POST /api/products/ HTTP/1.1" 405 41
+Method Not Allowed: /api/categories/
+Method Not Allowed: /api/categories/
+[29/Sep/2026 13:46:01] "POST /api/categories/ HTTP/1.1" 405 41
+Method Not Allowed: /api/brands/
+Method Not Allowed: /api/brands/
+[29/Sep/2026 13:46:01] "POST /api/brands/ HTTP/1.1" 405 41
+Method Not Allowed: /api/products/macbook-air/
+Method Not Allowed: /api/products/macbook-air/
+[29/Sep/2026 13:46:01] "POST /api/products/macbook-air/ HTTP/1.1" 405 41
+Method Not Allowed: /api/search/suggestions/
+Method Not Allowed: /api/search/suggestions/
+[29/Sep/2026 13:46:02] "POST /api/search/suggestions/?q=mac HTTP/1.1" 405 41
+Bad Request: /api/coupons/apply/
+Bad Request: /api/coupons/apply/
+[29/Sep/2026 13:46:02] "POST /api/coupons/apply/ HTTP/1.1" 400 77
+[29/Sep/2026 13:46:02] "GET /api/health/ HTTP/1.1" 200 15
+[29/Sep/2026 13:46:23] "GET /api/products/ HTTP/1.1" 200 1608
+[29/Sep/2026 13:46:24] "GET /api/categories/ HTTP/1.1" 200 2022
+[29/Sep/2026 13:46:25] "GET /api/brands/ HTTP/1.1" 200 121
+[29/Sep/2026 13:46:27] "GET /api/products/macbook-air/ HTTP/1.1" 200 1665
+[29/Sep/2026 13:46:30] "GET /api/products/macbook-air/related/ HTTP/1.1" 200 702
+[29/Sep/2026 13:46:32] "GET /api/search/suggestions/?q=mac HTTP/1.1" 200 415
+[29/Sep/2026 13:46:32] "GET /api/health/ HTTP/1.1" 200 15

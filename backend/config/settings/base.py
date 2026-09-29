@@ -168,8 +168,11 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
+    # Secure by default: every endpoint requires auth unless a view explicitly
+    # opts out with permission_classes = [AllowAny]. Public storefront reads
+    # declare AllowAny explicitly; nothing is world-writable by accident.
     "DEFAULT_PERMISSION_CLASSES": (
-        "rest_framework.permissions.AllowAny",
+        "rest_framework.permissions.IsAuthenticated",
     ),
     "DEFAULT_FILTER_BACKENDS": (
         "django_filters.rest_framework.DjangoFilterBackend",
@@ -215,6 +218,10 @@ CORS_ALLOW_HEADERS = [
     "x-cart-session",
 ]
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", ",".join(CORS_ALLOWED_ORIGINS))
+
+# The Django admin site lives on a non-obvious path so bots skimming for
+# /admin/ find nothing. Override with DJANGO_ADMIN_URL in production.
+ADMIN_URL = os.getenv("DJANGO_ADMIN_URL", "django-control/")
 
 # ---------------------------------------------------------------------------
 # Email

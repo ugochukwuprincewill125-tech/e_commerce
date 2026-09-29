@@ -14,13 +14,19 @@ PAYMENT_TEST_MODE = False
 if not PAYSTACK_SECRET_KEY:  # noqa: F405
     raise ImproperlyConfigured("PAYSTACK_SECRET_KEY must be set in production.")
 
-# Product photos must live in Backblaze B2 in production — the local
-# filesystem disappears between deploys and is not shared across replicas.
-if not (B2_APPLICATION_KEY_ID and B2_APPLICATION_KEY and B2_BUCKET_NAME and B2_ENDPOINT_URL):  # noqa: F405
+# Product photos live in Cloudinary in production — the local filesystem
+# disappears between deploys and is not shared across replicas.
+if not (CLOUDINARY_CLOUD_NAME and CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET):  # noqa: F405
     raise ImproperlyConfigured(
-        "Backblaze B2 is required in production: set B2_APPLICATION_KEY_ID, "
-        "B2_APPLICATION_KEY, B2_BUCKET_NAME and B2_ENDPOINT_URL."
+        "Cloudinary is required in production: set CLOUDINARY_CLOUD_NAME, "
+        "CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET."
     )
+
+if not FRONTEND_URL or FRONTEND_URL.startswith("http://localhost"):  # noqa: F405
+    raise ImproperlyConfigured("FRONTEND_URL must be set to the public https site URL in production.")
+
+if ALLOWED_HOSTS == ["localhost", "127.0.0.1"]:  # noqa: F405
+    raise ImproperlyConfigured("ALLOWED_HOSTS must list the production domain(s).")
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", True)
@@ -35,8 +41,6 @@ SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 X_FRAME_OPTIONS = "DENY"
 
 # Serve collected static files (admin CSS/JS) efficiently with WhiteNoise.
-# Media storage comes from base settings (Backblaze B2) and is not overridden.
+# Media storage comes from base settings (Cloudinary) and is not overridden.
 MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")  # noqa: F405
 STORAGES["staticfiles"] = {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"}  # noqa: F405
-
-REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"] = ("rest_framework.renderers.JSONRenderer",)  # noqa: F405

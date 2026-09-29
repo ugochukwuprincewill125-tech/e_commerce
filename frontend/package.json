@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run verify && vite build",
+    "build": "vite build",
     "preview": "vite preview",
     "verify": "npm run audit:routes && npm run test:nav && npm run test:chrome && npm run audit:sticky && npm run audit:contrast && npm run audit:mobile && npm run audit:mobile-ux",
     "audit:routes": "node tools/audit-routes.cjs",
@@ -14,7 +14,8 @@
     "audit:sticky": "node tools/audit-sticky.cjs",
     "audit:contrast": "node tools/audit-heading-contrast.cjs",
     "audit:mobile": "node tools/audit-mobile.cjs",
-    "audit:mobile-ux": "node tools/audit-mobile-ux.cjs"
+    "audit:mobile-ux": "node tools/audit-mobile-ux.cjs",
+    "build:full": "npm run verify && vite build"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.103.2",

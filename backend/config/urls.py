@@ -25,7 +25,8 @@ api_patterns = [
 ]
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
+    # Non-obvious path (see ADMIN_URL in settings) — bots probing /admin/ hit 404.
+    path(settings.ADMIN_URL, admin.site.urls),
     path("api/", include(api_patterns)),
 ]
 

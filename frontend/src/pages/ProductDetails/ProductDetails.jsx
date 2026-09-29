@@ -6,6 +6,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import Breadcrumbs from '../../components/Breadcrumbs/Breadcrumbs'
 import Button from '../../components/Button/Button'
+import ProductCarousel from '../../components/Carousel/ProductCarousel'
 import EmptyState, { ErrorState } from '../../components/EmptyState/EmptyState'
 import { ProductDetailsSkeleton, ProductGridSkeleton } from '../../components/Loader/Skeleton'
 import Reveal from '../../components/Motion/Reveal'
