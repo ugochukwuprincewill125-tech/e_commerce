@@ -34,6 +34,8 @@ export function AdminCustomers() {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [openId, setOpenId] = useState(null)
+  const [quickStaff, setQuickStaff] = useState(null)
+  const { user: me } = useAuth()
   const debounced = useDebounce(search)
 
   const verified = params.get('email_verified') || ''
@@ -58,6 +60,13 @@ export function AdminCustomers() {
   })
 
   const rows = data?.results || []
+
+  const quickStaffMut = useAdminMutation({
+    fn: ({ id, value }) => setCustomerStaff(id, value),
+    success: (d) => d.detail,
+    onDone: () => setQuickStaff(null),
+    invalidate: [['admin-customers'], ['admin-stats']],
+  })
 
   return (
     <AdminPage
@@ -135,7 +144,18 @@ export function AdminCustomers() {
                             {!c.email_verified && <span className="chip bg-amber-100 text-amber-800">Unverified</span>}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-right">
+                        <td className="px-4 py-3 text-right whitespace-nowrap">
+                          {me?.is_superuser && me?.id !== c.id && (
+                            <button
+                              type="button"
+                              onClick={() => setQuickStaff({ customer: c, value: !c.is_staff })}
+                              className={`btn-outline mr-1 px-2.5 py-1 text-xs ${c.is_staff ? 'text-danger' : ''}`}
+                              title={c.is_staff ? 'Remove admin access' : 'Make admin'}
+                            >
+                              <Shield className={`h-3.5 w-3.5 ${c.is_staff ? 'text-emerald-600' : ''}`} />
+                              {c.is_staff ? 'Remove admin' : 'Make admin'}
+                            </button>
+                          )}
                           <button type="button" onClick={() => setOpenId(c.id)} className="btn-outline px-3 py-1 text-xs">
                             Manage
                           </button>
@@ -152,6 +172,22 @@ export function AdminCustomers() {
       )}
 
       <CustomerModal id={openId} onClose={() => setOpenId(null)} />
+
+      <ConfirmDialog
+        open={Boolean(quickStaff)}
+        title={quickStaff?.value ? 'Make admin' : 'Remove admin access'}
+        confirmLabel={quickStaff?.value ? 'Make admin' : 'Remove access'}
+        busy={quickStaffMut.isPending}
+        onClose={() => setQuickStaff(null)}
+        onConfirm={() => quickStaffMut.mutate({ id: quickStaff.customer.id, value: quickStaff.value })}
+        body={
+          quickStaff
+            ? quickStaff.value
+              ? `“${quickStaff.customer.full_name || quickStaff.customer.email}” will get full access to the admin area — products, orders, customers and messages.`
+              : `“${quickStaff.customer.full_name || quickStaff.customer.email}” will lose access to the admin area. Their customer account stays active.`
+            : ''
+        }
+      />
     </AdminPage>
   )
 }

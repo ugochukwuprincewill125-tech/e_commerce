@@ -130,7 +130,24 @@ function Editor({ productId }) {
     try {
       if (isEdit) {
         await updateAdminProduct(productId, data)
-        toast.success('Product updated — live in the store.')
+        // Staged files must not silently wait for a separate button — upload
+        // them as part of saving, then attach the returned keys.
+        if (files.length) {
+          try {
+            const keys = await uploadProductImages(productId, files, setProgress)
+            await updateAdminProduct(productId, { uploaded_images: keys })
+            setFiles([])
+            toast.success(`Product updated — ${keys.length} image(s) uploaded.`)
+          } catch (e) {
+            // The product itself is saved; stay here so the files can be retried.
+            setProgress(null)
+            setMutationError('Product saved, but the image upload failed. Choose the files again and press “Save changes” to retry.')
+            toast.error('Product saved, but the image upload failed.')
+            return
+          }
+        } else {
+          toast.success('Product updated — live in the store.')
+        }
       } else {
         const fd = new FormData()
         Object.entries({ ...data, specifications: JSON.stringify(data.specifications) }).forEach(([k, v]) => {
@@ -149,22 +166,6 @@ function Editor({ productId }) {
       toast.error('Could not save the product.')
     } finally {
       setSaving(false)
-    }
-  }
-
-  const upload = async () => {
-    if (!files.length) return
-    try {
-      setProgress(0)
-      const keys = await uploadProductImages(productId, files, setProgress)
-      await updateAdminProduct(productId, { uploaded_images: keys })
-      invalidate()
-      toast.success(`${keys.length} image(s) uploaded.`)
-      setFiles([])
-    } catch (e) {
-      toast.error(e.message || 'Upload failed.')
-    } finally {
-      setProgress(null)
     }
   }
 
@@ -313,11 +314,7 @@ function Editor({ productId }) {
               hidden
               onChange={(e) => setFiles([...e.target.files])}
             />
-            {isEdit && files.length > 0 && (
-              <button type="button" disabled={progress !== null} onClick={upload} className="btn-accent">
-                {progress === null ? `Upload ${files.length}` : `Uploading ${Math.round(progress * 100)}%`}
-              </button>
-            )}
+            {progress !== null && <span className="text-xs font-medium text-ink-700">Uploading {Math.round(progress * 100)}%…</span>}
           </div>
           {files.length > 0 && (
             <ul className="mt-3 flex flex-wrap gap-2 text-xs">

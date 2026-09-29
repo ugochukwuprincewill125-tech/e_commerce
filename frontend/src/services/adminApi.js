@@ -19,6 +19,9 @@ export const deleteAdminProduct = (id) =>
   api.delete(`/admin-api/products/${id}/`).then((r) => r.data)
 export const restoreAdminProduct = (id) =>
   api.post(`/admin-api/products/${id}/restore/`).then((r) => r.data)
+/** Hard delete — permanent; only sensible for already-archived products. */
+export const deleteAdminProductForever = (id) =>
+  api.post(`/admin-api/products/${id}/delete_forever/`).then((r) => r.data)
 
 /**
  * Product image upload. Asks the server to sign a batch of files (tiny JSON

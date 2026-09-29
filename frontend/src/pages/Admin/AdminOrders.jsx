@@ -110,10 +110,24 @@ export default function AdminOrders() {
     statusMut.mutate({ id: order.id, value })
   }
 
+  // Sidebar sub-tabs land here with a filter preset — make each view state
+  // its own purpose instead of a generic "Orders" heading.
+  const pageMeta = status
+    ? {
+        title: 'In progress',
+        description: 'Orders currently being fulfilled — processing, packed and out for delivery. Move them along as work advances.',
+      }
+    : payment === 'pending'
+      ? {
+          title: 'Awaiting payment',
+          description: 'Orders placed but not yet paid. Follow up with the customer, or record a payment once it lands.',
+        }
+      : { title: 'Orders', description: 'Every order, with fulfilment, courier tracking and refunds.' }
+
   return (
     <AdminPage
-      title="Orders"
-      description="Every order, with fulfilment, courier tracking and refunds."
+      title={pageMeta.title}
+      description={pageMeta.description}
       actions={
         <ExportButton
           onClick={() => {

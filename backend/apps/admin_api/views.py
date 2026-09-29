@@ -211,7 +211,15 @@ class AdminProductViewSet(viewsets.ModelViewSet):
 
     def _handle_uploads(self, product):
         """Create ProductImage rows from the multipart `images` file field.
-        Accepts both `images` and `images[]` field names (axios vs jQuery style)."""
+        Accepts both `images` and `images[]` field names (axios vs jQuery style).
+
+        Files are re-keyed with apps.core.uploads.make_key — the same
+        media/products/<pid>/<hex>-<name>.<ext> scheme the sign→PUT flow
+        issues — so every upload lands in the product's folder with a unique
+        name and DB rows stay consistent across both upload paths."""
+        from django.core.files.base import ContentFile
+        from django.core.files.storage import default_storage
+
         files = self.request.FILES.getlist("images") or self.request.FILES.getlist("images[]")
         if not files:
             return
@@ -223,14 +231,20 @@ class AdminProductViewSet(viewsets.ModelViewSet):
         except ValidationError:
             alt_texts = []
         start = (product.images.aggregate(m=Max("display_order"))["m"] or 0) + 1
-        ProductImage.objects.bulk_create([
-            ProductImage(
-                product=product, image=file,
+        rows = []
+        for i, file in enumerate(files):
+            try:
+                key = uploads.make_key(product.pk, file.name, file.content_type or "image/jpeg")
+            except ValueError as exc:
+                raise ValidationError(f"{file.name}: {exc}")
+            name = uploads.key_to_field_name(key)
+            default_storage.save(name, ContentFile(file.read()))
+            rows.append(ProductImage(
+                product=product, image=name,
                 alt_text=alt_texts[i] if i < len(alt_texts) else "",
                 display_order=start + i,
-            )
-            for i, file in enumerate(files)
-        ])
+            ))
+        ProductImage.objects.bulk_create(rows)
 
     @transaction.atomic
     def create(self, request, *args, **kwargs):
@@ -281,6 +295,30 @@ class AdminProductViewSet(viewsets.ModelViewSet):
         product.save(update_fields=["is_active", "updated_at"])
         product.variants.update(is_active=True)
         return Response({"detail": f"{product.name} restored to the store."})
+
+    @action(detail=True, methods=["post"])
+    def delete_forever(self, request, pk=None):
+        """Hard delete an archived product — there is no undo.
+
+        Past orders stay intact: order items denormalise name/SKU/price and
+        their product FK is SET_NULL on delete. Everything else (images,
+        variants, reviews, wishlist and cart rows) is removed, and the image
+        files are deleted from Cloudinary so no orphans linger."""
+        from django.core.files.storage import default_storage
+
+        product = self.get_object()
+        name = product.name
+        order_items = product.order_items.count()
+
+        for image in product.images.all():
+            try:
+                default_storage.delete(str(image.image))
+            except Exception:
+                pass  # a CDN hiccup must not block the deletion
+
+        product.delete()
+        suffix = f" {order_items} past order item(s) keep their records." if order_items else ""
+        return Response({"detail": f"{name} permanently deleted.{suffix}"})
 
     @action(detail=True, methods=["post"])
     def set_featured(self, request, pk=None):
@@ -703,7 +741,8 @@ class AdminCustomerViewSet(
     filterset_fields = ["is_active", "is_staff", "email_verified"]
     ordering_fields = ["date_joined", "email", "total_spent", "order_count"]
     ordering = ["-date_joined"]
-    http_method_names = ["get", "patch", "put", "head", "options"]
+    # `post` is required by the set_active/set_staff @action endpoints.
+    http_method_names = ["get", "post", "patch", "put", "head", "options"]
 
     def get_queryset(self):
         spent = Sum("orders__total", output_field=DecimalField())

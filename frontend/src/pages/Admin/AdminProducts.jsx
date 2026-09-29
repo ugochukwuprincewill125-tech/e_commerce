@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, Minus, Pencil, Plus, RotateCcw, Search, Trash2 } from 'lucide-react'
+import { AlertTriangle, Minus, Pencil, Plus, RotateCcw, Search, Trash2, XCircle } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import {
@@ -12,7 +12,7 @@ import useDebounce from '../../hooks/useDebounce'
 import { useToast } from '../../context/ToastContext'
 import { formatNaira } from '../../utils/format'
 import {
-  adjustProductStock, deleteAdminProduct, fetchAdminCategories,
+  adjustProductStock, deleteAdminProduct, deleteAdminProductForever, fetchAdminCategories,
   fetchAdminProducts, restoreAdminProduct,
 } from '../../services/adminApi'
 
@@ -38,6 +38,7 @@ export default function AdminProducts() {
   const [page, setPage] = useState(1)
   const [stockFor, setStockFor] = useState(null)
   const [confirmArchive, setConfirmArchive] = useState(null)
+  const [confirmDelete, setConfirmDelete] = useState(null)
   const debounced = useDebounce(search)
 
   const archived = params.get('archived') === 'true'
@@ -82,6 +83,14 @@ export default function AdminProducts() {
     fn: restoreAdminProduct,
     success: (d) => d.detail || 'Restored.',
     invalidate: [['admin-products'], ['admin-stats']],
+  })
+  const deleteForeverMut = useAdminMutation({
+    fn: deleteAdminProductForever,
+    success: (d) => d.detail || 'Permanently deleted.',
+    onDone: () => {
+      invalidate()
+      setConfirmDelete(null)
+    },
   })
 
   const products = data?.results || []
@@ -214,15 +223,26 @@ export default function AdminProducts() {
                               <Trash2 className="h-4 w-4" />
                             </button>
                           ) : (
-                            <button
-                              type="button"
-                              onClick={() => restoreMut.mutate(p.id)}
-                              disabled={restoreMut.isPending}
-                              className="rounded p-1.5 text-success transition hover:bg-emerald-50"
-                              title="Restore"
-                            >
-                              <RotateCcw className="h-4 w-4" />
-                            </button>
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => restoreMut.mutate(p.id)}
+                                disabled={restoreMut.isPending}
+                                className="rounded p-1.5 text-success transition hover:bg-emerald-50"
+                                title="Restore"
+                              >
+                                <RotateCcw className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setConfirmDelete(p)}
+                                className="rounded p-1.5 text-danger transition hover:bg-red-50"
+                                title="Delete forever"
+                                aria-label={`Delete ${p.name} forever`}
+                              >
+                                <XCircle className="h-4 w-4" />
+                              </button>
+                            </>
                           )}
                           <button
                             type="button"
@@ -265,6 +285,20 @@ export default function AdminProducts() {
         body={
           confirmArchive
             ? `“${confirmArchive.name}” will be hidden from the store. Its order history is kept, and you can restore it from the archive.`
+            : ''
+        }
+      />
+
+      <ConfirmDialog
+        open={Boolean(confirmDelete)}
+        title="Delete forever"
+        confirmLabel="Delete forever"
+        busy={deleteForeverMut.isPending}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={() => deleteForeverMut.mutate(confirmDelete.id)}
+        body={
+          confirmDelete
+            ? `“${confirmDelete.name}” will be permanently deleted — this cannot be undone. Past order records are kept, but its images, reviews and wishlist entries are removed.`
             : ''
         }
       />
