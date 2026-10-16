@@ -8,7 +8,7 @@ from .serializers import BrandSerializer
 class BrandViewSet(viewsets.ReadOnlyModelViewSet):
     """
     Only brands that currently have active products in the store are listed,
-    so the site never advertises brands Timeline doesn't actually stock.
+    so the site never advertises brands Timeline Gadgets doesn't actually stock.
       ?featured=true   featured brands only
       ?all=true        include brands without products (e.g. for admin tooling)
     """
@@ -28,3 +28,6 @@ class BrandViewSet(viewsets.ReadOnlyModelViewSet):
         if params.get("featured") in {"1", "true"}:
             qs = qs.filter(is_featured=True)
         return qs.order_by("-is_featured", "name")
+
+
+

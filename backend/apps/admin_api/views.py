@@ -1,4 +1,4 @@
-"""Staff-only REST API for managing the Timeline store.
+"""Staff-only REST API for managing the Timeline Gadgets store.
 
 Every view requires an authenticated user with `is_staff=True`. The admin
 frontend sends `Authorization: Bearer <access>` just like the customer API.
@@ -1050,3 +1050,6 @@ class AdminReportsView(APIView):
             "best_customers": list(best_customers),
             "coupon_performance": list(coupon_performance),
         })
+
+
+

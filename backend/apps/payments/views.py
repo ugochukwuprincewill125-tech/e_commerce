@@ -175,7 +175,7 @@ class VerifyPaymentView(APIView):
                 "payment_status": order.payment_status,
                 "amount": str(payment.amount),
                 "test_mode": payment.provider == Payment.Provider.TEST,
-                "detail": "Payment confirmed. Thank you for shopping with Timeline!" if success
+                "detail": "Payment confirmed. Thank you for shopping with Timeline Gadgets!" if success
                 else "We couldn't confirm this payment. If you were debited, please contact us with your order number.",
             },
             status=status.HTTP_200_OK,
@@ -210,3 +210,6 @@ class PaystackWebhookView(APIView):
                 elif not payment:
                     logger.warning("Webhook for unknown reference %s", data.get("reference"))
         return Response(status=status.HTTP_200_OK)
+
+
+

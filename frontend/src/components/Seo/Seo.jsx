@@ -4,11 +4,11 @@ import { useLocation } from 'react-router-dom'
 const SITE = 'Timeline Gadgets'
 const SITE_URL = (import.meta.env.VITE_SITE_URL || '').replace(/\/$/, '')
 const DEFAULT_DESCRIPTION =
-  'Timeline Global Systems Limited — Home of Quality Gadgets. Phones, laptops, audio, storage, networking and accessories at competitive prices from Computer Village, Ikeja, Lagos.'
+  'Timeline Gadgets Limited — Home of Quality Gadgets. Phones, laptops, audio, storage, networking and accessories at competitive prices from Computer Village, Ikeja, Lagos.'
 
 export default function Seo({ title, description = DEFAULT_DESCRIPTION, image, type = 'website', jsonLd, noindex = false }) {
   const { pathname } = useLocation()
-  const fullTitle = title ? `${title} | ${SITE}` : 'Timeline Global Systems — Home of Quality Gadgets'
+  const fullTitle = title ? `${title} | ${SITE}` : 'Timeline Gadgets — Home of Quality Gadgets'
   const url = SITE_URL ? `${SITE_URL}${pathname}` : undefined
   return (
     <Helmet>
@@ -26,3 +26,6 @@ export default function Seo({ title, description = DEFAULT_DESCRIPTION, image, t
     </Helmet>
   )
 }
+
+
+

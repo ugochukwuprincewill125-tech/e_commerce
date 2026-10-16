@@ -1,4 +1,4 @@
-# Timeline Global Systems — Backend
+# Timeline Gadgets — Backend
 
 Django 5 + DRF backend for a Jumia-style computer & gadgets store. JWT auth,
 server-side cart, orders with stock reservation, reviews, coupons — and a
@@ -206,3 +206,6 @@ Full CRUD (`ModelViewSet`) at `/api/admin-api/categories/`, `/brands/`,
   analytics; restore is one POST.
 - Errors always carry a human-readable `detail` (plus field-level `errors`
   where relevant) — see `apps/core/exceptions.py`.
+
+
+

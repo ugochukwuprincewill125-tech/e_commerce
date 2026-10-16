@@ -2,7 +2,7 @@
 from django.conf import settings
 
 COMPANY = {
-    "name": "Timeline Global Systems Limited",
+    "name": "Timeline Gadgets Limited",
     "short_name": "Timeline Gadgets",
     "tagline": "Home of Quality Gadgets",
     "email": "timelinegadget@gmail.com",
@@ -61,3 +61,6 @@ def shipping_settings():
         "free_shipping_threshold": settings.FREE_SHIPPING_THRESHOLD,
         "pickup": 0,
     }
+
+
+

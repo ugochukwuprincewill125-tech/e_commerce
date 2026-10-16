@@ -1,7 +1,7 @@
 OFFICIAL LOGO GOES HERE
 =======================
 
-Drop the official Timeline Global Systems Limited logo files into this folder
+Drop the official Timeline Gadgets Limited logo files into this folder
 using these exact names (PNG with a transparent background, or SVG):
 
   timeline-logo.png         -> the standard logo (used on light backgrounds:
@@ -19,3 +19,6 @@ never stretched, distorted or recoloured.
 
 Until the file is added, the site shows the company name in plain text in the
 logo position. That text is only a placeholder and is not a logo.
+
+
+

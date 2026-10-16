@@ -5,7 +5,7 @@ import useHomeLink from '../../hooks/useHomeLink'
 import { cn } from '../../utils/format'
 
 /**
- * Official Timeline Global Systems logo.
+ * Official Timeline Gadgets logo.
  *
  * Put the supplied logo files in /public/brand (see README.txt there):
  *   timeline-logo.png        – standard logo for light backgrounds
@@ -27,7 +27,7 @@ const SIZES = {
 function TextPlaceholder({ onDark }) {
   return (
     <span className={cn('flex flex-col leading-none', onDark ? 'text-white' : 'text-ink-900')}>
-      <span className="font-display text-[15px] font-bold tracking-tight sm:text-base">Timeline Global Systems</span>
+      <span className="font-display text-[15px] font-bold tracking-tight sm:text-base">Timeline Gadgets</span>
       <span className={cn('mt-1 text-[10px] font-medium uppercase tracking-[0.2em]', onDark ? 'text-metal-300' : 'text-metal-500')}>
         Home of Quality Gadgets
       </span>
@@ -54,7 +54,7 @@ export default function Logo({ onDark = false, size = 'md', className, linked = 
       <span className={cn('inline-flex items-center', usePlate && 'rounded-xl bg-white px-3 py-1.5')}>
         <img
           src={src}
-          alt="Timeline Global Systems Limited — Home of Quality Gadgets"
+          alt="Timeline Gadgets Limited — Home of Quality Gadgets"
           className={cn('w-auto max-w-[220px] object-contain', SIZES[size])}
           onError={() => setStage((s) => (onDark ? s + 1 : 2))}
           decoding="async"
@@ -65,8 +65,11 @@ export default function Logo({ onDark = false, size = 'md', className, linked = 
 
   if (!linked) return <span className={className}>{content}</span>
   return (
-    <Link to={to} className={cn('inline-flex shrink-0 items-center', className)} aria-label={signedIn ? 'Timeline Global Systems — my account' : 'Timeline Global Systems — home'}>
+    <Link to={to} className={cn('inline-flex shrink-0 items-center', className)} aria-label={signedIn ? 'Timeline Gadgets — my account' : 'Timeline Gadgets — home'}>
       {content}
     </Link>
   )
 }
+
+
+

@@ -22,7 +22,7 @@ export default function About() {
   const { company } = useStoreInfo()
   return (
     <>
-      <Seo title="About us" description="Timeline Global Systems Limited is a technology and gadget supplier operating from Computer Village, Ikeja, Lagos — Home of Quality Gadgets." />
+      <Seo title="About us" description="Timeline Gadgets Limited is a technology and gadget supplier operating from Computer Village, Ikeja, Lagos — Home of Quality Gadgets." />
 
       <section className="bg-ink-950 text-white">
         <div className="container py-16 sm:py-20">
@@ -53,7 +53,7 @@ export default function About() {
           <h2 className="mt-3 text-3xl font-bold">Home of Quality Gadgets</h2>
           <div className="mt-5 space-y-4 leading-relaxed text-metal-600">
             <p>
-              From the latest smartphones and laptops to the cables, chargers and storage that keep them running, Timeline Global Systems brings together a wide range of technology in one place — in store and online.
+              From the latest smartphones and laptops to the cables, chargers and storage that keep them running, Timeline Gadgets brings together a wide range of technology in one place — in store and online.
             </p>
             <p>
               Our online store connects directly to our inventory, so what you see is what we have. Every order is priced and confirmed by our system, and you can follow its progress from the moment it’s placed until it reaches you.
@@ -82,7 +82,7 @@ export default function About() {
 
       <section className="bg-metal-50/70 py-16 sm:py-24">
         <div className="container">
-          <SectionHeading eyebrow="What we stand for" title="Why customers choose Timeline" align="center" />
+          <SectionHeading eyebrow="What we stand for" title="Why customers choose Timeline Gadgets" align="center" />
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {PILLARS.map(({ icon: Icon, title, text }, i) => (
               <Reveal key={title} delay={i * 0.05}>
@@ -124,3 +124,7 @@ export default function About() {
     </>
   )
 }
+
+
+
+

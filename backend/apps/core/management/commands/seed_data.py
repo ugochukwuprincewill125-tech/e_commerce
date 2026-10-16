@@ -45,7 +45,7 @@ def sku_for(product_name, brand):
 
 
 class Command(BaseCommand):
-    help = "Seed the Timeline store with categories, brands, products, images, coupons and sample reviews."
+    help = "Seed the Timeline Gadgets store with categories, brands, products, images, coupons and sample reviews."
 
     def add_arguments(self, parser):
         parser.add_argument("--reset", action="store_true", help="Delete products/categories/brands before seeding.")
@@ -239,3 +239,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(
             f"Removed {reviews} sample review rows, {users} sample customers and {demo_count} demo account(s)."
         ))
+
+
+
+

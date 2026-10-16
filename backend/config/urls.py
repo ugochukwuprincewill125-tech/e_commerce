@@ -5,8 +5,8 @@ from django.urls import include, path
 
 from . import admin as admin_gate  # noqa: F401 — installs the superuser-only admin site gate
 
-admin.site.site_header = "Timeline Global Systems — Administration"
-admin.site.site_title = "Timeline Admin"
+admin.site.site_header = "Timeline Gadgets — Administration"
+admin.site.site_title = "Timeline Gadgets Admin"
 admin.site.index_title = "Store management"
 
 api_patterns = [
@@ -34,3 +34,7 @@ urlpatterns = [
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+
+
+

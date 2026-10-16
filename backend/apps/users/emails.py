@@ -26,21 +26,25 @@ def send_verification_email(user):
     link = f"{settings.FRONTEND_URL}/verify-email/{_uid(user)}/{email_verification_token.make_token(user)}"
     body = (
         f"Hi {user.first_name},\n\n"
-        "Welcome to Timeline Global Systems — Home of Quality Gadgets.\n\n"
+        "Welcome to Timeline Gadgets — Home of Quality Gadgets.\n\n"
         f"Please confirm your email address by opening this link:\n{link}\n\n"
         "If you didn't create an account, you can ignore this email.\n\n"
-        "— Timeline Global Systems Limited"
+        "— Timeline Gadgets Limited"
     )
-    _send("Verify your Timeline account", body, user.email)
+    _send("Verify your Timeline Gadgets account", body, user.email)
 
 
 def send_password_reset_email(user):
     link = f"{settings.FRONTEND_URL}/reset-password/{_uid(user)}/{default_token_generator.make_token(user)}"
     body = (
         f"Hi {user.first_name},\n\n"
-        "We received a request to reset the password for your Timeline account.\n\n"
+        "We received a request to reset the password for your Timeline Gadgets account.\n\n"
         f"Reset your password here:\n{link}\n\n"
         "This link expires automatically. If you didn't request it, no action is needed.\n\n"
-        "— Timeline Global Systems Limited"
+        "— Timeline Gadgets Limited"
     )
-    _send("Reset your Timeline password", body, user.email)
+    _send("Reset your Timeline Gadgets password", body, user.email)
+
+
+
+

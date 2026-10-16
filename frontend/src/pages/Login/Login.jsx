@@ -43,7 +43,7 @@ export default function Login() {
         subtitle="Sign in to track orders, manage your wishlist and check out faster."
         footer={
           <>
-            New to Timeline?{' '}
+            New to Timeline Gadgets?{' '}
             <Link to={`/register${next ? `?next=${encodeURIComponent(next)}` : ''}`} className="font-semibold text-ink-900 underline decoration-line-strong underline-offset-4 transition-colors hover:text-brand-700 hover:decoration-brand-400">
               Create an account
             </Link>
@@ -69,3 +69,6 @@ export default function Login() {
     </>
   )
 }
+
+
+

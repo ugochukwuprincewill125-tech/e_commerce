@@ -1,4 +1,4 @@
-# Deploying Timeline Global Systems
+# Deploying Timeline Gadgets
 
 Two hosts, one repository:
 
@@ -159,3 +159,6 @@ Optional tuning (all have sane defaults): `THROTTLE_ANON`, `THROTTLE_USER`,
 - [ ] Paystack set up (§6) before taking real orders
 - [ ] (Optional) Custom domain: add it on Vercel + Render, then update
       `FRONTEND_URL`, `CORS_ALLOWED_ORIGINS` and `ALLOWED_HOSTS`
+
+
+

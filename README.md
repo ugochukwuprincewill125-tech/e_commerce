@@ -1,4 +1,4 @@
-# Timeline Global Systems Limited — E-commerce Platform
+# Timeline Gadgets Limited — E-commerce Platform
 
 **Home of Quality Gadgets** · Computer Village, Ikeja, Lagos
 
@@ -204,7 +204,7 @@ It creates:
 - A demo customer: **demo@timeline.test / Timeline@2026**
 - Sample reviews from clearly marked sample accounts (`@sample.timeline.invalid`, not marked "verified purchase")
 
-> Prices are **sample development data**. Update them in the admin to match Timeline's real price list.
+> Prices are **sample development data**. Update them in the admin to match Timeline Gadgets's real price list.
 
 ---
 
@@ -225,7 +225,7 @@ Also replace `frontend/public/favicon.svg` with an icon derived from the officia
 
 ### Product photography
 
-Seeded products use generated placeholder artwork stored in `backend/media/`. To use real Timeline photos, open **Admin → Products → (product) → Images**, upload photos and delete the placeholders. Categories (image) and brands (logo) work the same way. Brand pages show brand **names** as text. Only upload brand logos you're permitted to use.
+Seeded products use generated placeholder artwork stored in `backend/media/`. To use real Timeline Gadgets photos, open **Admin → Products → (product) → Images**, upload photos and delete the placeholders. Categories (image) and brands (logo) work the same way. Brand pages show brand **names** as text. Only upload brand logos you're permitted to use.
 
 Media layout: `media/products/`, `media/brands/`, `media/categories/`, `media/users/`.
 
@@ -397,4 +397,8 @@ The contact page shows a lightweight map placeholder that opens Google Maps. To 
 
 ---
 
-© Timeline Global Systems Limited. All Rights Reserved.
+© Timeline Gadgets Limited. All Rights Reserved.
+
+
+
+

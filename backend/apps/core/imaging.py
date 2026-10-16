@@ -2,7 +2,7 @@
 Generates clean, on-brand placeholder artwork for seeded products, categories
 and brands so the store works offline with no broken external image URLs.
 
-Replace any of these files with real Timeline product photography from the
+Replace any of these files with real Timeline Gadgets product photography from the
 Django admin (Products → Images) at any time.
 """
 import io
@@ -402,3 +402,6 @@ def brand_logo_file(name, filename, size=400):
     fsize = int(s * (0.2 if len(text) <= 5 else 0.14 if len(text) <= 8 else 0.1))
     d.text((s / 2, s / 2), text, fill=NAVY, font=_font(fsize), anchor="mm")
     return _to_file(img.resize((size, size), Image.LANCZOS), filename, "PNG")
+
+
+

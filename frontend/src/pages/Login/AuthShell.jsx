@@ -35,7 +35,7 @@ export default function AuthShell({ title, subtitle, children, footer }) {
             <div className="mt-4 flex items-center gap-2.5">
               <span className="block h-2.5 w-2.5 flex-none bg-brand-500" aria-hidden />
               <p className="text-[11px] font-semibold uppercase tracking-widest text-metal-400">
-                Timeline Global Systems
+                Timeline Gadgets
               </p>
             </div>
             <h1 className="mt-4 text-2xl font-semibold tracking-tight text-white">{title}</h1>
@@ -60,3 +60,6 @@ export default function AuthShell({ title, subtitle, children, footer }) {
     </div>
   )
 }
+
+
+

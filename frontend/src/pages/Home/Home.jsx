@@ -145,7 +145,7 @@ function WhyTimeline() {
           <p className="eyebrow mb-2">About us</p>
           <h2 className="text-section-title">A gadget retailer built on trust</h2>
           <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-metal-500">
-            Timeline Global Systems Limited serves individuals, students and businesses from Computer Village — Lagos'
+            Timeline Gadgets Limited serves individuals, students and businesses from Computer Village — Lagos'
             technology hub.
           </p>
         </div>
@@ -268,3 +268,6 @@ export default function Home() {
     </>
   )
 }
+
+
+

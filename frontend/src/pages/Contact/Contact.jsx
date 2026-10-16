@@ -66,7 +66,7 @@ export default function Contact() {
 
   return (
     <>
-      <Seo title="Contact us" description="Contact Timeline Global Systems Limited — Computer Village, Ikeja, Lagos. Email timelinegadget@gmail.com or visit our main office and branch." />
+      <Seo title="Contact us" description="Contact Timeline Gadgets Limited — Computer Village, Ikeja, Lagos. Email timelinegadget@gmail.com or visit our main office and branch." />
       <section className="border-b border-line bg-metal-50/60">
         <div className="container py-10 sm:py-14">
           <Breadcrumbs items={[{ label: 'Contact' }]} />
@@ -171,3 +171,6 @@ export default function Contact() {
     </>
   )
 }
+
+
+

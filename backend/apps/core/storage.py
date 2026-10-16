@@ -1,5 +1,5 @@
 """
-Media storage for Timeline Global Systems.
+Media storage for Timeline Gadgets.
 
 Product/category/brand images live in Cloudinary, accessed through
 django-cloudinary-storage. Files are uploaded by Django and served from
@@ -58,3 +58,6 @@ class CloudinaryMediaStorage(MediaCloudinaryStorage):
         """
         prefixed = self._prepend_prefix(self._normalise_name(name))
         return os.path.splitext(prefixed)[0]
+
+
+

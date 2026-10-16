@@ -1,6 +1,6 @@
 /**
  * Customer-service copy for the Shipping, Returns and FAQ pages.
- * Review and adjust these texts to match Timeline's actual policies before launch.
+ * Review and adjust these texts to match Timeline Gadgets's actual policies before launch.
  * Delivery fees shown on the Shipping page are read live from the backend.
  */
 export const INFO = {
@@ -29,7 +29,7 @@ export const INFO = {
   },
   returns: {
     title: 'Returns',
-    intro: 'We want you to be happy with every gadget you buy from Timeline.',
+    intro: 'We want you to be happy with every gadget you buy from Timeline Gadgets.',
     sections: [
       {
         heading: 'Reporting a problem',
@@ -64,3 +64,7 @@ export const INFO = {
     ],
   },
 }
+
+
+
+

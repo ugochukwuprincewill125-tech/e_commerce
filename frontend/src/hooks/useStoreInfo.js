@@ -4,7 +4,7 @@ import { storeService } from '../services/productService'
 
 /** Company details, locations and shipping rules from the backend. */
 export const FALLBACK_COMPANY = {
-  name: 'Timeline Global Systems Limited',
+  name: 'Timeline Gadgets Limited',
   short_name: 'Timeline Gadgets',
   tagline: 'Home of Quality Gadgets',
   email: 'timelinegadget@gmail.com',
@@ -45,3 +45,6 @@ export default function useStoreInfo() {
     states: query.data?.states || [],
   }
 }
+
+
+

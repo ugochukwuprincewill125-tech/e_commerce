@@ -87,7 +87,7 @@ export default function Shop() {
   const description =
     category.data?.description ||
     brand.data?.description ||
-    (q ? `Products matching “${q}” at Timeline Gadgets.` : 'Phones, laptops, audio, storage, networking and accessories from Timeline Global Systems.')
+    (q ? `Products matching “${q}” at Timeline Gadgets.` : 'Phones, laptops, audio, storage, networking and accessories from Timeline Gadgets.')
 
   const crumbs = [{ label: 'Shop', to: '/shop' }]
   if (category.data?.parent) crumbs.push({ label: category.data.parent.name, to: `/category/${category.data.parent.slug}` })
@@ -294,3 +294,6 @@ export default function Shop() {
     </>
   )
 }
+
+
+

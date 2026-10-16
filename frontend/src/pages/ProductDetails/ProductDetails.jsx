@@ -136,7 +136,7 @@ export default function ProductDetails() {
           priceCurrency: 'NGN',
           price: product.current_price,
           availability: product.availability === 'out_of_stock' ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock',
-          seller: { '@type': 'Organization', name: 'Timeline Global Systems Limited' },
+          seller: { '@type': 'Organization', name: 'Timeline Gadgets Limited' },
         },
       },
     [product],
@@ -356,3 +356,6 @@ export default function ProductDetails() {
     </>
   )
 }
+
+
+

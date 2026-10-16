@@ -1,7 +1,7 @@
 import forms from '@tailwindcss/forms'
 
 /**
- * Timeline design tokens.
+ * Timeline Gadgets design tokens.
  *
  * Design language: a professional electronics retailer. Structure comes from
  * hairline borders and typographic hierarchy, not from shadows, gradients or
@@ -113,3 +113,6 @@ export default {
   },
   plugins: [forms],
 }
+
+
+

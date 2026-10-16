@@ -2,7 +2,7 @@
 Sample catalogue for `python manage.py seed_data`.
 
 Prices are realistic sample Naira prices for development/demo purposes —
-update them in the Django admin to match Timeline's current price list.
+update them in the Django admin to match Timeline Gadgets's current price list.
 Descriptions avoid dealership/authorisation claims on purpose.
 """
 
@@ -548,3 +548,6 @@ COUPONS = [
     ("WELCOME10", "percentage", 10, 20000, 20000, "10% off your first order (max ₦20,000)."),
     ("TIMELINE5K", "fixed", 5000, 100000, None, "₦5,000 off orders above ₦100,000."),
 ]
+
+
+
