@@ -67,3 +67,5 @@ Port 5173 is in use, trying another one...
 [2m5:29:00 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/App.jsx[22m
 [2m5:29:05 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/App.jsx[22m
 [2m5:29:12 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/App.jsx[22m
+[2m6:24:46 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/App.jsx[22m
+[2m6:43:23 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/context/WishlistContext.jsx, /src/context/AuthContext.jsx, /src/context/CartContext.jsx, /src/components/Navbar/MobileMenu.jsx, /src/components/Navbar/Navbar.jsx, /src/components/CartDrawer/CartDrawer.jsx, /src/components/Footer/Footer.jsx, /src/pages/Home/Home.jsx, /src/components/SearchBar/SearchBar.jsx, /src/pages/Home/Hero.jsx, /src/components/QuickView/QuickViewModal.jsx[22m
