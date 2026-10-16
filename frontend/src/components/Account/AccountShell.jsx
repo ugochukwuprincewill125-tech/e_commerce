@@ -36,10 +36,10 @@ export default function AccountShell({ children }) {
             strip underneath it. */}
         <div className="sticky top-0 z-40 border-b border-line bg-white lg:hidden">
           <div className="flex items-center gap-1 px-2 py-2">
-            <button
+             <button
               type="button"
               onClick={openMenu}
-              className="flex h-10 w-10 flex-none items-center justify-center rounded text-ink-900 transition-colors hover:bg-metal-100"
+              className="flex h-11 w-11 flex-none items-center justify-center rounded text-ink-900 transition-colors hover:bg-metal-100"
               aria-label="Open menu"
             >
               <Menu className="h-5 w-5" strokeWidth={1.75} />
@@ -50,20 +50,20 @@ export default function AccountShell({ children }) {
               <p className="truncate text-[11px] leading-tight text-metal-500">{activeLabel(location.pathname)}</p>
             </div>
 
-            <button
+             <button
               type="button"
               onClick={openSearch}
-              className="flex h-10 w-10 flex-none items-center justify-center rounded text-ink-800 transition-colors hover:bg-metal-100"
+              className="flex h-11 w-11 flex-none items-center justify-center rounded text-ink-800 transition-colors hover:bg-metal-100"
               aria-label="Search"
             >
               <Search className="h-5 w-5" strokeWidth={1.75} />
             </button>
 
-            <button
+             <button
               type="button"
               onClick={openDrawer}
-              className="relative flex h-10 w-10 flex-none items-center justify-center rounded text-ink-800 transition-colors hover:bg-metal-100"
-              aria-label={`Cart (${itemCount} items)`}
+              className="relative flex h-11 w-11 flex-none items-center justify-center rounded text-ink-800 transition-colors hover:bg-metal-100"
+               aria-label={`Cart (${itemCount} items)`}
             >
               <ShoppingCart className="h-5 w-5" strokeWidth={1.75} />
               {itemCount > 0 && (

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, UploadCloud, X } from 'lucide-react'
@@ -63,16 +63,18 @@ function Editor({ productId }) {
   })
 
   // Seed the form once the product detail arrives (edit mode only).
-  if (isEdit && product && !seeded) {
-    setForm({
-      ...EMPTY,
-      ...product,
-      category: product.category?.id ?? '',
-      brand: product.brand?.id ?? '',
-      specifications: JSON.stringify(product.specifications || {}),
-    })
-    setSeeded(true)
-  }
+  useEffect(() => {
+    if (isEdit && product && !seeded) {
+      setForm({
+        ...EMPTY,
+        ...product,
+        category: product.category?.id ?? '',
+        brand: product.brand?.id ?? '',
+        specifications: JSON.stringify(product.specifications || {}),
+      })
+      setSeeded(true)
+    }
+  }, [isEdit, product, seeded])
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['admin-products'] })

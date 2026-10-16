@@ -117,9 +117,9 @@
   .hint {
     @apply mt-1.5 text-xs leading-relaxed text-metal-500;
   }
-  .input {
-    @apply block w-full rounded-md border-line bg-white px-3.5 py-2.5 text-sm text-ink-900 shadow-none transition-colors placeholder:text-metal-400 focus:border-ink-900 focus:ring-0;
-  }
+   .input {
+     @apply block w-full rounded-md border-line bg-white px-3.5 py-2.5 text-base text-ink-900 shadow-none transition-colors placeholder:text-metal-400 focus:border-ink-900 focus:ring-0 sm:text-sm;
+   }
   .input-error {
     @apply border-danger focus:border-danger;
   }

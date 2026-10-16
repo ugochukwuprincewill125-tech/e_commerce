@@ -277,7 +277,7 @@ export default function ProductDetails() {
 
         {/* Tabs */}
         <section id="product-tabs" className="mt-16 scroll-mt-24 sm:mt-20">
-          <div className="scrollbar-none -mx-4 flex gap-1 overflow-x-auto border-b border-line px-4 sm:mx-0 sm:px-0" role="tablist">
+          <div className="scrollbar-none flex snap-x snap-mandatory gap-1 overflow-x-auto border-b border-line" role="tablist">
             {TABS.map((t) => (
               <button
                 key={t.key}

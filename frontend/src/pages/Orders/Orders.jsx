@@ -54,7 +54,7 @@ export default function Orders() {
       </div>
 
       {/* Jumia-style underline tabs */}
-      <div className="scrollbar-none -mx-4 mt-4 flex gap-5 overflow-x-auto border-b border-line px-4 sm:mx-0 sm:px-0" role="tablist" aria-label="Order status">
+      <div className="scrollbar-none mt-4 flex gap-5 overflow-x-auto border-b border-line" role="tablist" aria-label="Order status">
         {FILTERS.map((f) => (
           <button
             key={f.value}

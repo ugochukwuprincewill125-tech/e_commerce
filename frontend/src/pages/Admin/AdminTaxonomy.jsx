@@ -68,7 +68,7 @@ export function AdminCategories() {
                 <tbody>
                   {rows.map((c) => (
                     <tr key={c.id} className="border-b border-line last:border-0 hover:bg-metal-50">
-                      <td className="px-4 py-3 font-semibold text-ink-900">{c.name}</td>
+                      <td className="px-4 py-3 font-semibold text-ink-900 whitespace-normal break-words">{c.name}</td>
                       <td className="px-4 py-3 text-metal-500">{c.slug}</td>
                       <td className="px-4 py-3">
                         {/* Drill straight into this category's products. */}
@@ -190,7 +190,7 @@ export function AdminBrands() {
                 <tbody>
                   {rows.map((b) => (
                     <tr key={b.id} className="border-b border-line last:border-0 hover:bg-metal-50">
-                      <td className="px-4 py-3 font-semibold text-ink-900">{b.name}</td>
+                      <td className="px-4 py-3 font-semibold text-ink-900 whitespace-normal break-words">{b.name}</td>
                       <td className="px-4 py-3 tabular-nums text-ink-900">{b.product_count}</td>
                       <td className="px-4 py-3 text-right whitespace-nowrap">
                         <button type="button" onClick={() => setEditing(b)} className="rounded p-1.5 text-brand-600 transition hover:bg-brand-50" aria-label={`Edit ${b.name}`}>

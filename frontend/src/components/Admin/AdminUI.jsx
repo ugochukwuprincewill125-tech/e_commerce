@@ -102,7 +102,7 @@ export function StatCard({ label, value, hint, tone = 'neutral', icon: Icon, onC
       )}
       <span className="min-w-0">
         <span className="block text-xs font-semibold uppercase leading-snug tracking-wider text-metal-500">{label}</span>
-        <span className="mt-1.5 block font-display text-2xl font-bold leading-none text-ink-950 tabular-nums">{value}</span>
+        <span className="mt-1.5 block font-display text-xl font-bold leading-none text-ink-950 tabular-nums break-words sm:text-2xl">{value}</span>
         {hint && <span className="mt-1.5 block text-xs leading-snug text-metal-500">{hint}</span>}
       </span>
     </Wrapper>

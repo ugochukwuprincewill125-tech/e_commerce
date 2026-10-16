@@ -94,7 +94,7 @@ export default function ProductCarousel({ title, subtitle, viewAllTo, viewAllLab
             ))}
           </div>
         ) : products.length === 0 ? null : (
-          <div ref={trackRef} className="scrollbar-none -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
+          <div ref={trackRef} className="scrollbar-none flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1">
             {products.map((p, i) => (
               <div key={p.id} className={`flex-none snap-start ${basis}`}>
                 <ProductCard product={p} onQuickView={setQuickView} priority={i < columns} requireAuth={requireAuth} />

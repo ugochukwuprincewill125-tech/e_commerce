@@ -23,9 +23,9 @@ export function CartLine({ item, compact = false }) {
       animate={{ opacity: busy ? 0.6 : 1, y: 0 }}
       exit={{ opacity: 0, height: 0, marginTop: 0, paddingTop: 0, paddingBottom: 0 }}
       transition={{ duration: 0.2 }}
-      className={cn('grid grid-cols-[64px_1fr] gap-3 py-4 sm:grid-cols-[80px_1fr_auto] sm:gap-4', overStock && 'bg-red-50/40')}
+      className={cn('grid grid-cols-[56px_1fr] gap-3 py-4 sm:grid-cols-[80px_1fr/auto] sm:gap-4', overStock && 'bg-red-50/40')}
     >
-      <Link to={`/products/${product.slug}`} className="h-16 w-16 self-start rounded border border-line bg-white p-1 sm:h-20 sm:w-20">
+      <Link to={`/products/${product.slug}`} className="h-14 w-14 self-start rounded border border-line bg-white p-1 sm:h-20 sm:w-20">
         {product.image && <img src={product.image} alt={product.name} className="h-full w-full object-contain" loading="lazy" />}
       </Link>
 

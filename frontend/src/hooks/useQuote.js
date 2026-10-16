@@ -14,5 +14,7 @@ export default function useQuote({ coupon_code = '', state = '', delivery_method
     enabled: Boolean(cart),
     placeholderData: (prev) => prev,
     staleTime: 15_000,
+    retry: 1,
+    gcTime: 30_000,
   })
 }
