@@ -22,8 +22,14 @@ maintain.
    single project using Services**. Do **not** import `frontend/` or
    `backend/` as standalone projects. Keep the Root Directory as the
    repository root.
-4. Do not override the detected framework/build settings — `vercel.json`
-   defines both services (Vite and Django are auto-detected per service).
+4. Set the **Framework Preset to `Services`** — this is required: a project
+   only builds as services when the project's framework is `Services` *and*
+   `vercel.json` contains the `services` key. If the import wizard doesn't
+   offer `Services`, pick `Other` and change it right after import in
+   **Project → Settings → Build and Deployment → Framework Preset**, before
+   the first deploy. Leaving it on `Vite`/`Django`/`Other` makes Vercel
+   ignore the services config. Build/output/install command fields can stay
+   empty — each service builds itself.
 5. Add the environment variables below (**Production** + **Preview**) BEFORE
    the first deploy. The Django service loads `config.settings.prod` during
    the build and refuses to start when a required value is missing — a missing
@@ -104,10 +110,11 @@ DATABASE_URL="postgresql://…pooler URI…" ./venv/bin/python manage.py migrate
   everything else → the storefront, which falls back to `index.html` for
   client-side routes (SPA deep links).
 - The Django service is built by Vercel's Django preset: dependencies come
-  from `backend/requirements.txt`, the entrypoint from
-  `ASGI_APPLICATION`/`WSGI_APPLICATION` in `config.settings.prod`, and
-  `collectstatic` runs automatically — admin CSS/JS is served from Vercel's
-  CDN at `/static/` (nothing to commit; `backend/staticfiles/` is gitignored).
+  from `backend/requirements.txt`, `collectstatic` runs automatically — admin
+  CSS/JS is served from Vercel's CDN at `/static/` (nothing to commit;
+  `backend/staticfiles/` is gitignored) — and the WSGI entrypoint
+  (`config.wsgi:application`) is declared in `vercel.json` because Services
+  requires an explicit `entrypoint` for Python services.
 - Product images upload through Django to Cloudinary — no local filesystem
   use.
 - The API is same-origin in production, so CORS never comes into play for the
