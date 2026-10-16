@@ -270,24 +270,46 @@ export default function Checkout() {
 
                     {deliveryMethod === 'delivery' ? (
                       <>
-                        {addresses.data?.length > 0 && (
-                          <div className="mt-6">
-                            <p className="label">Saved addresses</p>
-                            <div className="grid gap-2 sm:grid-cols-2">
-                              {addresses.data.map((a) => (
-                                <button key={a.id} type="button" onClick={() => applyAddress(a)} className={cn('rounded border p-2.5 text-left text-xs transition-colors hover:border-ink-900', values.address === a.address ? 'border-brand-600 bg-brand-50' : 'border-line bg-white')}>
-                                  <span className="flex items-center gap-1.5 font-semibold text-ink-900">
-                                    <MapPin className="h-3.5 w-3.5 flex-none text-brand-600" strokeWidth={1.75} /> {a.label || `${a.first_name} ${a.last_name}`}
-                                    {a.is_default && <span className="chip bg-ink-900 px-1.5 py-0 text-[9px] text-white">Default</span>}
-                                  </span>
-                                  <span className="mt-1 block text-metal-500">
-                                    {a.address}, {a.city}, {a.state}
-                                  </span>
-                                </button>
-                              ))}
+                        {!addresses.isLoading &&
+                          (addresses.data?.length > 0 ? (
+                            <div className="mt-6">
+                              <div className="flex items-baseline justify-between gap-3">
+                                <p className="label">Saved addresses</p>
+                                <Link to="/account/addresses" className="text-xs font-semibold text-brand-600 transition-colors hover:text-brand-700">
+                                  Manage addresses
+                                </Link>
+                              </div>
+                              <div className="grid gap-2 sm:grid-cols-2">
+                                {addresses.data.map((a) => (
+                                  <button
+                                    key={a.id}
+                                    type="button"
+                                    onClick={() => applyAddress(a)}
+                                    aria-pressed={values.address === a.address}
+                                    className={cn('rounded border p-2.5 text-left text-xs transition-colors hover:border-ink-900', values.address === a.address ? 'border-brand-600 bg-brand-50' : 'border-line bg-white')}
+                                  >
+                                    <span className="flex items-center gap-1.5 font-semibold text-ink-900">
+                                      <MapPin className="h-3.5 w-3.5 flex-none text-brand-600" strokeWidth={1.75} /> {a.label || `${a.first_name} ${a.last_name}`}
+                                      {a.is_default && <span className="chip bg-ink-900 px-1.5 py-0 text-[9px] text-white">Default</span>}
+                                      {values.address === a.address && <Check className="ml-auto h-3.5 w-3.5 flex-none text-brand-600" strokeWidth={3} />}
+                                    </span>
+                                    <span className="mt-1 block text-metal-500">
+                                      {a.address}, {a.city}, {a.state}
+                                    </span>
+                                  </button>
+                                ))}
+                              </div>
+                              <p className="mt-2 text-xs text-metal-400">Pick one above, or enter a different address below.</p>
                             </div>
-                          </div>
-                        )}
+                          ) : (
+                            <p className="mt-6 rounded-md border border-dashed border-line bg-metal-50 px-4 py-3 text-xs leading-relaxed text-metal-500">
+                              No saved addresses yet — enter your delivery address below. Tick “Save this address to my account” so it’s one tap next time, or add it now in your{' '}
+                              <Link to="/account/addresses" className="font-semibold text-brand-600 transition-colors hover:text-brand-700">
+                                Saved Addresses
+                              </Link>
+                              .
+                            </p>
+                          ))}
                         <div className="mt-6 grid gap-4 sm:grid-cols-2">
                           <Field className="sm:col-span-2" label="Street address" autoComplete="street-address" placeholder="House number and street" error={errors.address?.message} {...register('address', { validate: (v) => deliveryMethod === 'pickup' || v.trim().length > 3 || 'Enter your delivery address' })} />
                           <Field label="City / Area" autoComplete="address-level2" error={errors.city?.message} {...register('city', { validate: (v) => deliveryMethod === 'pickup' || v.trim().length > 1 || 'Enter your city' })} />

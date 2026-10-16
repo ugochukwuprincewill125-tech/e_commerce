@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Check, CircleX, ClipboardList, CreditCard, PackageCheck, Settings2, Truck, House } from 'lucide-react'
+import { Check, CircleX, ClipboardList, CreditCard, PackageCheck, Settings2, Store, Truck, House } from 'lucide-react'
 
 import { cn, formatDateTime } from '../../utils/format'
 
@@ -10,6 +10,8 @@ const ICONS = {
   ready_for_delivery: PackageCheck,
   shipped: Truck,
   delivered: House,
+  ready_for_pickup: Store,
+  picked_up: PackageCheck,
 }
 
 /** Animated vertical (mobile) / horizontal (desktop) order progress. */
@@ -24,12 +26,20 @@ export default function OrderTimeline({ steps = [], cancelled = false }) {
   }
   const completed = steps.filter((s) => s.completed).length
   const progress = steps.length > 1 ? ((completed - 1) / (steps.length - 1)) * 100 : 0
+  // Delivery and pickup timelines have different step counts (6 vs 5), so the
+  // grid and the connector line are sized from the steps actually rendered.
+  const count = Math.max(steps.length, 1)
+  const edge = 50 / count
 
   return (
     <div>
       {/* Desktop — horizontal */}
-      <ol className="relative hidden grid-cols-6 md:grid" aria-label="Order progress">
-        <div className="absolute left-[8.33%] right-[8.33%] top-5 h-1 rounded-full bg-metal-100" aria-hidden>
+      <ol
+        className="relative hidden md:grid"
+        style={{ gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))` }}
+        aria-label="Order progress"
+      >
+        <div className="absolute top-5 h-1 rounded-full bg-metal-100" style={{ left: `${edge}%`, right: `${edge}%` }} aria-hidden>
           <motion.div className="h-full rounded-full bg-brand-500" initial={{ width: 0 }} animate={{ width: `${Math.max(0, progress)}%` }} transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }} />
         </div>
         {steps.map((step, i) => {

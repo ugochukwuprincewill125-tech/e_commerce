@@ -12,6 +12,8 @@ STATUS_COLOURS = {
     OrderStatus.READY_FOR_DELIVERY: "#0891b2",
     OrderStatus.SHIPPED: "#d97706",
     OrderStatus.DELIVERED: "#059669",
+    OrderStatus.READY_FOR_PICKUP: "#0d9488",
+    OrderStatus.PICKED_UP: "#059669",
     OrderStatus.CANCELLED: "#dc2626",
 }
 PAYMENT_COLOURS = {
@@ -66,7 +68,7 @@ class OrderAdmin(admin.ModelAdmin):
     date_hierarchy = "created_at"
     list_per_page = 30
     inlines = [OrderItemInline, OrderHistoryInline]
-    actions = ["action_processing", "action_ready", "action_shipped", "action_delivered", "action_mark_paid", "action_cancel", "action_refund"]
+    actions = ["action_processing", "action_ready", "action_ready_pickup", "action_shipped", "action_delivered", "action_picked_up", "action_mark_paid", "action_cancel", "action_refund"]
     readonly_fields = (
         "order_number", "user_link", "subtotal", "shipping_fee", "discount", "total", "coupon_code",
         "payment_reference", "paid_at", "created_at", "updated_at", "formatted_shipping",
@@ -171,6 +173,10 @@ class OrderAdmin(admin.ModelAdmin):
     def action_ready(self, request, queryset):
         self._bulk_status(request, queryset, OrderStatus.READY_FOR_DELIVERY)
 
+    @admin.action(description="Mark as Ready for Pickup")
+    def action_ready_pickup(self, request, queryset):
+        self._bulk_status(request, queryset, OrderStatus.READY_FOR_PICKUP)
+
     @admin.action(description="Mark as Shipped")
     def action_shipped(self, request, queryset):
         self._bulk_status(request, queryset, OrderStatus.SHIPPED)
@@ -178,6 +184,10 @@ class OrderAdmin(admin.ModelAdmin):
     @admin.action(description="Mark as Delivered")
     def action_delivered(self, request, queryset):
         self._bulk_status(request, queryset, OrderStatus.DELIVERED)
+
+    @admin.action(description="Mark as Picked Up")
+    def action_picked_up(self, request, queryset):
+        self._bulk_status(request, queryset, OrderStatus.PICKED_UP)
 
     @admin.action(description="Mark as Paid (bank transfer / POS confirmed manually)")
     def action_mark_paid(self, request, queryset):

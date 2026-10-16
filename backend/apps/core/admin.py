@@ -40,7 +40,12 @@ def dashboard_index(request, extra_context=None):
             "revenue": paid.aggregate(total=Sum("total"))["total"] or 0,
             "paid_orders": paid.count(),
             "to_fulfil": Order.objects.filter(
-                status__in=[OrderStatus.PAYMENT_CONFIRMED, OrderStatus.PROCESSING, OrderStatus.READY_FOR_DELIVERY]
+                status__in=[
+                    OrderStatus.PAYMENT_CONFIRMED,
+                    OrderStatus.PROCESSING,
+                    OrderStatus.READY_FOR_DELIVERY,
+                    OrderStatus.READY_FOR_PICKUP,
+                ]
             ).count(),
             "awaiting_payment": Order.objects.filter(status=OrderStatus.PLACED, payment_status=PaymentStatus.PENDING).count(),
             "unread_messages": ContactMessage.objects.filter(is_resolved=False).count(),

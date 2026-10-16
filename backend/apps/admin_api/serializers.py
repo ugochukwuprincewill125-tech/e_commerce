@@ -189,13 +189,16 @@ class AdminOrderListSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
     is_tracked = serializers.BooleanField(read_only=True)
     is_refunded = serializers.BooleanField(read_only=True)
+    # Staff need the drop-off address in the list itself, not only in the
+    # detail modal — delivery orders surface it in the "Ship to" column.
+    shipping_address = serializers.JSONField(read_only=True)
 
     class Meta:
         model = Order
         fields = (
             "id", "order_number", "customer_id", "customer_name", "email", "phone",
             "status", "status_display", "payment_status", "payment_status_display",
-            "payment_reference", "delivery_method", "subtotal", "shipping_fee",
+            "payment_reference", "delivery_method", "shipping_address", "subtotal", "shipping_fee",
             "discount", "total", "coupon_code", "item_count", "items",
             "carrier", "tracking_number", "is_tracked",
             "refund_amount", "refund_reason", "refunded_at", "is_refunded",
@@ -208,13 +211,12 @@ class AdminOrderListSerializer(serializers.ModelSerializer):
 
 class AdminOrderDetailSerializer(AdminOrderListSerializer):
     delivery_method_display = serializers.CharField(source="get_delivery_method_display", read_only=True)
-    shipping_address = serializers.JSONField(read_only=True)
     history = serializers.SerializerMethodField()
     tracking = serializers.SerializerMethodField()
 
     class Meta(AdminOrderListSerializer.Meta):
         fields = AdminOrderListSerializer.Meta.fields + (
-            "delivery_method_display", "pickup_location", "shipping_address",
+            "delivery_method_display", "pickup_location",
             "customer_note", "staff_note",
             "paid_at", "shipped_at", "delivered_at", "refund_reference",
             "history", "tracking",

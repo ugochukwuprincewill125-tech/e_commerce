@@ -12,6 +12,8 @@ const STATUS = {
   ready_for_delivery: 'bg-cyan-50 text-cyan-700',
   shipped: 'bg-amber-50 text-amber-700',
   delivered: 'bg-emerald-50 text-emerald-700',
+  ready_for_pickup: 'bg-teal-50 text-teal-700',
+  picked_up: 'bg-emerald-50 text-emerald-700',
   cancelled: 'bg-red-50 text-red-700',
 }
 const PAYMENT = {

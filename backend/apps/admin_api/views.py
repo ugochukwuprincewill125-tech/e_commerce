@@ -23,7 +23,7 @@ from apps.brands.models import Brand
 from apps.categories.models import Category
 from apps.core import uploads
 from apps.core.models import ContactMessage
-from apps.orders.models import Order, OrderItem, OrderStatus, PaymentStatus
+from apps.orders.models import DeliveryMethod, Order, OrderItem, OrderStatus, PaymentStatus, status_flow
 from apps.orders.services import cancel_order, mark_order_paid, restore_stock
 from apps.products.filters import CharInFilter, search_q
 from apps.products.models import Availability, Product, ProductImage, ProductVariant
@@ -549,11 +549,12 @@ class AdminCouponViewSet(viewsets.ModelViewSet):
 # Orders
 # ---------------------------------------------------------------------------
 
-# Staff may move an order to any status — forward or backward — except that
-# cancelled and delivered are final states that cannot be changed.
-# This lets the admin undo a mistaken status change (e.g. move a shipped
-# order back to ready_for_delivery) without being locked out.
-BLOCKED_STATUSES = {OrderStatus.CANCELLED, OrderStatus.DELIVERED}
+# Staff may move an order to any status within its fulfilment flow — forward
+# or backward — except that cancelled, delivered and picked_up are final
+# states that cannot be changed. This lets the admin undo a mistaken status
+# change (e.g. move a shipped order back to ready_for_delivery) without being
+# locked out.
+BLOCKED_STATUSES = {OrderStatus.CANCELLED, OrderStatus.DELIVERED, OrderStatus.PICKED_UP}
 
 
 class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
@@ -611,6 +612,17 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Delivery statuses and pickup statuses do not mix: a pickup order can
+        # never be shipped, and a delivery order can never be collected.
+        allowed = {s.value for s in status_flow(order.delivery_method)}
+        if new_status != OrderStatus.CANCELLED and new_status not in allowed:
+            kind = "store pickup" if order.delivery_method == DeliveryMethod.PICKUP else "delivery"
+            label = dict(OrderStatus.choices).get(new_status, new_status)
+            return Response(
+                {"detail": f"'{label}' does not apply to a {kind} order."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         if new_status == OrderStatus.CANCELLED:
             if order.payment_status == PaymentStatus.PAID:
                 return Response({"detail": "Paid orders cannot be cancelled — refund them instead."},
@@ -622,7 +634,9 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
             if new_status == OrderStatus.SHIPPED and not order.shipped_at:
                 order.shipped_at = timezone.now()
                 touched.append("shipped_at")
-            if new_status == OrderStatus.DELIVERED:
+            if new_status in (OrderStatus.DELIVERED, OrderStatus.PICKED_UP):
+                # Either a doorstep handover or a counter handover completes
+                # fulfilment; both record the moment on `delivered_at`.
                 order.delivered_at = order.delivered_at or timezone.now()
                 touched.append("delivered_at")
             order.save(update_fields=touched)
@@ -635,6 +649,11 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
     def tracking(self, request, pk=None):
         """Record the courier reference for a parcel, and optionally mark it shipped."""
         order = self.get_object()
+        if order.delivery_method == DeliveryMethod.PICKUP:
+            return Response(
+                {"detail": "Store pickup orders are not shipped — advance them with the pickup statuses instead."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         serializer = s.OrderTrackingUpdateSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
@@ -925,6 +944,7 @@ class AdminStatsView(APIView):
                 "total": orders.count(),
                 "pending": orders.filter(status__in=[OrderStatus.PLACED, OrderStatus.PAYMENT_CONFIRMED, OrderStatus.PROCESSING]).count(),
                 "ready_to_ship": orders.filter(status=OrderStatus.READY_FOR_DELIVERY).count(),
+                "ready_for_pickup": orders.filter(status=OrderStatus.READY_FOR_PICKUP).count(),
                 "awaiting_payment": orders.filter(payment_status=PaymentStatus.PENDING).count(),
                 "paid": orders.filter(payment_status=PaymentStatus.PAID).count(),
                 "delivered": orders.filter(status=OrderStatus.DELIVERED).count(),

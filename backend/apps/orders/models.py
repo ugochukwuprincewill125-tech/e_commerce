@@ -15,10 +15,12 @@ class OrderStatus(models.TextChoices):
     READY_FOR_DELIVERY = "ready_for_delivery", "Ready for Delivery"
     SHIPPED = "shipped", "Shipped"
     DELIVERED = "delivered", "Delivered"
+    READY_FOR_PICKUP = "ready_for_pickup", "Ready for Store Pickup"
+    PICKED_UP = "picked_up", "Picked Up"
     CANCELLED = "cancelled", "Cancelled"
 
 
-# The customer-facing tracking timeline, in order.
+# The customer-facing tracking timeline for delivery orders, in order.
 STATUS_FLOW = [
     OrderStatus.PLACED,
     OrderStatus.PAYMENT_CONFIRMED,
@@ -26,6 +28,16 @@ STATUS_FLOW = [
     OrderStatus.READY_FOR_DELIVERY,
     OrderStatus.SHIPPED,
     OrderStatus.DELIVERED,
+]
+
+# Store pickup orders never touch a courier: the customer collects the goods
+# from the store themselves, so the timeline ends at "Picked Up".
+PICKUP_FLOW = [
+    OrderStatus.PLACED,
+    OrderStatus.PAYMENT_CONFIRMED,
+    OrderStatus.PROCESSING,
+    OrderStatus.READY_FOR_PICKUP,
+    OrderStatus.PICKED_UP,
 ]
 
 
@@ -39,6 +51,11 @@ class PaymentStatus(models.TextChoices):
 class DeliveryMethod(models.TextChoices):
     DELIVERY = "delivery", "Home / Office Delivery"
     PICKUP = "pickup", "Store Pickup (Computer Village)"
+
+
+def status_flow(delivery_method):
+    """The tracking timeline that applies to an order's fulfilment method."""
+    return PICKUP_FLOW if delivery_method == DeliveryMethod.PICKUP else STATUS_FLOW
 
 
 def generate_order_number():

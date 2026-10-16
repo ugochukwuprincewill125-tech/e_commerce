@@ -150,6 +150,7 @@ export default function AdminHome() {
             <ul className="divide-y divide-line text-sm">
               <AttentionRow label="Awaiting payment" to="/admin/orders?payment=pending" value={o.awaiting_payment ?? 0} />
               <AttentionRow label="Ready to ship" to="/admin/orders?status=ready_for_delivery" value={o.ready_to_ship ?? 0} />
+              <AttentionRow label="Ready for pickup" to="/admin/orders?status=ready_for_pickup" value={o.ready_for_pickup ?? 0} />
               <AttentionRow label="Out of stock" to="/admin/products?availability=out_of_stock" value={p.out_of_stock ?? 0} />
               <AttentionRow label="Pending reviews" to="/admin/reviews?is_approved=false" value={stats.reviews_pending ?? 0} />
               <AttentionRow label="Unresolved messages" to="/admin/messages?is_resolved=false" value={stats.messages_unresolved ?? 0} />

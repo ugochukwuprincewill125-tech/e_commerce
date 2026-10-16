@@ -14,8 +14,10 @@ const FILTERS = [
   { value: '', label: 'All orders' },
   { value: 'placed', label: 'Awaiting payment' },
   { value: 'processing', label: 'Processing' },
+  { value: 'ready_for_pickup', label: 'Ready for pickup' },
   { value: 'shipped', label: 'Shipped' },
   { value: 'delivered', label: 'Delivered' },
+  { value: 'picked_up', label: 'Picked up' },
   { value: 'cancelled', label: 'Cancelled' },
 ]
 

@@ -145,6 +145,8 @@ const STATUS_TONES = {
   ready_for_delivery: 'bg-amber-100 text-amber-700',
   shipped: 'bg-violet-100 text-violet-700',
   delivered: 'bg-emerald-100 text-emerald-700',
+  ready_for_pickup: 'bg-teal-100 text-teal-700',
+  picked_up: 'bg-emerald-100 text-emerald-700',
   cancelled: 'bg-red-100 text-red-700',
 }
 
@@ -155,6 +157,8 @@ export const STATUS_LABELS = {
   ready_for_delivery: 'Ready for delivery',
   shipped: 'Shipped',
   delivered: 'Delivered',
+  ready_for_pickup: 'Ready for pickup',
+  picked_up: 'Picked up',
   cancelled: 'Cancelled',
 }
 

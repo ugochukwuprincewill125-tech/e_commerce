@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Eye, LayoutGrid, List, Loader2, Printer, Search, Truck, Undo2 } from 'lucide-react'
+import { Eye, LayoutGrid, List, Loader2, Package, Printer, Search, Store, Truck, Undo2 } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import {
@@ -16,20 +16,24 @@ import {
   setOrderStatus, setOrderTracking,
 } from '../../services/adminApi'
 
-const STATUSES = ['placed', 'payment_confirmed', 'processing', 'ready_for_delivery', 'shipped', 'delivered', 'cancelled']
+const STATUSES = ['placed', 'payment_confirmed', 'processing', 'ready_for_delivery', 'shipped', 'delivered', 'ready_for_pickup', 'picked_up', 'cancelled']
 const PAYMENTS = ['pending', 'paid', 'failed', 'refunded']
 
 /**
- * All statuses an admin can move an order to. The server allows any transition
- * except from cancelled/delivered (final states), so we show everything and
- * let the API reject invalid moves.
+ * Delivery orders move through the courier pipeline, store pickup orders
+ * through the counter pipeline. The server rejects cross-flow moves, so each
+ * order's picker only offers the statuses that apply to it.
  */
-const ALL_STATUSES = ['placed', 'payment_confirmed', 'processing', 'ready_for_delivery', 'shipped', 'delivered', 'cancelled']
+const DELIVERY_STATUSES = ['placed', 'payment_confirmed', 'processing', 'ready_for_delivery', 'shipped', 'delivered', 'cancelled']
+const PICKUP_STATUSES = ['placed', 'payment_confirmed', 'processing', 'ready_for_pickup', 'picked_up', 'cancelled']
+const statusesFor = (order) => (order.delivery_method === 'pickup' ? PICKUP_STATUSES : DELIVERY_STATUSES)
+const isFinalStatus = (status) => status === 'cancelled' || status === 'delivered' || status === 'picked_up'
 
 const csvColumns = [
   { label: 'Order', get: (o) => o.order_number },
   { label: 'Customer', get: (o) => o.customer_name },
   { label: 'Email', get: (o) => o.email },
+  { label: 'Ship to', get: (o) => (o.shipping_address?.address ? [o.shipping_address.address, o.shipping_address.city, o.shipping_address.state, o.shipping_address.country].filter(Boolean).join(', ') : '') },
   { label: 'Total', get: (o) => o.total },
   { label: 'Status', get: (o) => o.status },
   { label: 'Payment', get: (o) => o.payment_status },
@@ -45,6 +49,8 @@ const STATUS_TEXT = {
   ready_for_delivery: 'text-amber-700',
   shipped: 'text-violet-700',
   delivered: 'text-emerald-700',
+  ready_for_pickup: 'text-teal-700',
+  picked_up: 'text-emerald-700',
   cancelled: 'text-red-700',
 }
 
@@ -53,6 +59,8 @@ const BOARD_COLUMNS = [
   { status: 'ready_for_delivery', label: 'Ready for Delivery', color: 'border-amber-200 bg-amber-50' },
   { status: 'shipped', label: 'Shipped', color: 'border-violet-200 bg-violet-50' },
   { status: 'delivered', label: 'Delivered', color: 'border-emerald-200 bg-emerald-50' },
+  { status: 'ready_for_pickup', label: 'Ready for Pickup', color: 'border-teal-200 bg-teal-50' },
+  { status: 'picked_up', label: 'Picked Up', color: 'border-emerald-200 bg-emerald-50' },
 ]
 
 export default function AdminOrders() {
@@ -64,6 +72,7 @@ export default function AdminOrders() {
   const status = params.get('status') || ''
   const payment = params.get('payment') || ''
   const tracking = params.get('tracking') || ''
+  const fulfilment = params.get('delivery_method') || ''
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const debounced = useDebounce(search)
@@ -80,6 +89,7 @@ export default function AdminOrders() {
   if (status) query.status = status
   if (payment) query.payment_status = payment
   if (tracking) query.tracking = tracking
+  if (fulfilment) query.delivery_method = fulfilment
   if (debounced) query.search = debounced
 
   const { data, isFetching, isLoading, isError, error, refetch } = useQuery({
@@ -167,6 +177,11 @@ export default function AdminOrders() {
           <option value="true">Tracked only</option>
           <option value="false">Untracked only</option>
         </select>
+        <select className="input w-auto" value={fulfilment} onChange={(e) => setParam('delivery_method', e.target.value)} aria-label="Filter by fulfilment type">
+          <option value="">All fulfilment</option>
+          <option value="delivery">Delivery only</option>
+          <option value="pickup">Store pickup only</option>
+        </select>
         <div className="flex rounded-lg border border-line bg-white p-0.5">
           <button
             type="button"
@@ -217,6 +232,8 @@ export default function AdminOrders() {
                     <tr>
                       <th className="px-4 py-2.5 font-semibold">Order</th>
                       <th className="px-4 py-2.5 font-semibold">Customer</th>
+                      <th className="px-4 py-2.5 font-semibold">Fulfilment</th>
+                      <th className="px-4 py-2.5 font-semibold">Ship to</th>
                       <th className="px-4 py-2.5 font-semibold">Total</th>
                       <th className="px-4 py-2.5 font-semibold">Status</th>
                       <th className="px-4 py-2.5 font-semibold">Payment</th>
@@ -232,17 +249,31 @@ export default function AdminOrders() {
                           <p className="text-ink-900">{o.customer_name}</p>
                           <p className="text-xs text-metal-500">{o.email}</p>
                         </td>
+                        <td className="px-4 py-3"><FulfilmentPill method={o.delivery_method} /></td>
+                        <td className="px-4 py-3">
+                          {o.shipping_address?.address ? (
+                            <span
+                              className="block max-w-[220px] text-xs leading-relaxed text-metal-600"
+                              title={[o.shipping_address.address, o.shipping_address.city, o.shipping_address.state, o.shipping_address.country].filter(Boolean).join(', ')}
+                            >
+                              <span className="block truncate">{o.shipping_address.address}</span>
+                              <span className="block text-metal-400">{[o.shipping_address.city, o.shipping_address.state].filter(Boolean).join(', ')}</span>
+                            </span>
+                          ) : (
+                            <span className="text-xs text-metal-400">—</span>
+                          )}
+                        </td>
                         <td className="px-4 py-3 tabular-nums text-ink-900">{formatNaira(o.total)}</td>
                         <td className="px-4 py-3">
                           <span className={`inline-flex ${STATUS_TEXT[o.status] || 'text-ink-900'}`}>
                             <select
                               className="w-auto max-w-[170px] border-none bg-transparent py-0.5 pr-6 text-xs font-semibold text-inherit shadow-none focus:ring-0"
                               value={o.status}
-                              disabled={statusMut.isPending || o.status === 'cancelled' || o.status === 'delivered'}
+                              disabled={statusMut.isPending || isFinalStatus(o.status)}
                               onChange={(e) => handleStatus(o, e.target.value)}
                               aria-label={`Fulfilment status for ${o.order_number}`}
                             >
-                              {ALL_STATUSES.map((s) => (
+                              {statusesFor(o).map((s) => (
                                 <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>
                               ))}
                             </select>
@@ -262,11 +293,11 @@ export default function AdminOrders() {
                           <button
                             type="button"
                             onClick={() => setOpenId(o.id)}
-                            className="rounded p-1.5 text-brand-600 transition hover:bg-brand-50"
-                            title="Manage order"
-                            aria-label={`Manage order ${o.order_number}`}
+                            className="inline-flex items-center gap-1.5 rounded px-2 py-1.5 text-xs font-semibold text-brand-600 transition hover:bg-brand-50"
+                            title="View order"
+                            aria-label={`View order ${o.order_number}`}
                           >
-                            <Eye className="h-4 w-4" />
+                            <Eye className="h-4 w-4" /> View
                           </button>
                         </td>
                       </tr>
@@ -297,7 +328,7 @@ export default function AdminOrders() {
 
 function OrderBoard({ orders, onStatusChange, onOpenDetail, isPending }) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {BOARD_COLUMNS.map((col) => {
         const columnOrders = orders.filter((o) => o.status === col.status)
         return (
@@ -332,13 +363,17 @@ function OrderBoard({ orders, onStatusChange, onOpenDetail, isPending }) {
                     <p className="mt-1.5 text-sm font-bold text-ink-900">{formatNaira(o.total)}</p>
                     <div className="mt-2 flex items-center justify-between">
                       <PaymentPill status={o.payment_status} label={o.payment_status_display} />
-                      {o.is_tracked && (
+                      {o.is_tracked ? (
                         <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-700">
                           <Truck className="h-3 w-3" /> {o.tracking_number}
                         </span>
-                      )}
+                      ) : o.delivery_method === 'pickup' ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-teal-700">
+                          <Store className="h-3 w-3" /> Pickup
+                        </span>
+                      ) : null}
                     </div>
-                    {o.status !== 'cancelled' && o.status !== 'delivered' && (
+                    {!isFinalStatus(o.status) && (
                       <select
                         className="mt-2 w-full rounded border border-line bg-white px-2 py-1.5 text-xs font-medium text-ink-800 shadow-none focus:ring-0 disabled:opacity-50"
                         value=""
@@ -347,7 +382,7 @@ function OrderBoard({ orders, onStatusChange, onOpenDetail, isPending }) {
                         aria-label={`Move ${o.order_number} to another status`}
                       >
                         <option value="">Move to…</option>
-                        {ALL_STATUSES.filter((s) => s !== o.status).map((s) => (
+                        {statusesFor(o).filter((s) => s !== o.status).map((s) => (
                           <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>
                         ))}
                       </select>
@@ -432,7 +467,11 @@ function OrderDetail({ order, invalidate }) {
   })
 
   const canRefund = order.payment_status === 'paid'
-  const isFinalState = order.status === 'cancelled' || order.status === 'delivered'
+  const isFinalState = isFinalStatus(order.status)
+  const pickup = order.delivery_method === 'pickup'
+  const pipeline = pickup
+    ? ['processing', 'ready_for_pickup', 'picked_up']
+    : ['processing', 'ready_for_delivery', 'shipped', 'delivered']
 
   return (
     <div className="space-y-5 p-5">
@@ -453,7 +492,7 @@ function OrderDetail({ order, invalidate }) {
           <p className="text-sm text-ink-900">{order.delivery_method_display}</p>
           {order.shipping_address?.address ? (
             <p className="text-[13px] leading-relaxed text-metal-500">
-              {[order.shipping_address.address, order.shipping_address.city, order.shipping_address.state, order.shipping_address.country]
+              {[order.shipping_address.address, order.shipping_address.city, order.shipping_address.state, order.shipping_address.postal_code, order.shipping_address.country]
                 .filter(Boolean)
                 .join(', ')}
             </p>
@@ -468,10 +507,21 @@ function OrderDetail({ order, invalidate }) {
         <h3 className="mb-1.5 text-[13px] font-semibold uppercase tracking-wide text-ink-900">Items</h3>
         <div className="rounded-lg border border-line">
           {order.items?.map((item) => (
-            <div key={item.id} className="flex items-center justify-between gap-3 border-b border-line px-3 py-2 text-sm last:border-0">
-              <span className="min-w-0">
-                <span className="text-ink-900">{item.quantity} × {item.product_name}</span>
-                {item.variant_label && <span className="ml-1.5 text-xs text-metal-500">{item.variant_label}</span>}
+            <div key={item.id} className="flex items-center gap-3 border-b border-line px-3 py-2.5 text-sm last:border-0">
+              <span className="h-11 w-11 flex-none overflow-hidden rounded-lg border border-line bg-metal-50">
+                {item.image ? (
+                  <img src={item.image} alt={item.product_name} loading="lazy" className="h-full w-full object-cover" />
+                ) : (
+                  <span className="flex h-full w-full items-center justify-center text-metal-300">
+                    <Package className="h-4 w-4" />
+                  </span>
+                )}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-ink-900">
+                  {item.quantity} × {item.product_name}
+                </span>
+                {item.variant_label && <span className="text-xs text-metal-500">{item.variant_label}</span>}
               </span>
               <span className="flex-none tabular-nums text-ink-900">{formatNaira(item.total_price)}</span>
             </div>
@@ -486,40 +536,43 @@ function OrderDetail({ order, invalidate }) {
         </div>
       </div>
 
-      {/* Tracking */}
-      <div className="rounded-lg border border-line p-3">
-        <h3 className="mb-2 text-[13px] font-semibold uppercase tracking-wide text-ink-900">Courier tracking</h3>
-        <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
-          <input className="input" placeholder="Carrier (e.g. GIG, DHL)" value={carrier} onChange={(e) => setCarrier(e.target.value)} />
-          <input className="input" placeholder="Tracking number" value={number} onChange={(e) => setNumber(e.target.value)} />
-          <div className="flex gap-2">
-            <button
-              type="button"
-              className="btn-outline"
-              disabled={trackingMut.isPending}
-              onClick={() => trackingMut.mutate()}
-            >
-              Save
-            </button>
-            {order.status === 'ready_for_delivery' && (
-              <button type="button" className="btn-primary" disabled={shipMut.isPending} onClick={() => shipMut.mutate()}>
-                <Truck className="h-4 w-4" /> Mark shipped
+      {/* Courier tracking — delivery orders only. Pickup orders are advanced
+          with the pickup statuses instead. */}
+      {!pickup && (
+        <div className="rounded-lg border border-line p-3">
+          <h3 className="mb-2 text-[13px] font-semibold uppercase tracking-wide text-ink-900">Courier tracking</h3>
+          <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+            <input className="input" placeholder="Carrier (e.g. GIG, DHL)" value={carrier} onChange={(e) => setCarrier(e.target.value)} />
+            <input className="input" placeholder="Tracking number" value={number} onChange={(e) => setNumber(e.target.value)} />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="btn-outline"
+                disabled={trackingMut.isPending}
+                onClick={() => trackingMut.mutate()}
+              >
+                Save
               </button>
-            )}
+              {order.status === 'ready_for_delivery' && (
+                <button type="button" className="btn-primary" disabled={shipMut.isPending} onClick={() => shipMut.mutate()}>
+                  <Truck className="h-4 w-4" /> Mark shipped
+                </button>
+              )}
+            </div>
           </div>
+          <p className="mt-1.5 text-xs text-metal-500">
+            Both fields are required together. An order counts as tracked once a tracking number is saved.
+          </p>
         </div>
-        <p className="mt-1.5 text-xs text-metal-500">
-          Both fields are required together. An order counts as tracked once a tracking number is saved.
-        </p>
-      </div>
+      )}
 
-      {/* Status stepper */}
+      {/* Status stepper — follows the order's fulfilment pipeline */}
       <div className="rounded-lg border border-line p-3">
         <h3 className="mb-3 text-[13px] font-semibold uppercase tracking-wide text-ink-900">Fulfilment progress</h3>
         <div className="flex items-center justify-between">
-          {['processing', 'ready_for_delivery', 'shipped', 'delivered'].map((s, i, arr) => {
+          {pipeline.map((s, i, arr) => {
             const stepIndex = arr.indexOf(order.status)
-            const isCompleted = i < stepIndex || order.status === 'delivered'
+            const isCompleted = i < stepIndex || order.status === arr[arr.length - 1]
             const isCurrent = i === stepIndex
             return (
               <div key={s} className="flex flex-1 items-center last:flex-none">
@@ -558,7 +611,7 @@ function OrderDetail({ order, invalidate }) {
             disabled={isFinalState || statusMut.isPending}
             onChange={(e) => statusMut.mutate(e.target.value)}
           >
-            {ALL_STATUSES.map((s) => (
+            {statusesFor(order).map((s) => (
               <option key={s} value={s}>{STATUS_LABELS[s] || s}{s === order.status ? ' (current)' : ''}</option>
             ))}
           </select>
@@ -652,6 +705,20 @@ function OrderDetail({ order, invalidate }) {
         </Link>
       </p>
     </div>
+  )
+}
+
+function FulfilmentPill({ method }) {
+  const pickup = method === 'pickup'
+  return (
+    <span
+      className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+        pickup ? 'bg-teal-100 text-teal-700' : 'bg-metal-100 text-metal-600'
+      }`}
+    >
+      {pickup ? <Store className="h-3 w-3" /> : <Truck className="h-3 w-3" />}
+      {pickup ? 'Store pickup' : 'Delivery'}
+    </span>
   )
 }
 

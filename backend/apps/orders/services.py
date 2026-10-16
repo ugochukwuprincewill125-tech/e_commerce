@@ -181,15 +181,16 @@ def mark_order_paid(order, reference, note="Payment confirmed via Paystack."):
 
 
 def tracking_steps(order):
-    from .models import STATUS_FLOW
+    from .models import status_flow
 
+    flow = status_flow(order.delivery_method)
     reached = {h.status: h.created_at for h in order.history.all()}
     if order.status == OrderStatus.CANCELLED:
         current_index = -1
     else:
-        current_index = STATUS_FLOW.index(order.status) if order.status in STATUS_FLOW else 0
+        current_index = flow.index(order.status) if order.status in flow else 0
     steps = []
-    for index, status in enumerate(STATUS_FLOW):
+    for index, status in enumerate(flow):
         steps.append(
             {
                 "key": status.value,
