@@ -11,8 +11,14 @@ if not SECRET_KEY or SECRET_KEY.startswith("dev-only"):  # noqa: F405
 
 # Never allow simulated payments in production.
 PAYMENT_TEST_MODE = False
-if not PAYSTACK_SECRET_KEY:  # noqa: F405
-    raise ImproperlyConfigured("PAYSTACK_SECRET_KEY must be set in production.")
+# Early deploys may go ahead without Paystack by setting
+# ALLOW_MISSING_PAYSTACK=True; checkout then reports "payment not configured"
+# and orders stay unpaid. Once PAYSTACK_SECRET_KEY is set the flag is ignored.
+if not PAYSTACK_SECRET_KEY and not env_bool("ALLOW_MISSING_PAYSTACK", False):  # noqa: F405
+    raise ImproperlyConfigured(
+        "PAYSTACK_SECRET_KEY must be set in production "
+        "(or ALLOW_MISSING_PAYSTACK=True to deploy without online payments)."
+    )
 
 # Product photos live in Cloudinary in production — the local filesystem
 # disappears between deploys and is not shared across replicas.

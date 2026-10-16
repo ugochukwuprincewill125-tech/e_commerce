@@ -11,7 +11,8 @@ maintain.
 
 - This repo pushed to GitHub
 - A Postgres database (Supabase is already in use — keep using it)
-- A Paystack account (secret + public keys)
+- A Paystack account (secret + public keys) — optional at first:
+  `ALLOW_MISSING_PAYSTACK=True` deploys with checkout disabled (see §3)
 - The Cloudinary credentials already used for product images
 
 ## 2. Vercel project setup (one project)
@@ -50,6 +51,7 @@ maintain.
 | `CSRF_TRUSTED_ORIGINS` | `https://your-domain.vercel.app` | Required for Django-admin logins; add `https://*.vercel.app` to sign in from Preview URLs |
 | `DJANGO_ADMIN_URL` | `django-control/` | Must match the `/django-control/*` rewrite in `vercel.json` — change both together |
 | `PAYSTACK_SECRET_KEY` | `sk_live_…` or `sk_test_…` | **Required** — prod refuses to boot without it |
+| `ALLOW_MISSING_PAYSTACK` | `True` | Optional escape hatch for early deploys: skips the check above; checkout reports "payment not configured" and orders stay unpaid. Delete once real keys are set |
 | `PAYSTACK_PUBLIC_KEY` | `pk_live_…` or `pk_test_…` | Served to the checkout page |
 | `EMAIL_BACKEND` | `django.core.mail.backends.smtp.EmailBackend` | Real email in prod |
 | `EMAIL_HOST` | e.g. `smtp.zoho.com` / `smtp.gmail.com` | — |
