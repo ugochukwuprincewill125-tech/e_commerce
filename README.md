@@ -351,30 +351,31 @@ The React app stores the refresh token in `localStorage` for simplicity. For str
 
 ## 13. Production deployment
 
-### Backend (e.g. a VPS, Render, Railway)
+Canonical walkthrough: **[DEPLOY.md](DEPLOY.md)** — storefront on Vercel, API on Render.
+
+### Backend (Render — or any Python host)
 
 ```bash
 export DJANGO_SETTINGS_MODULE=config.settings.prod
 pip install -r requirements.txt
 python manage.py migrate
 python manage.py collectstatic --noinput
-gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3
+gunicorn config.wsgi:application --bind 0.0.0.0:$PORT
 ```
 
-- Set `DEBUG=False`, a strong `SECRET_KEY`, `ALLOWED_HOSTS`, `DATABASE_URL`, `FRONTEND_URL`, `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS`, Paystack keys and SMTP settings.
-- Static files (admin) are served by WhiteNoise.
-- **Media files** (uploads) must be served by your web server (e.g. Nginx `location /media/ { alias /path/to/backend/media/; }`) or moved to object storage (e.g. S3 via `django-storages`).
-- Put Nginx or a load balancer with HTTPS in front of Gunicorn.
+- `render.yaml` at the repo root defines the Render web service: build command, start command and the health check at `/api/health/`.
+- Set a strong `SECRET_KEY`, `DATABASE_URL`, `ALLOWED_HOSTS`, `FRONTEND_URL`, `CORS_ALLOWED_ORIGINS`, Paystack keys and SMTP settings. The Render hostname is trusted automatically; `python manage.py check` validates the rest.
+- Static files (admin, DRF) are served by WhiteNoise; media uploads go to Cloudinary when `CLOUDINARY_*` is set (recommended), otherwise to local `media/`.
 - Schedule `python manage.py release_unpaid_orders` (e.g. hourly).
 
-### Frontend (e.g. Vercel, Netlify, Nginx)
+### Frontend (Vercel — or any static host)
 
 ```bash
 cd frontend
-VITE_API_URL=https://api.yourdomain.com/api VITE_SITE_URL=https://yourdomain.com npm run build
+VITE_API_URL=https://<backend-host>/api npm run build
 ```
 
-Deploy `dist/` as a single-page app: all routes must fall back to `index.html` (Netlify `_redirects`: `/* /index.html 200`; Vercel rewrites; Nginx `try_files $uri /index.html;`).
+Deploy `dist/` as a single-page app — `frontend/vercel.json` provides the fallback rewrite and security headers on Vercel (Netlify `_redirects`: `/* /index.html 200`; Nginx `try_files $uri /index.html;`). The API is cross-origin in production, so `VITE_API_URL` is required at build time and the backend must list the frontend URL in `CORS_ALLOWED_ORIGINS`.
 
 ### Google Maps
 

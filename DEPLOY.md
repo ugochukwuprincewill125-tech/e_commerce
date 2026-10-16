@@ -1,123 +1,161 @@
-# Deploying Timeline Global Systems to Vercel
+# Deploying Timeline Global Systems
 
-One Vercel project serves everything, using
-[Vercel Services](https://vercel.com/docs/services): the React storefront
-(Vite service rooted at `frontend/`) and the Django API (Django service rooted
-at `backend/`) deploy together on one domain. All configuration is committed
-in `vercel.json` at the repo root — there are no dashboard build settings to
-maintain.
+Two hosts, one repository:
+
+| Piece | Host | What runs there |
+|---|---|---|
+| Storefront (React + Vite SPA) | **Vercel** | static build of `frontend/`, served from Vercel's CDN |
+| API (Django + DRF) | **Render** | Python web service rooted at `backend/` (gunicorn + WhiteNoise) |
+| Database | Supabase | unchanged — `DATABASE_URL` |
+| Product images | Cloudinary | unchanged — `CLOUDINARY_*` |
+
+Deploy config lives in the repo: [`render.yaml`](render.yaml) and
+[`frontend/vercel.json`](frontend/vercel.json). Everything else is environment
+variables. Merging to `main` redeploys both hosts automatically.
+
+> Earlier versions of this repo tried to run Django and the SPA together on
+> Vercel (Services). That approach is retired — the backend runs on Render now.
+> If a combined Vercel project still exists in your dashboard, delete it so it
+> doesn't confuse future deploys.
 
 ## 1. Prerequisites
 
 - This repo pushed to GitHub
-- A Postgres database (Supabase is already in use — keep using it)
-- A Paystack account (secret + public keys) — optional at first:
-  `ALLOW_MISSING_PAYSTACK=True` deploys with checkout disabled (see §3)
-- The Cloudinary credentials already used for product images
+- Supabase database + Cloudinary account (both already in use)
+- A Paystack account — optional at first. Without keys the deploy still works
+  with checkout disabled (see §6).
 
-## 2. Vercel project setup (one project)
+## 2. Backend → Render
 
-1. Push this repo to GitHub.
-2. Vercel → **Add New… → Project** → import the repo.
-3. Vercel detects multiple applications — choose to **group them into a
-   single project using Services**. Do **not** import `frontend/` or
-   `backend/` as standalone projects. Keep the Root Directory as the
-   repository root.
-4. Set the **Framework Preset to `Services`** — this is required: a project
-   only builds as services when the project's framework is `Services` *and*
-   `vercel.json` contains the `services` key. If the import wizard doesn't
-   offer `Services`, pick `Other` and change it right after import in
-   **Project → Settings → Build and Deployment → Framework Preset**, before
-   the first deploy. Leaving it on `Vite`/`Django`/`Other` makes Vercel
-   ignore the services config. Build/output/install command fields can stay
-   empty — each service builds itself.
-5. Add the environment variables below (**Production** + **Preview**) BEFORE
-   the first deploy. The Django service loads `config.settings.prod` during
-   the build and refuses to start when a required value is missing — a missing
-   variable fails the build instead of shipping a broken site.
-6. Deploy.
+**Recommended — create from the committed blueprint:**
 
-## 3. Environment variables (Vercel → Settings → Environment Variables)
+1. [dashboard.render.com](https://dashboard.render.com) → **New → Blueprint**
+   → connect this GitHub repo → review → **Apply**.
+2. Render reads `render.yaml` and prompts for the secret values it must not
+   store in git: `DATABASE_URL` (Supabase session-pooler URI) and the three
+   `CLOUDINARY_*` values. All of them are already in `backend/.env`, and are
+   listed for copy-paste in `backend/.env.render` (git-ignored).
+3. The build runs `pip install` → `collectstatic` → the production settings
+   boot checks. A missing or blank required value **fails the build loudly** —
+   that is by design, so a misconfigured site never goes live silently.
+4. You get `https://<service-name>.onrender.com` — copy it. Sanity check:
+   `https://<service-name>.onrender.com/api/health/` returns `{"status": "ok"}`.
+   (If the subdomain is taken, edit `name:` in `render.yaml`, push, re-apply.)
+
+**Manual alternative:** **New → Web Service** → this repo, then:
+
+| Setting | Value |
+|---|---|
+| Root Directory | `backend` |
+| Runtime | Python |
+| Instance type | Free (or Starter for no cold starts) |
+| Build Command | `pip install -r requirements.txt && python manage.py collectstatic --noinput` |
+| Start Command | `gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120` |
+| Health Check Path | `/api/health/` |
+| Environment | every variable in `backend/.env.render` |
+
+Notes:
+
+- **Free tier sleeps** after ~15 minutes idle — the next request takes about a
+  minute to wake it. Starter ($7/mo) keeps it always-on.
+- Every push to `main` redeploys automatically (`autoDeploy`).
+- Migrations are **not** run at deploy time — run them from your machine (§5).
+- Uploads no longer hit Vercel's ~4.5MB request cap: Cloudinary stores the
+  files, so normal product photos have no practical limit.
+- With no SMTP settings, email goes to the console — verification mails appear
+  in the Render **Logs** tab. Add `EMAIL_*` when you want real email.
+
+## 3. Frontend → Vercel
+
+1. Vercel → **Add New → Project** → import this repo.
+2. Set **Root Directory = `frontend`**. If the import asks how to handle
+   multiple applications, choose the root-directory option — **not** Services.
+   Vercel auto-detects Vite; leave all build settings at their defaults.
+3. Add environment variables (Production **and** Preview) **before** the first
+   deploy — `VITE_API_URL` is baked into the bundle at build time:
+
+   | Key | Value |
+   |---|---|
+   | `VITE_API_URL` | `https://<service-name>.onrender.com/api` (no trailing slash) |
+   | `VITE_SITE_URL` | optional — the site's public URL, for canonical/OG tags |
+
+4. Deploy. `frontend/vercel.json` supplies the SPA fallback (deep links like
+   `/account/orders` survive a refresh) and the security headers.
+
+## 4. Connect them
+
+On Render → your service → **Environment**:
+
+- `FRONTEND_URL` → `https://<your-app>.vercel.app` (used in emails and the
+  Paystack callback; no trailing slash)
+- `CORS_ALLOWED_ORIGINS` → the same URL. The storefront and API live on
+  different domains now — without this, every API call fails with a CORS error.
+
+Save; Render redeploys automatically. Then open the storefront and confirm:
+products load (Cloudinary images), sign-in works, checkout places an order.
+
+## 5. Migrations & admin (run from your machine)
+
+Render builds never migrate (a failed deploy must not touch the database).
+`backend/.env` already points at the same Supabase database, so:
+
+```powershell
+cd backend
+.\venv\Scripts\python.exe manage.py migrate
+.\venv\Scripts\python.exe manage.py createsuperuser
+```
+
+Admin panel: `https://<service-name>.onrender.com/django-control/` — keep the
+trailing slash; `/admin/` 404s by design.
+
+## 6. Payments (Paystack) — when you're ready
+
+The store is fully usable without payments: checkout shows *"Online payment is
+not configured yet. Please contact the store to complete your order."* and the
+order is saved as unpaid.
+
+1. Create a free account at [paystack.com](https://paystack.com) — test-mode
+   API keys are available immediately (no business verification needed).
+2. Render → Environment: set `PAYSTACK_SECRET_KEY` (`sk_test_…`) and
+   `PAYSTACK_PUBLIC_KEY` (`pk_test_…`); delete `ALLOW_MISSING_PAYSTACK`; save.
+3. Test a checkout with Paystack's test card: `4084 0840 8408 4081`, any
+   future expiry, CVV `408`, PIN `0000`, OTP `123456`.
+4. Paystack dashboard → Webhooks → `https://<service-name>.onrender.com/api/payments/webhook/`.
+5. Before selling for real: activate the business on Paystack, swap in
+   `sk_live_…` / `pk_live_…`, redeploy.
+
+## 7. Render environment reference
 
 | Key | Value | Notes |
 |---|---|---|
-| `DJANGO_SETTINGS_MODULE` | `config.settings.prod` | Required — Vercel discovers the Django entrypoint by running `manage.py`, which otherwise defaults to the dev settings |
-| `SECRET_KEY` | a long random string | Generate: `python -c "import secrets; print(secrets.token_urlsafe(64))"` |
-| `DATABASE_URL` | your Supabase **pooler** URI | The same URI configured in `backend/.env` |
-| `DB_CONN_MAX_AGE` | `0` | Serverless: open/close per request so the Supabase pooler is never exhausted (`base.py` falls back to 60 when unset) |
-| `ALLOWED_HOSTS` | `.vercel.app,yourdomain.com` | Comma-separated; the leading dot covers all subdomains (including Preview URLs) |
-| `FRONTEND_URL` | `https://your-domain.vercel.app` | No trailing slash; used in emails/links |
-| `CORS_ALLOWED_ORIGINS` | `https://your-domain.vercel.app` | Production is same-origin, so CORS never actually runs — harmless to keep |
-| `CSRF_TRUSTED_ORIGINS` | `https://your-domain.vercel.app` | Required for Django-admin logins; add `https://*.vercel.app` to sign in from Preview URLs |
-| `DJANGO_ADMIN_URL` | `django-control/` | Must match the `/django-control/*` rewrite in `vercel.json` — change both together |
-| `PAYSTACK_SECRET_KEY` | `sk_live_…` or `sk_test_…` | **Required** — prod refuses to boot without it |
-| `ALLOW_MISSING_PAYSTACK` | `True` | Optional escape hatch for early deploys: skips the check above; checkout reports "payment not configured" and orders stay unpaid. Delete once real keys are set |
-| `PAYSTACK_PUBLIC_KEY` | `pk_live_…` or `pk_test_…` | Served to the checkout page |
-| `EMAIL_BACKEND` | `django.core.mail.backends.smtp.EmailBackend` | Real email in prod |
-| `EMAIL_HOST` | e.g. `smtp.zoho.com` / `smtp.gmail.com` | — |
-| `EMAIL_HOST_USER` | your SMTP username | — |
-| `EMAIL_HOST_PASSWORD` | your SMTP password/app-password | — |
-| `EMAIL_USE_TLS` | `True` | — |
-| `DEFAULT_FROM_EMAIL` | `Timeline Global Systems <timelinegadget@gmail.com>` | — |
-| `CLOUDINARY_CLOUD_NAME` | `dfn83v6jq` | Product image storage |
-| `CLOUDINARY_API_KEY` | your Cloudinary key | — |
-| `CLOUDINARY_API_SECRET` | your Cloudinary secret | — |
-| `SECURE_SSL_REDIRECT` | `True` | — |
-| `THROTTLE_ANON` | `120/min` | Optional — tighten if you like |
+| `DJANGO_SETTINGS_MODULE` | `config.settings.prod` | Required — otherwise Django loads dev settings |
+| `PYTHON_VERSION` | `3.12.8` | Adjust if Render no longer offers it |
+| `SECRET_KEY` | long random string | The blueprint generates one automatically |
+| `DATABASE_URL` | Supabase session-pooler URI | Same as `backend/.env` |
+| `ALLOWED_HOSTS` | `.onrender.com` | The exact Render hostname is trusted automatically too |
+| `FRONTEND_URL` | `https://<app>.vercel.app` | No trailing slash |
+| `CORS_ALLOWED_ORIGINS` | same as `FRONTEND_URL` | **Required** — the storefront is cross-origin now |
+| `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` | Cloudinary console → API Keys | Required in production |
+| `PAYSTACK_SECRET_KEY` / `PAYSTACK_PUBLIC_KEY` | `sk_test_…` / `pk_test_…` | Add when ready (§6) |
+| `ALLOW_MISSING_PAYSTACK` | `True` | Keeps deploys working until Paystack keys exist; delete afterwards |
+| `EMAIL_BACKEND`, `EMAIL_HOST`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS` | your SMTP provider | Until set, emails print to the Render logs |
 
-Optional tuning variables (all have sane defaults; skip unless needed):
-`THROTTLE_USER`, `THROTTLE_AUTH`, `THROTTLE_CONTACT`, `THROTTLE_PAYMENTS`,
-`JWT_ACCESS_MINUTES`, `JWT_REFRESH_DAYS`, `LOG_LEVEL`, `SECURE_HSTS_SECONDS`,
-`PAYSTACK_BASE_URL`, `EMAIL_PORT`.
+**Not needed on Render:** `DEBUG` (prod hard-codes it off), `PAYMENT_TEST_MODE`
+(forced off in prod), `DB_CONN_MAX_AGE` (defaults to 60 — correct for an
+always-on host), `CSRF_TRUSTED_ORIGINS` (the Render origin is trusted
+automatically).
 
-Variables you do **NOT** need on Vercel: `DEBUG` (prod hard-codes it off),
-`PAYMENT_TEST_MODE` (forced off in prod), `VITE_API_URL` (the storefront
-defaults to same-origin `/api`) and `VITE_SITE_URL` (add it as
-`https://your-domain` only if you want canonical links to show the final
-domain).
+Optional tuning (all have sane defaults): `THROTTLE_ANON`, `THROTTLE_USER`,
+`THROTTLE_AUTH`, `THROTTLE_CONTACT`, `THROTTLE_PAYMENTS`, `JWT_ACCESS_MINUTES`,
+`JWT_REFRESH_DAYS`, `LOG_LEVEL`, `SECURE_HSTS_SECONDS`, `PAYSTACK_BASE_URL`.
 
-## 4. First deployment — run migrations
+## 8. Post-deploy checklist
 
-Vercel's build does not migrate (intentionally — a failed deploy should never
-migrate half-way). After the first successful deploy, run them from your
-machine against the same database you configured in Vercel:
-
-```
-cd backend
-# Windows PowerShell
-$env:DATABASE_URL="postgresql://…pooler URI…"; .\venv\Scripts\python.exe manage.py migrate
-# macOS / Linux
-DATABASE_URL="postgresql://…pooler URI…" ./venv/bin/python manage.py migrate
-```
-
-(If `backend/.env` already points at that database — as it does today — plain
-`.\venv\Scripts\python.exe manage.py migrate` inside `backend/` is enough.)
-
-## 5. Post-deploy checklist
-
-- [ ] `https://your-domain/api/health/` returns `200`
-- [ ] Storefront loads; shop, product pages, cart, checkout all work
-- [ ] Deep links work — open `https://your-domain/shop` directly in a tab
-- [ ] Sign up a test customer; verification email arrives and the link opens the site
-- [ ] Paystack **test** payment on a real checkout, then switch to live keys
-- [ ] Paystack dashboard → add webhook `https://your-domain/api/payments/webhook/`
-- [ ] Django admin at `https://your-domain/django-control/` — sign in, upload a product image (goes to Cloudinary)
-- [ ] React admin at `https://your-domain/admin` — owner account only
-- [ ] Lock down Supabase: use the **pooler** URI, restrict access in Supabase settings if possible
-
-## 6. How it works (for future reference)
-
-- `vercel.json` declares two services and the public routing table:
-  `/api/*`, `/static/*` and `/django-control/*` → the Django service;
-  everything else → the storefront, which falls back to `index.html` for
-  client-side routes (SPA deep links).
-- The Django service is built by Vercel's Django preset: dependencies come
-  from `backend/requirements.txt`, `collectstatic` runs automatically — admin
-  CSS/JS is served from Vercel's CDN at `/static/` (nothing to commit;
-  `backend/staticfiles/` is gitignored) — and the WSGI entrypoint
-  (`config.wsgi:application`) is declared in `vercel.json` because Services
-  requires an explicit `entrypoint` for Python services.
-- Product images upload through Django to Cloudinary — no local filesystem
-  use.
-- The API is same-origin in production, so CORS never comes into play for the
-  deployed site.
+- [ ] `https://<service>.onrender.com/api/health/` → `{"status": "ok"}`
+- [ ] Storefront loads; product images come from Cloudinary
+- [ ] Register / sign in (check Render logs for the verification email)
+- [ ] Cart → checkout → order placed; visible in the admin
+- [ ] Admin: edit a product and upload an image
+- [ ] Paystack set up (§6) before taking real orders
+- [ ] (Optional) Custom domain: add it on Vercel + Render, then update
+      `FRONTEND_URL`, `CORS_ALLOWED_ORIGINS` and `ALLOWED_HOSTS`

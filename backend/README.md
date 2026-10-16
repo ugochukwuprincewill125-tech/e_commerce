@@ -109,7 +109,7 @@ All endpoints require `Authorization: Bearer <access>` from an account with
 
 ### Image uploads — Cloudinary-backed
 
-Product photos use a sign → PUT → attach flow sized around serverless limits:
+Product photos use a sign → PUT → attach flow:
 
 1. `POST /api/admin-api/uploads/sign/` — tiny JSON request:
    `{"items": [{"filename": "macbook.jpg", "content_type": "image/jpeg", "product_id": 7}]}`
@@ -124,8 +124,9 @@ Product photos use a sign → PUT → attach flow sized around serverless limits
 
 Constraints enforced server-side: JPEG/PNG/WebP/AVIF only, 10MB per file,
 keys scoped to `media/products/<id>/…`, signatures expire in 15 minutes.
-Because the PUT passes through the API server, serverless hosts cap the
-request body (Vercel: ~4.5MB) — keep admin uploads under ~4MB there.
+Because the PUT passes through the API server the body counts against the
+host's limits; on Render that is generous, so the 10MB-per-file limit above
+is what applies.
 The old multipart path (`images[]` files on POST/PATCH, 5MB each) still works
 for quick single-file edits.
 

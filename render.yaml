@@ -1,0 +1,38 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# Creates the Django API web service for this repo. In the Render dashboard:
+# New → Blueprint → pick this repository. Render prompts for the values marked
+# `sync: false` (DATABASE_URL + Cloudinary keys) during creation.
+# Full walkthrough: DEPLOY.md.
+services:
+  - type: web
+    name: timeline-backend
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
+    startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120
+    healthCheckPath: /api/health/
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.8"
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings.prod
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: ALLOWED_HOSTS
+        value: ".onrender.com"
+      - key: FRONTEND_URL
+        value: https://YOUR-PROJECT.vercel.app
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://YOUR-PROJECT.vercel.app
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: ALLOW_MISSING_PAYSTACK
+        value: "True"

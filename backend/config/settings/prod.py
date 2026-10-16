@@ -1,10 +1,20 @@
 """Production settings. Use with DJANGO_SETTINGS_MODULE=config.settings.prod."""
+import os
+
 from django.core.exceptions import ImproperlyConfigured
 
 from .base import *  # noqa: F401,F403
 from .base import env_bool
 
 DEBUG = False
+
+# Render (the backend host) injects the service's public hostname at runtime.
+# Trust it — and its https origin for admin logins — so the service keeps
+# working even if it is renamed, without editing env vars.
+RENDER_HOST = os.getenv("RENDER_EXTERNAL_HOSTNAME", "")
+if RENDER_HOST:
+    ALLOWED_HOSTS.append(RENDER_HOST)  # noqa: F405
+    CSRF_TRUSTED_ORIGINS.append(f"https://{RENDER_HOST}")  # noqa: F405
 
 if not SECRET_KEY or SECRET_KEY.startswith("dev-only"):  # noqa: F405
     raise ImproperlyConfigured("SECRET_KEY must be set to a strong random value in production.")
@@ -39,7 +49,7 @@ SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", True)
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_HTTPONLY = True
-SECURE_HSTS_SECONDS = int(__import__("os").getenv("SECURE_HSTS_SECONDS", "31536000"))
+SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "31536000"))
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 SECURE_CONTENT_TYPE_NOSNIFF = True

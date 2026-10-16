@@ -1,8 +1,17 @@
 import axios from 'axios'
 
-// Defaults to the same origin (production deploys serve the API from the
-// same Vercel domain); local development sets VITE_API_URL in frontend/.env.
+// Local development sets VITE_API_URL in frontend/.env. Production builds
+// (Vercel) MUST set it too — it points at the Render backend, e.g.
+// https://timeline-backend.onrender.com/api. The '/api' fallback only makes
+// sense when the API shares this origin.
 export const API_URL = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '')
+
+if (import.meta.env.PROD && !import.meta.env.VITE_API_URL) {
+  console.error(
+    '[config] VITE_API_URL is not set: API requests will hit the storefront host instead of the backend. ' +
+      'Set VITE_API_URL (e.g. https://<service>.onrender.com/api) in the Vercel project env and redeploy.',
+  )
+}
 
 const ACCESS_KEY = 'tgs_access'
 const REFRESH_KEY = 'tgs_refresh'
