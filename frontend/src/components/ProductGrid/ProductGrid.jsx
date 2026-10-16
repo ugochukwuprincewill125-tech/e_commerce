@@ -7,7 +7,7 @@ import QuickViewModal from '../QuickView/QuickViewModal'
 import { cn } from '../../utils/format'
 
 /** Responsive grid: 2 columns on mobile, 3 on tablet, 4 on desktop. */
-export default function ProductGrid({ products, className, columns = 'grid-cols-2 md:grid-cols-3 xl:grid-cols-4' }) {
+export default function ProductGrid({ products, className, columns = 'grid-cols-2 md:grid-cols-3 xl:grid-cols-4', requireAuth = false }) {
   const [quickView, setQuickView] = useState(null)
   return (
     <>
@@ -19,11 +19,11 @@ export default function ProductGrid({ products, className, columns = 'grid-cols-
       >
         {products.map((product, i) => (
           <motion.div key={product.id} variants={fadeUp}>
-            <ProductCard product={product} onQuickView={setQuickView} priority={i < 4} />
+            <ProductCard product={product} onQuickView={setQuickView} priority={i < 4} requireAuth={requireAuth} />
           </motion.div>
         ))}
       </motion.div>
-      <QuickViewModal slug={quickView?.slug} preview={quickView} onClose={() => setQuickView(null)} />
+      <QuickViewModal slug={quickView?.slug} preview={quickView} onClose={() => setQuickView(null)} requireAuth={requireAuth} />
     </>
   )
 }

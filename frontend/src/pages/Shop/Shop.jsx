@@ -239,7 +239,7 @@ export default function Shop() {
                   secondary={{ label: 'Browse categories', to: '/categories' }}
                 />
               ) : (
-                <ProductGrid key={JSON.stringify(query)} products={data.results} columns="grid-cols-2 md:grid-cols-3 xl:grid-cols-4" />
+                <ProductGrid key={JSON.stringify(query)} products={data.results} columns="grid-cols-2 md:grid-cols-3 xl:grid-cols-4" requireAuth />
               )}
             </div>
 

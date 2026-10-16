@@ -17,11 +17,13 @@ import SectionHeading from '../../components/Section/SectionHeading'
 import Seo from '../../components/Seo/Seo'
 import VariantPicker from '../../components/Variants/VariantPicker'
 import WishlistButton from '../../components/WishlistButton/WishlistButton'
+import { useAuth } from '../../context/AuthContext'
 import { useCart } from '../../context/CartContext'
 import useRecentlyViewed from '../../hooks/useRecentlyViewed'
 import useStoreInfo from '../../hooks/useStoreInfo'
 import { productService } from '../../services/productService'
 import { cn, formatNaira } from '../../utils/format'
+import { CART_RESUME_TARGET, savePendingCartItem, withNext } from '../../utils/navigation'
 import Gallery from './Gallery'
 import Reviews from './Reviews'
 
@@ -91,7 +93,7 @@ function RecentlyViewed({ slugs, current }) {
   return (
     <section className="container mt-20">
       <SectionHeading eyebrow="Your history" title="Recently viewed" />
-      <ProductGrid products={ordered} />
+      <ProductGrid products={ordered} requireAuth />
     </section>
   )
 }
@@ -99,6 +101,7 @@ function RecentlyViewed({ slugs, current }) {
 export default function ProductDetails() {
   const { slug } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const { addItem, pending } = useCart()
   const { slugs: recent, track } = useRecentlyViewed()
   const [recentSnapshot] = useState(recent)
@@ -162,8 +165,22 @@ export default function ProductDetails() {
   const compareAt = product.discount_price ? Number(product.price) + (variant ? Number(variant.price_adjustment) : 0) : null
   const crumbs = [{ label: 'Shop', to: '/shop' }, ...(product.breadcrumbs || []).map((c) => ({ label: c.name, to: `/category/${c.slug}` })), { label: product.name }]
 
-  const add = () => addItem(product, qty, variant).catch(() => {})
+  // Guest purchase gate: no cart writes without a session. The item is held
+  // and the user is routed through sign-in; Home completes the add when the
+  // authenticated session returns (same flow as the landing-page cards).
+  const requireSignIn = () => {
+    if (user) return false
+    savePendingCartItem(product, variant)
+    navigate(withNext(CART_RESUME_TARGET))
+    return true
+  }
+
+  const add = () => {
+    if (requireSignIn()) return
+    addItem(product, qty, variant).catch(() => {})
+  }
   const buyNow = async () => {
+    if (requireSignIn()) return
     setBuying(true)
     try {
       await addItem(product, qty, variant, { silent: true })
@@ -313,6 +330,7 @@ export default function ProductDetails() {
           viewAllLabel="View category"
           products={related.data.slice(0, 10)}
           columns={5}
+          requireAuth
         />
       ) : null}
 
