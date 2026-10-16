@@ -9,7 +9,7 @@ from rest_framework import permissions, serializers, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.orders.models import Order, PaymentStatus
+from apps.orders.models import Order, OrderStatus, PaymentStatus
 from apps.orders.services import mark_order_paid
 
 from . import paystack
@@ -175,11 +175,69 @@ class VerifyPaymentView(APIView):
                 "payment_status": order.payment_status,
                 "amount": str(payment.amount),
                 "test_mode": payment.provider == Payment.Provider.TEST,
-                "detail": "Payment confirmed. Thank you for shopping with Timeline Gadgets!" if success
+            "detail": "Payment confirmed. Thank you for shopping with Timeline Gadgets!" if success
                 else "We couldn't confirm this payment. If you were debited, please contact us with your order number.",
             },
             status=status.HTTP_200_OK,
         )
+
+
+class RefundSerializer(serializers.Serializer):
+    amount = serializers.DecimalField(max_digits=14, decimal_places=2, required=False)
+    note = serializers.CharField(max_length=500, required=False, allow_blank=True)
+
+
+class RefundPaymentView(APIView):
+    """
+    POST /api/payments/refund/<order_number>/
+    Staff-only: initiate a (partial or full) refund through Paystack and
+    synchronise the order/payment records.
+    """
+
+    permission_classes = [permissions.IsAdminUser]
+
+    @transaction.atomic
+    def post(self, request, order_number):
+        serializer = RefundSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        order = Order.objects.select_for_update().filter(order_number=order_number).first()
+        if not order:
+            return Response({"detail": "Order not found."}, status=status.HTTP_404_NOT_FOUND)
+        if order.payment_status != PaymentStatus.PAID:
+            return Response({"detail": "Only paid orders can be refunded."}, status=status.HTTP_400_BAD_REQUEST)
+
+        payment = Payment.objects.select_for_update().filter(
+            order=order, status=Payment.Status.SUCCESS, provider=Payment.Provider.PAYSTACK
+        ).first()
+        if not payment:
+            return Response({"detail": "No Paystack payment record found for this order."}, status=status.HTTP_404_NOT_FOUND)
+
+        amount = serializer.validated_data.get("amount")
+        refund_naira = amount if amount is not None else payment.amount
+
+        if refund_naira > payment.amount:
+            return Response({"detail": f"Refund amount ({refund_naira}) cannot exceed the paid amount ({payment.amount})."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            paystack.refund_transaction(payment.reference, refund_naira)
+        except paystack.PaystackError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+
+        payment.status = Payment.Status.FAILED if refund_naira == payment.amount else payment.status
+        payment.refund_note = serializer.validated_data.get("note", "")[:500]
+        payment.save(update_fields=["status", "refund_note", "verified_at"])
+        payment.refresh_from_db()
+
+        order.payment_status = PaymentStatus.REFUNDED
+        order.refund_amount = refund_naira
+        order.refund_reference = payment.reference
+        order.refunded_at = timezone.now()
+        order.save(update_fields=["payment_status", "refund_amount", "refund_reference", "refunded_at", "updated_at"])
+        order.add_history(order.status, f"Refunded ₦{refund_naira} via Paystack. {serializer.validated_data.get('note', '')}".strip())
+        return Response({"detail": "Refund initiated successfully.", "order_number": order.order_number, "refunded": str(refund_naira)},
+                        status=status.HTTP_200_OK)
 
 
 class PaystackWebhookView(APIView):
@@ -201,14 +259,42 @@ class PaystackWebhookView(APIView):
         except ValueError:
             return Response(status=status.HTTP_400_BAD_REQUEST)
 
-        if event.get("event") == "charge.success":
-            data = event.get("data", {})
+        event_type = event.get("event", "")
+        data = event.get("data", {})
+        reference = data.get("reference")
+        logger.info("Paystack webhook received: %s ref=%s", event_type, reference)
+
+        if event_type == "charge.success":
             with transaction.atomic():
-                payment = Payment.objects.select_for_update().select_related("order").filter(reference=data.get("reference")).first()
+                payment = Payment.objects.select_for_update().select_related("order").filter(reference=reference).first()
                 if payment and payment.status != Payment.Status.SUCCESS:
                     process_paystack_result(payment, data)
                 elif not payment:
-                    logger.warning("Webhook for unknown reference %s", data.get("reference"))
+                    logger.warning("Webhook for unknown reference %s", reference)
+
+        elif event_type == "charge.failed":
+            with transaction.atomic():
+                payment = Payment.objects.select_for_update().select_related("order").filter(reference=reference).first()
+                if payment and payment.status == Payment.Status.INITIALIZED:
+                    payment.status = Payment.Status.FAILED
+                    payment.gateway_response = str(data.get("gateway_response", "failed"))[:255]
+                    payment.raw_response = data
+                    payment.save(update_fields=["status", "gateway_response", "raw_response"])
+                    if payment.order.payment_status == PaymentStatus.PENDING:
+                        payment.order.payment_status = PaymentStatus.FAILED
+                        payment.order.save(update_fields=["payment_status", "updated_at"])
+
+        elif event_type == "refund.processed":
+            with transaction.atomic():
+                payment = Payment.objects.select_for_update().select_related("order").filter(reference=reference).first()
+                if payment and payment.order.payment_status != PaymentStatus.REFUNDED:
+                    payment.order.payment_status = PaymentStatus.REFUNDED
+                    payment.order.refunded_at = timezone.now()
+                    payment.order.save(update_fields=["payment_status", "refunded_at", "updated_at"])
+
+        else:
+            logger.info("Un-handled Paystack event: %s", event_type)
+
         return Response(status=status.HTTP_200_OK)
 
 

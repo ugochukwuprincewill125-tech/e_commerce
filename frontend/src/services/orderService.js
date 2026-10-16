@@ -12,4 +12,5 @@ export const paymentService = {
   config: () => api.get('/payments/config/').then((r) => r.data),
   initialize: (orderNumber) => api.post('/payments/initialize/', { order_number: orderNumber }).then((r) => r.data),
   verify: (reference) => api.get(`/payments/verify/${encodeURIComponent(reference)}/`).then((r) => r.data),
+  refund: (orderNumber, payload) => api.post(`/payments/refund/${orderNumber}/`, payload).then((r) => r.data),
 }

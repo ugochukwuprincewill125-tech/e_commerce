@@ -22,6 +22,7 @@ class Payment(models.Model):
     gateway_response = models.CharField(max_length=255, blank=True)
     channel = models.CharField(max_length=40, blank=True)
     raw_response = models.JSONField(default=dict, blank=True)
+    refund_note = models.CharField(max_length=500, blank=True, help_text="Staff note recorded when a refund is processed.")
     created_at = models.DateTimeField(auto_now_add=True)
     verified_at = models.DateTimeField(null=True, blank=True)
 
