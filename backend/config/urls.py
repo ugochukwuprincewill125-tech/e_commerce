@@ -3,6 +3,8 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
+from . import admin as admin_gate  # noqa: F401 — installs the superuser-only admin site gate
+
 admin.site.site_header = "Timeline Global Systems — Administration"
 admin.site.site_title = "Timeline Admin"
 admin.site.index_title = "Store management"

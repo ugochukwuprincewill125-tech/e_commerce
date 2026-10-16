@@ -17,7 +17,7 @@ const BASIS = {
   5: 'basis-[48%] sm:basis-[31%] lg:basis-[calc((100%-2.25rem)/5)]',
 }
 
-export default function ProductCarousel({ title, subtitle, viewAllTo, viewAllLabel = 'View all', products = [], loading, columns = 5 }) {
+export default function ProductCarousel({ title, subtitle, viewAllTo, viewAllLabel = 'View all', products = [], loading, columns = 5, requireAuth = false }) {
   const trackRef = useRef(null)
   const [atStart, setAtStart] = useState(true)
   const [atEnd, setAtEnd] = useState(false)
@@ -97,14 +97,14 @@ export default function ProductCarousel({ title, subtitle, viewAllTo, viewAllLab
           <div ref={trackRef} className="scrollbar-none -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
             {products.map((p, i) => (
               <div key={p.id} className={`flex-none snap-start ${basis}`}>
-                <ProductCard product={p} onQuickView={setQuickView} priority={i < columns} />
+                <ProductCard product={p} onQuickView={setQuickView} priority={i < columns} requireAuth={requireAuth} />
               </div>
             ))}
           </div>
         )}
       </div>
 
-      <QuickViewModal slug={quickView?.slug} preview={quickView} onClose={() => setQuickView(null)} />
+      <QuickViewModal slug={quickView?.slug} preview={quickView} requireAuth={requireAuth} onClose={() => setQuickView(null)} />
     </section>
   )
 }

@@ -1,7 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom'
 
 import { useAuth } from '../../context/AuthContext'
-import { ACCOUNT_HOME, currentTarget, safeNext, withNext } from '../../utils/navigation'
+import { ACCOUNT_HOME, CART_RESUME_MARKER, CART_RESUME_PARAM, currentTarget, safeNext, withNext } from '../../utils/navigation'
 import { PageLoader } from '../Loader/Skeleton'
 
 /** Requires a session. Guests are sent to sign in and returned afterwards. */
@@ -30,10 +30,16 @@ export function GuestOnlyRoute({ children }) {
  * who requests `/` — by typing it, bookmarking it, or following a stale link —
  * is sent to their account dashboard instead, so the marketing page never
  * renders behind an active session.
+ *
+ * Exception: returning from the add-to-cart sign-in gate carries
+ * `?cart_resume=1`, so the signed-in visitor lands back on the storefront and
+ * the pending item is added (see Home).
  */
 export function GuestLandingRoute({ children }) {
   const { user, initialising } = useAuth()
+  const location = useLocation()
   if (initialising) return <PageLoader />
+  if (new URLSearchParams(location.search).get(CART_RESUME_PARAM) === CART_RESUME_MARKER) return children
   if (user) return <Navigate to={ACCOUNT_HOME} replace />
   return children
 }

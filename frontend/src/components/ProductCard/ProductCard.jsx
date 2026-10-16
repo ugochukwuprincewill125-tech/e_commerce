@@ -1,9 +1,11 @@
 import { motion } from 'framer-motion'
 import { Eye, LoaderCircle, ShoppingCart } from 'lucide-react'
-import { memo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { memo } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 
+import { useAuth } from '../../context/AuthContext'
 import { useCart } from '../../context/CartContext'
+import { CART_RESUME_TARGET, savePendingCartItem, withNext } from '../../utils/navigation'
 import { cn, formatNaira } from '../../utils/format'
 import Rating from '../Rating/Rating'
 import WishlistButton from '../WishlistButton/WishlistButton'
@@ -22,9 +24,15 @@ export function ProductBadges({ product, className }) {
  * Jumia-style grid lines up regardless of title length, and the price block
  * reads first.
  */
-function ProductCard({ product, onQuickView, priority = false }) {
+/**
+ * requireAuth: when set (used on the storefront landing page), a guest who
+ * clicks "Add to cart" is sent to sign in first and returned here afterwards —
+ * nothing is added to any cart before they are logged in.
+ */
+function ProductCard({ product, onQuickView, priority = false, requireAuth = false }) {
   const { addItem, pending } = useCart()
-  const [loaded, setLoaded] = useState(false)
+  const { user } = useAuth()
+  const navigate = useNavigate()
   const soldOut = product.availability === 'out_of_stock'
   const adding = pending === product.id
   const url = `/products/${product.slug}`
@@ -33,6 +41,13 @@ function ProductCard({ product, onQuickView, priority = false }) {
   const handleAdd = (e) => {
     e.preventDefault()
     if (soldOut) return
+    if (requireAuth && !user) {
+      // Sign-in gate: hold the item, return to the landing page after auth
+      // (Home completes the add — see utils/navigation).
+      savePendingCartItem(product)
+      navigate(withNext(CART_RESUME_TARGET))
+      return
+    }
     if (product.has_variants && onQuickView) onQuickView(product)
     else addItem(product, 1).catch(() => {})
   }
@@ -42,32 +57,13 @@ function ProductCard({ product, onQuickView, priority = false }) {
       <Link to={url} className="relative block border-b border-line bg-white" aria-label={product.name}>
         <div className="aspect-square p-3">
           {product.image ? (
-            <>
-              <img
-                src={product.image}
-                alt={product.name}
-                loading={priority ? 'eager' : 'lazy'}
-                decoding="async"
-                onLoad={() => setLoaded(true)}
-                ref={(el) => {
-                  if (el && el.complete && el.naturalWidth && !loaded) setLoaded(true)
-                }}
-                className={cn(
-                  'h-full w-full object-contain transition-opacity duration-200',
-                  loaded ? 'opacity-100' : 'opacity-0',
-                  product.hover_image && 'group-hover:opacity-0',
-                )}
-              />
-              {product.hover_image && (
-                <img
-                  src={product.hover_image}
-                  alt=""
-                  aria-hidden
-                  loading="lazy"
-                  className="absolute inset-0 h-full w-full p-3 object-contain opacity-0 transition-opacity duration-200 group-hover:opacity-100"
-                />
-              )}
-            </>
+            <img
+              src={product.image}
+              alt={product.name}
+              loading={priority ? 'eager' : 'lazy'}
+              decoding="async"
+              className="h-full w-full object-contain"
+            />
           ) : (
             <div className="flex h-full items-center justify-center text-xs text-metal-400">No image</div>
           )}

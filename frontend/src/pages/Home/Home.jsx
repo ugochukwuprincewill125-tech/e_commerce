@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { ArrowRight, Headphones, MapPin, Package, ShieldCheck, Store, Truck, Wallet } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { useEffect } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 
 import Button from '../../components/Button/Button'
 import ProductCarousel from '../../components/Carousel/ProductCarousel'
@@ -9,6 +10,9 @@ import InstagramIcon from '../../components/Icons/InstagramIcon'
 import Reveal from '../../components/Motion/Reveal'
 import Seo from '../../components/Seo/Seo'
 import useStoreInfo from '../../hooks/useStoreInfo'
+import { useAuth } from '../../context/AuthContext'
+import { useCart } from '../../context/CartContext'
+import { CART_RESUME_MARKER, CART_RESUME_PARAM, takePendingCartItem } from '../../utils/navigation'
 import { catalogService, productService } from '../../services/productService'
 import { cn } from '../../utils/format'
 import Hero from './Hero'
@@ -111,7 +115,7 @@ function CollectionRow({ key: queryKey, title, subtitle, to, params }) {
   const results = data?.results || []
   if (isError) return <ErrorState title="Unable to load products" onRetry={refetch} className="container" />
   if (!isLoading && !results.length) return null
-  return <ProductCarousel title={title} subtitle={subtitle} viewAllTo={to} products={results} loading={isLoading} columns={5} />
+  return <ProductCarousel title={title} subtitle={subtitle} viewAllTo={to} products={results} loading={isLoading} columns={5} requireAuth />
 }
 
 function DealsRow() {
@@ -121,7 +125,7 @@ function DealsRow() {
   })
   const results = data?.results || []
   if (!isLoading && !results.length) return null
-  return <ProductCarousel title="Deals & discounted products" subtitle="Reduced prices while stocks last" viewAllTo="/shop?on_sale=true" products={results} loading={isLoading} columns={5} />
+  return <ProductCarousel title="Deals & discounted products" subtitle="Reduced prices while stocks last" viewAllTo="/shop?on_sale=true" products={results} loading={isLoading} columns={5} requireAuth />
 }
 
 const VALUES = [
@@ -212,6 +216,30 @@ function VisitUs() {
 }
 
 export default function Home() {
+  // Add-to-cart sign-in gate: a guest who clicked "Add to cart" before
+  // signing in completes that add here, once they return authenticated.
+  const { user, initialising } = useAuth()
+  const { addItem } = useCart()
+  const location = useLocation()
+
+  useEffect(() => {
+    if (initialising || !user) return undefined
+    const params = new URLSearchParams(location.search)
+    if (params.get(CART_RESUME_PARAM) !== CART_RESUME_MARKER) return undefined
+    const item = takePendingCartItem()
+    if (!item) return undefined
+    // The `?resume=cart` marker stays in the URL (it is what lets a signed-in
+    // user hold the storefront); stale reloads no-op because the pending item
+    // is consumed above.
+    addItem(
+      { id: item.productId, name: item.name, image: item.image },
+      1,
+      item.variantId ? { id: item.variantId } : null,
+      { openDrawer: true },
+    ).catch(() => {}) // awaiting-stock / duplicate errors surface via toast
+    return undefined
+  }, [initialising, user, location.search, addItem])
+
   return (
     <>
       <Seo />

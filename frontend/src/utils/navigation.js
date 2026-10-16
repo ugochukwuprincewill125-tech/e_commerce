@@ -38,3 +38,43 @@ export function withNext(path) {
 export function currentTarget(location) {
   return `${location.pathname}${location.search}${location.hash}`
 }
+
+/**
+ * Add-to-cart sign-in gate (used on the storefront landing page).
+ *
+ * A guest who clicks "Add to cart" there must sign in first. The item is held
+ * in `sessionStorage`, the gate URL carries `?resume=cart` (which the landing
+ * page's guest-only guard honours so the returning user lands back there), and
+ * Home completes the add once an authenticated session exists.
+ */
+export const PENDING_CART_ITEM_KEY = 'tgs:pending-cart-item'
+export const CART_RESUME_PARAM = 'resume'
+export const CART_RESUME_MARKER = 'cart'
+export const CART_RESUME_TARGET = `/?${CART_RESUME_PARAM}=${CART_RESUME_MARKER}`
+
+export function savePendingCartItem(product, variant = null) {
+  sessionStorage.setItem(
+    PENDING_CART_ITEM_KEY,
+    JSON.stringify({
+      productId: product.id,
+      variantId: variant?.id ?? null,
+      name: product.name,
+      image: product.image,
+      savedAt: Date.now(),
+    }),
+  )
+}
+
+/** Reads and clears the held item. Returns null when missing, stale or corrupt. */
+export function takePendingCartItem(maxAgeMs = 15 * 60 * 1000) {
+  const raw = sessionStorage.getItem(PENDING_CART_ITEM_KEY)
+  if (!raw) return null
+  sessionStorage.removeItem(PENDING_CART_ITEM_KEY)
+  try {
+    const item = JSON.parse(raw)
+    if (item?.productId && Date.now() - item.savedAt <= maxAgeMs) return item
+  } catch {
+    /* fall through */
+  }
+  return null
+}

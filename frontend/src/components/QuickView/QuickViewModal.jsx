@@ -3,9 +3,13 @@ import { ArrowRight, ShoppingBag } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
+import { useNavigate } from 'react-router-dom'
+
 import { useCart } from '../../context/CartContext'
+import { useAuth } from '../../context/AuthContext'
 import { productService } from '../../services/productService'
 import { formatNaira } from '../../utils/format'
+import { CART_RESUME_TARGET, savePendingCartItem, withNext } from '../../utils/navigation'
 import Button from '../Button/Button'
 import { Skeleton } from '../Loader/Skeleton'
 import Modal from '../Modal/Modal'
@@ -15,8 +19,10 @@ import Rating from '../Rating/Rating'
 import VariantPicker from '../Variants/VariantPicker'
 import WishlistButton from '../WishlistButton/WishlistButton'
 
-export default function QuickViewModal({ slug, preview, onClose }) {
+export default function QuickViewModal({ slug, preview, onClose, requireAuth = false }) {
   const { addItem, pending } = useCart()
+  const { user } = useAuth()
+  const navigate = useNavigate()
   const [variant, setVariant] = useState(null)
   const [qty, setQty] = useState(1)
   const [active, setActive] = useState(0)
@@ -38,6 +44,16 @@ export default function QuickViewModal({ slug, preview, onClose }) {
   const price = variant ? Number(variant.price) : Number(p?.current_price || 0)
   const maxQty = Math.max(1, Math.min(variant ? variant.stock_quantity : product?.stock_quantity || 1, 10))
   const images = product?.images?.length ? product.images.map((i) => i.image) : [p?.image].filter(Boolean)
+
+  const handleAdd = () => {
+    if (requireAuth && !user) {
+      // Sign-in gate — same flow as the landing-page product cards.
+      savePendingCartItem(p, variant)
+      navigate(withNext(CART_RESUME_TARGET))
+      return
+    }
+    addItem(product, qty, variant, { openDrawer: true }).then(onClose).catch(() => {})
+  }
 
   return (
     <Modal open={Boolean(slug)} onClose={onClose} title={p?.name || 'Quick view'} hideTitle size="max-w-4xl">
@@ -92,7 +108,7 @@ export default function QuickViewModal({ slug, preview, onClose }) {
                 icon={ShoppingBag}
                 loading={pending === p.id}
                 disabled={soldOut || isLoading}
-                onClick={() => addItem(product, qty, variant, { openDrawer: true }).then(onClose).catch(() => {})}
+                onClick={handleAdd}
               >
                 {soldOut ? 'Sold out' : 'Add to cart'}
               </Button>

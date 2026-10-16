@@ -5,15 +5,15 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import Button from '../../components/Button/Button'
+import heroVideo from '../../assets/landing_page_background.mp4'
 import { productService } from '../../services/productService'
 import { cn, formatNaira } from '../../utils/format'
 
 /**
- * Campaign slides. Every plate is dark, so the heading colour is set
- * explicitly on the h1 rather than inherited: the global
+ * Campaign slides. Content rotates over a shared video background, so the
+ * heading colour is set explicitly on the h1 rather than inherited: the global
  * `h1 { color: ink-900 }` base rule in index.css applies to the element and
- * would otherwise beat the container's `text-white`, rendering near-black
- * text on a near-black plate.
+ * would otherwise render near-black text on the dark scrim.
  */
 const SLIDES = [
   {
@@ -21,21 +21,18 @@ const SLIDES = [
     title: 'Laptops and computer systems',
     body: 'Everyday productivity machines, workstations and complete desktop setups from established brands.',
     cta: { to: '/category/laptops', label: 'Shop laptops' },
-    plate: 'bg-ink-950',
   },
   {
     eyebrow: 'Power & charging',
     title: 'Chargers, cables and power banks',
     body: 'Reliable charging solutions for phones, laptops and other devices, with trade-in options in store.',
     cta: { to: '/category/phone-accessories', label: 'Shop accessories' },
-    plate: 'bg-brand-700',
   },
   {
     eyebrow: 'Audio & wearables',
     title: 'Headphones, earbuds and smart devices',
     body: 'Everyday audio, smart watches and connected devices from the brands we stock.',
     cta: { to: '/shop', label: 'Browse all products' },
-    plate: 'bg-ink-900',
   },
 ]
 
@@ -56,8 +53,8 @@ export default function Hero() {
   const [paused, setPaused] = useState(false)
 
   const { data } = useQuery({
-    queryKey: ['products', 'hero'],
-    queryFn: () => productService.list({ featured: true, page_size: 3, ordering: '-effective_price' }),
+    queryKey: ['products', 'hero-recent'],
+    queryFn: () => productService.list({ page_size: 3, ordering: '-created_at' }),
     staleTime: 300_000,
   })
   const picks = (data?.results || []).slice(0, 3)
@@ -78,8 +75,21 @@ export default function Hero() {
       aria-roledescription="carousel"
       aria-label="Featured promotions"
     >
-      <div className={cn('relative overflow-hidden text-white transition-colors duration-300', slide.plate)}>
-        <div className="container grid min-h-[380px] items-center gap-10 py-12 lg:grid-cols-[1.1fr_0.9fr] lg:py-16">
+      <div className="relative overflow-hidden bg-ink-950 text-white">
+        {/* Campaign video background — this hero section only. Text legibility
+            is kept with a dark scrim so slides slide over live footage. */}
+        <video
+          className="absolute inset-0 h-full w-full object-cover"
+          src={heroVideo}
+          autoPlay
+          loop
+          muted
+          playsInline
+          aria-hidden
+        />
+        <div className="absolute inset-0 bg-ink-950/55" aria-hidden />
+
+        <div className="relative container grid min-h-[380px] items-center gap-10 py-12 lg:grid-cols-[1.1fr_0.9fr] lg:py-16">
           <AnimatePresence mode="wait">
             <motion.div
               key={index}
@@ -151,7 +161,7 @@ export default function Hero() {
         </div>
 
         {/* Slider controls */}
-        <div className="container flex items-center justify-between pb-5">
+        <div className="relative container flex items-center justify-between pb-5">
           <div className="flex items-center gap-2" role="tablist" aria-label="Promotion slides">
             {SLIDES.map((s, i) => (
               <button

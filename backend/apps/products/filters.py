@@ -71,7 +71,13 @@ class ProductFilter(django_filters.FilterSet):
         # discount % >= value  <=>  discount_price <= price * (1 - value/100)
         from django.db.models import F
 
-        ratio = 1 - (float(value) / 100)
+        # User-supplied number: never let a malformed value through as an
+        # unhandled 500 — clamp the window (0-100) and re-validate.
+        try:
+            percent = min(max(float(value), 0.0), 100.0)
+        except (TypeError, ValueError):
+            return queryset
+        ratio = 1 - (percent / 100)
         return queryset.filter(discount_price__isnull=False, discount_price__lte=F("price") * ratio)
 
     def filter_exclude(self, queryset, name, value):

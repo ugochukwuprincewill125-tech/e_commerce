@@ -1,0 +1,35 @@
+
+> timeline-global-systems-frontend@1.0.0 dev
+> vite
+
+Port 5173 is in use, trying another one...
+
+  [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m3713[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5174[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.5.8:[1m5174[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://172.21.160.1:[1m5174[22m/[39m
+[2m1:58:20 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/ProductCard/ProductCard.jsx, /src/index.css[22m
+[2m1:58:20 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/QuickView/QuickViewModal.jsx, /src/index.css[22m
+[2m1:58:20 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/Carousel/ProductCarousel.jsx, /src/index.css[22m
+[2m1:58:20 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/Carousel/ProductCarousel.jsx, /src/index.css[22m
+[2m1:58:20 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/Routing/ProtectedRoute.jsx, /src/index.css[22m
+[2m1:58:20 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Home/Hero.jsx, /src/index.css[22m
+[2m1:58:20 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/context/WishlistContext.jsx, /src/index.css, /src/components/Routing/ProtectedRoute.jsx, /src/components/Account/AccountNav.jsx, /src/components/Logo/Logo.jsx, /src/pages/Home/Home.jsx, /src/components/ProductCard/ProductCard.jsx, /src/components/QuickView/QuickViewModal.jsx[22m
+[2m1:58:20 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Home/Home.jsx, /src/index.css[22m
+[2m1:58:21 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/Carousel/ProductCarousel.jsx, /src/index.css[22m
+[2m1:58:21 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/ProductCard/ProductCard.jsx, /src/index.css[22m
+[2m1:58:21 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/QuickView/QuickViewModal.jsx, /src/index.css[22m
+[2m1:58:21 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/Routing/ProtectedRoute.jsx, /src/index.css[22m
+[2m1:58:21 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Home/Hero.jsx, /src/index.css[22m
+[2m1:58:21 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/context/WishlistContext.jsx, /src/index.css, /src/components/Routing/ProtectedRoute.jsx, /src/components/Account/AccountNav.jsx, /src/components/Logo/Logo.jsx, /src/pages/Home/Home.jsx, /src/components/QuickView/QuickViewModal.jsx[22m
+[2m1:58:21 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Home/Home.jsx, /src/index.css[22m
+[2m1:58:23 PM[22m [36m[1m[vite][22m[39m [33mhmr invalidate [39m[2m/src/context/WishlistContext.jsx[22m Could not Fast Refresh ("useWishlist" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2m1:58:23 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/context/WishlistContext.jsx[22m
+[2m1:58:23 PM[22m [36m[1m[vite][22m[39m [33mhmr invalidate [39m[2m/src/components/Account/AccountNav.jsx[22m Could not Fast Refresh ("ACCOUNT_NAV" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2m1:58:23 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/Layout/Layout.jsx, /src/components/Account/AccountShell.jsx[22m
+[2m2:15:13 PM[22m [36m[1m[vite][22m[39m [32mvite.config.js changed, restarting server...[39m
+[2m2:15:13 PM[22m [36m[1m[vite][22m[39m server restarted.
+[2m2:15:56 PM[22m [36m[1m[vite][22m[39m [32mvite.config.js changed, restarting server...[39m
+[2m2:15:56 PM[22m [36m[1m[vite][22m[39m server restarted.
+[2m3:26:54 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/Routing/ProtectedRoute.jsx, /src/index.css[22m
