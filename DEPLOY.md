@@ -1,8 +1,11 @@
 # Deploying Timeline Global Systems to Vercel
 
-One Vercel project serves everything: the React storefront (static) and the
-Django API (serverless function). All configuration is already committed —
-`vercel.json` and `api/index.py` at the repo root.
+One Vercel project serves everything, using
+[Vercel Services](https://vercel.com/docs/services): the React storefront
+(Vite service rooted at `frontend/`) and the Django API (Django service rooted
+at `backend/`) deploy together on one domain. All configuration is committed
+in `vercel.json` at the repo root — there are no dashboard build settings to
+maintain.
 
 ## 1. Prerequisites
 
@@ -15,26 +18,32 @@ Django API (serverless function). All configuration is already committed —
 
 1. Push this repo to GitHub.
 2. Vercel → **Add New… → Project** → import the repo.
-3. Framework preset: **Other** (vercel.json drives everything).
-4. Leave build settings as detected from `vercel.json` — do not override.
-5. Add the environment variables below (**Production** + **Preview**).
+3. Vercel detects multiple applications — choose to **group them into a
+   single project using Services**. Do **not** import `frontend/` or
+   `backend/` as standalone projects. Keep the Root Directory as the
+   repository root.
+4. Do not override the detected framework/build settings — `vercel.json`
+   defines both services (Vite and Django are auto-detected per service).
+5. Add the environment variables below (**Production** + **Preview**) BEFORE
+   the first deploy. The Django service loads `config.settings.prod` during
+   the build and refuses to start when a required value is missing — a missing
+   variable fails the build instead of shipping a broken site.
 6. Deploy.
 
 ## 3. Environment variables (Vercel → Settings → Environment Variables)
 
 | Key | Value | Notes |
 |---|---|---|
-| `DJANGO_SETTINGS_MODULE` | `config.settings.prod` | Required — `api/index.py` defaults are dev-proof but set it explicitly |
+| `DJANGO_SETTINGS_MODULE` | `config.settings.prod` | Required — Vercel discovers the Django entrypoint by running `manage.py`, which otherwise defaults to the dev settings |
 | `SECRET_KEY` | a long random string | Generate: `python -c "import secrets; print(secrets.token_urlsafe(64))"` |
-| `DEBUG` | `False` | — |
-| `DATABASE_URL` | your Supabase **pooler** URI | Same value as local `.env` (port 5432 session pooler) |
-| `DB_CONN_MAX_AGE` | `60` | Reuse DB connections across invocations |
-| `ALLOWED_HOSTS` | `.vercel.app,yourdomain.com` | Comma-separated; leading dot covers all subdomains |
+| `DATABASE_URL` | your Supabase **pooler** URI | The same URI configured in `backend/.env` |
+| `DB_CONN_MAX_AGE` | `0` | Serverless: open/close per request so the Supabase pooler is never exhausted (`base.py` falls back to 60 when unset) |
+| `ALLOWED_HOSTS` | `.vercel.app,yourdomain.com` | Comma-separated; the leading dot covers all subdomains (including Preview URLs) |
 | `FRONTEND_URL` | `https://your-domain.vercel.app` | No trailing slash; used in emails/links |
-| `CORS_ALLOWED_ORIGINS` | `https://your-domain.vercel.app` | Add `https://localhost:5173` for Preview builds if needed |
-| `CSRF_TRUSTED_ORIGINS` | `https://your-domain.vercel.app` | Same list as CORS |
-| `DJANGO_ADMIN_URL` | e.g. `tgs-control-7x9/` | Secret path for the Django admin; bots probing `/admin/` find nothing |
-| `PAYSTACK_SECRET_KEY` | `sk_live_…` or `sk_test_…` | **Required** — prod boots without it |
+| `CORS_ALLOWED_ORIGINS` | `https://your-domain.vercel.app` | Production is same-origin, so CORS never actually runs — harmless to keep |
+| `CSRF_TRUSTED_ORIGINS` | `https://your-domain.vercel.app` | Required for Django-admin logins; add `https://*.vercel.app` to sign in from Preview URLs |
+| `DJANGO_ADMIN_URL` | `django-control/` | Must match the `/django-control/*` rewrite in `vercel.json` — change both together |
+| `PAYSTACK_SECRET_KEY` | `sk_live_…` or `sk_test_…` | **Required** — prod refuses to boot without it |
 | `PAYSTACK_PUBLIC_KEY` | `pk_live_…` or `pk_test_…` | Served to the checkout page |
 | `EMAIL_BACKEND` | `django.core.mail.backends.smtp.EmailBackend` | Real email in prod |
 | `EMAIL_HOST` | e.g. `smtp.zoho.com` / `smtp.gmail.com` | — |
@@ -48,41 +57,58 @@ Django API (serverless function). All configuration is already committed —
 | `SECURE_SSL_REDIRECT` | `True` | — |
 | `THROTTLE_ANON` | `120/min` | Optional — tighten if you like |
 
-Variables you do **NOT** need on Vercel: `PAYMENT_TEST_MODE` (forced off in
-prod), `VITE_API_URL` / `VITE_SITE_URL` (the frontend defaults to same-origin
-`/api`; add `VITE_SITE_URL=https://your-domain` only if you want canonical
-tags to show the final domain).
+Optional tuning variables (all have sane defaults; skip unless needed):
+`THROTTLE_USER`, `THROTTLE_AUTH`, `THROTTLE_CONTACT`, `THROTTLE_PAYMENTS`,
+`JWT_ACCESS_MINUTES`, `JWT_REFRESH_DAYS`, `LOG_LEVEL`, `SECURE_HSTS_SECONDS`,
+`PAYSTACK_BASE_URL`, `EMAIL_PORT`.
+
+Variables you do **NOT** need on Vercel: `DEBUG` (prod hard-codes it off),
+`PAYMENT_TEST_MODE` (forced off in prod), `VITE_API_URL` (the storefront
+defaults to same-origin `/api`) and `VITE_SITE_URL` (add it as
+`https://your-domain` only if you want canonical links to show the final
+domain).
 
 ## 4. First deployment — run migrations
 
 Vercel's build does not migrate (intentionally — a failed deploy should never
-migrate half-way). After the first successful deploy, from your machine:
+migrate half-way). After the first successful deploy, run them from your
+machine against the same database you configured in Vercel:
 
-```bash
+```
 cd backend
-DATABASE_URL="postgresql://…same-as-vercel…" ./venv/Scripts/python.exe manage.py migrate
+# Windows PowerShell
+$env:DATABASE_URL="postgresql://…pooler URI…"; .\venv\Scripts\python.exe manage.py migrate
+# macOS / Linux
+DATABASE_URL="postgresql://…pooler URI…" ./venv/bin/python manage.py migrate
 ```
 
-Or run it inside Vercel: `vercel deploy` → then `vercel env pull` locally and
-migrate. Subsequent model changes: deploy → run `migrate` → verify.
+(If `backend/.env` already points at that database — as it does today — plain
+`.\venv\Scripts\python.exe manage.py migrate` inside `backend/` is enough.)
 
 ## 5. Post-deploy checklist
 
 - [ ] `https://your-domain/api/health/` returns `200`
 - [ ] Storefront loads; shop, product pages, cart, checkout all work
+- [ ] Deep links work — open `https://your-domain/shop` directly in a tab
 - [ ] Sign up a test customer; verification email arrives and the link opens the site
 - [ ] Paystack **test** payment on a real checkout, then switch to live keys
 - [ ] Paystack dashboard → add webhook `https://your-domain/api/payments/webhook/`
-- [ ] Django admin at `https://your-domain/<DJANGO_ADMIN_URL>` — sign in, upload a product image (goes to Cloudinary)
+- [ ] Django admin at `https://your-domain/django-control/` — sign in, upload a product image (goes to Cloudinary)
 - [ ] React admin at `https://your-domain/admin` — owner account only
 - [ ] Lock down Supabase: use the **pooler** URI, restrict access in Supabase settings if possible
 
 ## 6. How it works (for future reference)
 
-- `vercel.json` builds the frontend, collects Django static files, and routes:
-  `/api/*`, `/static/*` and `/django-control/*` → the serverless function;
-  everything else → `index.html` (SPA routing).
-- `api/index.py` exposes the Django WSGI app with `config.settings.prod`.
-- Product images upload through Django to Cloudinary — no local filesystem use.
+- `vercel.json` declares two services and the public routing table:
+  `/api/*`, `/static/*` and `/django-control/*` → the Django service;
+  everything else → the storefront, which falls back to `index.html` for
+  client-side routes (SPA deep links).
+- The Django service is built by Vercel's Django preset: dependencies come
+  from `backend/requirements.txt`, the entrypoint from
+  `ASGI_APPLICATION`/`WSGI_APPLICATION` in `config.settings.prod`, and
+  `collectstatic` runs automatically — admin CSS/JS is served from Vercel's
+  CDN at `/static/` (nothing to commit; `backend/staticfiles/` is gitignored).
+- Product images upload through Django to Cloudinary — no local filesystem
+  use.
 - The API is same-origin in production, so CORS never comes into play for the
   deployed site.

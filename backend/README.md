@@ -10,7 +10,7 @@ complete staff-only REST API for the admin frontend.
 |------------|------|
 | API        | Django 5, Django REST Framework, SimpleJWT |
 | Database   | PostgreSQL (Supabase in production) |
-| Media      | Backblaze B2 via S3-compatible API (local `media/` in dev) |
+| Media      | Cloudinary (local `media/` in dev) |
 | Filtering  | django-filter |
 | Payments   | Paystack (test mode when no keys set) |
 
@@ -46,27 +46,22 @@ Supabase is plain Postgres — every existing Django migration applies as-is.
 No Supabase-specific code is needed; the table editor/Row Level Security are
 not used because Django owns the schema.
 
-## Backblaze B2 (product/category/brand images)
+## Cloudinary (product/category/brand images)
 
-1. Create a bucket at [secure.backblaze.com](https://secure.backblaze.com) —
-   **public** visibility, e.g. `timeline-media`.
-2. **App Keys → Add Application Key** (master key or a bucket-restricted key).
-3. Note the bucket's **Endpoint** (Bucket Details), e.g.
-   `https://s3.us-west-004.backblazeb2.com`.
-4. Fill in:
+1. Create an account at [cloudinary.com](https://cloudinary.com) (the free
+   tier is enough) and note the **cloud name** shown on the console home page.
+2. Console → **API Keys** — copy the API key and API secret.
+3. Fill in:
    ```
-   B2_APPLICATION_KEY_ID=...
-   B2_APPLICATION_KEY=...
-   B2_BUCKET_NAME=timeline-media
-   B2_ENDPOINT_URL=https://s3.us-west-004.backblazeb2.com
-   B2_PUBLIC_BASE_URL=https://f005.backblazeb2.com/file/timeline-media
+   CLOUDINARY_CLOUD_NAME=...
+   CLOUDINARY_API_KEY=...
+   CLOUDINARY_API_SECRET=...
    ```
-5. For a CDN/custom domain later, set `B2_PUBLIC_BASE_URL` to it — uploaded
-   files need no migration.
 
-When all four `B2_*` credential variables are present, uploads go to B2
-automatically (`apps/core/storage.py`); otherwise files land in `backend/media/`.
-Uploads are private-write/public-read, cached for a year, never overwritten.
+When all three variables are present, uploads go to Cloudinary automatically
+(`apps/core/storage.py`); otherwise files land in `backend/media/`. Uploads are
+public-read with deterministic public IDs (`media/products/<id>/…`), so
+re-uploading the same key overwrites instead of duplicating.
 
 ## Environment
 
@@ -76,7 +71,7 @@ Copy `.env.example` → `.env`. Key variables:
 |---|---|
 | `SECRET_KEY` / `DEBUG` / `ALLOWED_HOSTS` | Core Django |
 | `DATABASE_URL` | Postgres/Supabase connection string |
-| `B2_*` | Backblaze B2 media storage (optional in dev) |
+| `CLOUDINARY_*` | Cloudinary media storage (required in prod, optional in dev) |
 | `FRONTEND_URL` / `CORS_ALLOWED_ORIGINS` | React app origin |
 | `PAYSTACK_SECRET_KEY` / `PAYSTACK_PUBLIC_KEY` | Payments; without them, checkout runs in clearly-labelled test mode |
 | `EMAIL_*` | SMTP for verification/reset emails (console backend by default) |
@@ -112,23 +107,25 @@ All endpoints require `Authorization: Bearer <access>` from an account with
 |---|---|
 | `GET /api/admin-api/stats/` | Revenue (today/month), order & product counts, low stock, pending reviews/messages, top products, recent orders |
 
-### Image uploads — direct to Backblaze (Vercel-safe)
+### Image uploads — Cloudinary-backed
 
-Product photos never pass through the API server (which has a ~4.5MB body
-cap on serverless hosts). The admin panel uploads **straight to B2**:
+Product photos use a sign → PUT → attach flow sized around serverless limits:
 
 1. `POST /api/admin-api/uploads/sign/` — tiny JSON request:
    `{"items": [{"filename": "macbook.jpg", "content_type": "image/jpeg", "product_id": 7}]}`
    → returns `{uploads: [{upload_url, key, headers, expires_in, storage}]}` (≤20 files at once)
-2. `PUT upload_url` with the raw file bytes + the returned `headers` —
-   browser → Backblaze directly. (In B2 mode this needs **no auth header**;
-   the URL itself is the credential. Local fallback mode sends the JWT.)
+2. `PUT upload_url` with the raw file bytes + the returned `headers` — the URL
+   is same-origin (`/api/admin-api/uploads/local/`, staff JWT required) and
+   writes through the default media storage: **Cloudinary in production**,
+   local `media/` in development.
 3. Include the returned `key` values in product create/update via
    `uploaded_images: ["media/products/7/<rand>-macbook.jpg", …]` — each key is
-   verified (well-formed **and** present in the bucket) before attaching.
+   verified (well-formed **and** present in the storage backend) before attaching.
 
 Constraints enforced server-side: JPEG/PNG/WebP/AVIF only, 10MB per file,
 keys scoped to `media/products/<id>/…`, signatures expire in 15 minutes.
+Because the PUT passes through the API server, serverless hosts cap the
+request body (Vercel: ~4.5MB) — keep admin uploads under ~4MB there.
 The old multipart path (`images[]` files on POST/PATCH, 5MB each) still works
 for quick single-file edits.
 
@@ -192,7 +189,7 @@ Full CRUD (`ModelViewSet`) at `/api/admin-api/categories/`, `/brands/`,
 1. `DJANGO_SETTINGS_MODULE=config.settings.prod`
 2. `SECRET_KEY` set to a strong random value
 3. `DATABASE_URL` → Supabase session-pooler URI, then `python manage.py migrate`
-4. All four `B2_*` variables set (prod settings refuse to start without them)
+4. All three `CLOUDINARY_*` variables set (prod settings refuse to start without them — images are stored and served by Cloudinary)
 5. `PAYSTACK_SECRET_KEY` set (test mode is force-disabled in prod)
 6. `ALLOWED_HOSTS` + `CORS_ALLOWED_ORIGINS`/`CSRF_TRUSTED_ORIGINS` → your domains
 7. `python manage.py collectstatic` (WhiteNoise serves admin statics)

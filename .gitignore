@@ -15,6 +15,9 @@ frontend/dist/
 frontend/.env
 frontend/.env.local
 
+# Vercel
+.vercel/
+
 # OS / editors
 .DS_Store
 Thumbs.db
