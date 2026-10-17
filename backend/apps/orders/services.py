@@ -106,11 +106,9 @@ def create_order_from_cart(user, cart, data):
 
     # Reserve stock now so two customers can't buy the last unit.
     for product, variant, qty, _ in lines:
-        product.stock_quantity -= qty
-        product.save(update_fields=["stock_quantity"])
+        Product.objects.filter(pk=product.pk).update(stock_quantity=F("stock_quantity") - qty)
         if variant:
-            variant.stock_quantity -= qty
-            variant.save(update_fields=["stock_quantity"])
+            ProductVariant.objects.filter(pk=variant.pk).update(stock_quantity=F("stock_quantity") - qty)
 
     order.add_history(OrderStatus.PLACED, "Order received — awaiting payment.")
     cart.items.all().delete()
@@ -134,9 +132,7 @@ def restore_stock(order):
         return
     for item in order.items.select_related("product", "variant"):
         if item.product_id:
-            product = Product.objects.select_for_update().get(pk=item.product_id)
-            product.stock_quantity += item.quantity
-            product.save(update_fields=["stock_quantity"])
+            Product.objects.filter(pk=item.product_id).update(stock_quantity=F("stock_quantity") + item.quantity)
         if item.variant_id:
             ProductVariant.objects.filter(pk=item.variant_id).update(stock_quantity=F("stock_quantity") + item.quantity)
     order.stock_restored = True
@@ -180,8 +176,19 @@ def mark_order_paid(order, reference, note="Payment confirmed via Paystack."):
     return order, True
 
 
+@transaction.atomic
+def delete_order(order):
+    """Permanently remove an unpaid/unprocessed order and restore its stock. Idempotent."""
+    order = Order.objects.select_for_update().get(pk=order.pk)
+    if order.status != OrderStatus.CANCELLED:
+        order.status = OrderStatus.CANCELLED
+        order.save(update_fields=["status"])
+        order.add_history(OrderStatus.CANCELLED, "Order cancelled before deletion.")
+    restore_stock(order)
+    order.delete()
+
+
 def tracking_steps(order):
-    from .models import status_flow
 
     flow = status_flow(order.delivery_method)
     reached = {h.status: h.created_at for h in order.history.all()}

@@ -5,6 +5,8 @@ export const orderService = {
   detail: (orderNumber) => api.get(`/orders/${orderNumber}/`).then((r) => r.data),
   create: (payload) => api.post('/orders/', payload).then((r) => r.data),
   cancel: (orderNumber) => api.post(`/orders/${orderNumber}/cancel/`).then((r) => r.data),
+  delete: (orderNumber) => api.delete(`/orders/${orderNumber}/`).then((r) => r.data),
+  receipt: (orderNumber) => api.get(`/orders/${orderNumber}/receipt/`).then((r) => r.data),
   track: (payload) => api.post('/orders/track/', payload).then((r) => r.data),
 }
 

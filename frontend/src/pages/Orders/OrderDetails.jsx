@@ -1,7 +1,7 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, CreditCard, PackageX, XCircle } from 'lucide-react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { ArrowLeft, CreditCard, PackageX, Trash2, XCircle } from 'lucide-react'
 import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import Button from '../../components/Button/Button'
 import EmptyState, { ErrorState } from '../../components/EmptyState/EmptyState'
@@ -22,7 +22,9 @@ export default function OrderDetails() {
   const { company } = useStoreInfo()
   const [paying, setPaying] = useState(false)
   const [confirmCancel, setConfirmCancel] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const [cancelling, setCancelling] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const { data: order, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['orders', 'detail', orderNumber],
     queryFn: () => orderService.detail(orderNumber),
@@ -55,6 +57,22 @@ export default function OrderDetails() {
     } finally {
       setCancelling(false)
     }
+   }
+
+  const remove = async () => {
+    setDeleting(true)
+    try {
+      await orderService.delete(order.order_number)
+      queryClient.removeQueries({ queryKey: ['orders', 'detail', orderNumber] })
+      queryClient.invalidateQueries({ queryKey: ['orders'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      toast.info('Order removed', 'The order and its items were deleted.')
+      navigate('/account/orders')
+    } catch (err) {
+      toast.error('Couldn’t delete order', errorMessage(err))
+    } finally {
+      setDeleting(false)
+    }
   }
 
   if (isLoading)
@@ -82,9 +100,20 @@ export default function OrderDetails() {
           <h2 className="text-2xl font-bold">Order {order.order_number}</h2>
           <p className="mt-1 text-sm text-metal-500">Placed {formatDateTime(order.created_at)}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <OrderStatusBadge status={order.status} label={order.status_display} />
           <PaymentStatusBadge status={order.payment_status} label={order.payment_status_display} />
+          {order.can_delete && (
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              className="rounded-lg p-1 text-metal-500 opacity-60 hover:text-danger hover:opacity-100"
+              aria-label="Delete order"
+              title="Delete order"
+            >
+              <Trash2 className="h-4 w-4" strokeWidth={1.75} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -104,6 +133,20 @@ export default function OrderDetails() {
               Pay {formatNaira(order.total)}
             </Button>
           </div>
+         </div>
+       )}
+
+      {order.is_paid && (
+        <div className="flex items-center justify-between rounded-2xl border border-metal-100 bg-metal-50 px-5 py-4">
+          <div>
+            <p className="font-semibold text-ink-900">Payment confirmed</p>
+            <p className="text-sm text-metal-600">A receipt has been generated for this order.</p>
+          </div>
+          <Link to={`/account/receipts/${order.payment_reference || order.order_number}`}>
+            <Button variant="outline" size="sm">
+              View receipt
+            </Button>
+          </Link>
         </div>
       )}
 
@@ -192,6 +235,19 @@ export default function OrderDetails() {
             </Button>
             <Button variant="danger" onClick={cancel} loading={cancelling}>
               Cancel order
+            </Button>
+          </div>
+        </div>
+      </Modal>
+      <Modal open={confirmDelete} onClose={() => setConfirmDelete(false)} title="Delete this order?">
+        <div className="p-5 sm:p-6">
+          <p className="text-sm text-metal-600">Order {order.order_number} will be permanently deleted along with its items. This cannot be undone.</p>
+          <div className="mt-6 flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setConfirmDelete(false)}>
+              Keep order
+            </Button>
+            <Button variant="danger" onClick={remove} loading={deleting}>
+              Delete order
             </Button>
           </div>
         </div>

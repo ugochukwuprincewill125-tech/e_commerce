@@ -166,7 +166,7 @@ def _save_product_children(product, images=None, variants=None, uploaded_images=
                 raise ValidationError("Only existing images can be updated here; upload new ones via images[] or uploaded_images.")
 
 
-MAX_PRODUCT_IMAGE_BYTES = 5 * 1024 * 1024  # 5MB per product image
+MAX_PRODUCT_IMAGE_BYTES = 4 * 1024 * 1024  # 4MB per product image
 
 
 class AdminProductViewSet(viewsets.ModelViewSet):
@@ -231,7 +231,7 @@ class AdminProductViewSet(viewsets.ModelViewSet):
             return
         for file in files:
             if file.size > MAX_PRODUCT_IMAGE_BYTES:
-                raise ValidationError(f'{file.name} is larger than 5MB. Please compress it before uploading.')
+                raise ValidationError(f'{file.name} is larger than 4MB. Please compress it before uploading.')
         try:
             alt_texts = self._parse_json_list("image_alt_texts") or []
         except ValidationError:
@@ -461,7 +461,7 @@ class LocalUploadPutView(APIView):
             raise ValidationError("Invalid or unsigned key.")
         data = request.data if isinstance(request.data, (bytes, bytearray)) else b""
         if len(data) > uploads.MAX_DIRECT_UPLOAD_BYTES:
-            raise ValidationError("File exceeds the 10MB direct-upload limit.")
+            raise ValidationError("File exceeds the 4MB direct-upload limit.")
         content_type = (request.headers.get("Content-Type") or "").split(";")[0].strip().lower()
         if content_type not in uploads.ALLOWED_CONTENT_TYPES:
             raise ValidationError("Unsupported image type.")

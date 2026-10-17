@@ -13,9 +13,10 @@ from .serializers import (
     OrderDetailSerializer,
     OrderListSerializer,
     PublicTrackingSerializer,
+    ReceiptSerializer,
     TrackOrderSerializer,
 )
-from .services import cancel_order, create_order_from_cart
+from .services import cancel_order, create_order_from_cart, delete_order
 
 
 def order_queryset():
@@ -30,13 +31,14 @@ def order_queryset():
     )
 
 
-class OrderViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.CreateModelMixin, viewsets.GenericViewSet):
+class OrderViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.CreateModelMixin, mixins.DestroyModelMixin, viewsets.GenericViewSet):
     """
     GET  /api/orders/                         the customer's orders
-      ?status=delivered                       filter by status
-    POST /api/orders/                         create an order from the server-side cart
-    GET  /api/orders/<order_number>/          order details + tracking timeline
-    POST /api/orders/<order_number>/cancel/   cancel an unpaid order (stock is released)
+       ?status=delivered                       filter by status
+         GET  /api/orders/<order_number>/          order details + tracking timeline
+         POST /api/orders/<order_number>/cancel/   cancel an unpaid order (stock is released)
+         DELETE /api/orders/<order_number>/         delete an unpaid, unprocessed order
+         GET  /api/orders/<order_number>/receipt/    receipt data for a paid order
     """
 
     permission_classes = [permissions.IsAuthenticated]
@@ -73,7 +75,22 @@ class OrderViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Crea
         order = order_queryset().get(pk=order.pk)
         return Response(OrderDetailSerializer(order, context={"request": request}).data)
 
+    def destroy(self, request, *args, **kwargs):
+        order = self.get_object()
+        if not order.can_delete:
+            return Response(
+                {"detail": "This order can no longer be deleted. Please contact support."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        delete_order(order)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @action(detail=True, methods=["get"])
+    def receipt(self, request, order_number=None):
+        order = self.get_object()
+        if not order.is_paid:
+            return Response({"detail": "Receipts are only available for paid orders."}, status=status.HTTP_404_NOT_FOUND)
+        return Response(ReceiptSerializer(order, context={"request": request}).data)
 class TrackOrderView(APIView):
     """POST /api/orders/track/ {order_number, email} — public order tracking."""
 

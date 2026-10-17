@@ -51,6 +51,9 @@ export default function Orders() {
             <strong className="font-semibold text-ink-900">{data.count}</strong> {data.count === 1 ? 'order' : 'orders'}
           </p>
         )}
+        <Link to="/account/receipts" className="text-[13px] font-semibold text-ink-900 hover:text-brand-600">
+          My receipts
+        </Link>
       </div>
 
       {/* Jumia-style underline tabs */}

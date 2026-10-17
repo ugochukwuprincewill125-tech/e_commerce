@@ -68,6 +68,14 @@ class InitializePaymentView(APIView):
         if not order.can_pay:
             return Response({"detail": "This order can no longer be paid for."}, status=status.HTTP_400_BAD_REQUEST)
 
+        existing = Payment.objects.filter(
+            order=order, status=Payment.Status.INITIALIZED, provider=Payment.Provider.PAYSTACK
+        ).first()
+        if existing:
+            return Response(
+                {"authorization_url": existing.authorization_url, "access_code": "", "reference": existing.reference, "test_mode": False}
+            )
+
         reference = new_reference(order)
         callback_url = f"{settings.FRONTEND_URL}/payment/callback"
 

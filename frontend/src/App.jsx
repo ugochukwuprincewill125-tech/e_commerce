@@ -43,6 +43,8 @@ const CategoryDirectory = lazy(() => import('./pages/Dashboard/CategoryDirectory
 const Overview = lazy(() => import('./pages/Dashboard/Overview'))
 const Orders = lazy(() => import('./pages/Orders/Orders'))
 const OrderDetails = lazy(() => import('./pages/Orders/OrderDetails'))
+const Receipts = lazy(() => import('./pages/Orders/Receipts'))
+const ReceiptDetail = lazy(() => import('./pages/Orders/ReceiptDetail'))
 const Wishlist = lazy(() => import('./pages/Wishlist/Wishlist'))
 const Profile = lazy(() => import('./pages/Dashboard/Profile'))
 const Addresses = lazy(() => import('./pages/Dashboard/Addresses'))
@@ -88,8 +90,10 @@ export default function App() {
               <Route index element={<Overview />} />
               <Route path="home" element={<HomeFeed />} />
               <Route path="categories" element={<CategoryDirectory />} />
-              <Route path="orders" element={<Orders />} />
-              <Route path="orders/:orderNumber" element={<OrderDetails />} />
+               <Route path="orders" element={<Orders />} />
+               <Route path="orders/:orderNumber" element={<OrderDetails />} />
+               <Route path="receipts" element={<Receipts />} />
+               <Route path="receipts/:reference" element={<ReceiptDetail />} />
               <Route path="wishlist" element={<Wishlist />} />
               <Route path="profile" element={<Profile />} />
               <Route path="addresses" element={<Addresses />} />

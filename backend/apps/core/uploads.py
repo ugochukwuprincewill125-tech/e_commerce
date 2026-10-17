@@ -14,7 +14,7 @@ import secrets
 from django.conf import settings
 
 SIGNING_TTL_SECONDS = 15 * 60
-MAX_DIRECT_UPLOAD_BYTES = 10 * 1024 * 1024  # 10MB per image via the PUT endpoint
+MAX_DIRECT_UPLOAD_BYTES = 4 * 1024 * 1024  # 4MB per image via the PUT endpoint
 
 ALLOWED_CONTENT_TYPES = {
     "image/jpeg": ".jpg",
@@ -63,6 +63,7 @@ def sign_product_image(product_id: int, filename: str, content_type: str) -> dic
         "upload_url": url,
         "key": key,
         "headers": {"Content-Type": content_type},
+        "max_bytes": MAX_DIRECT_UPLOAD_BYTES,
         "expires_in": SIGNING_TTL_SECONDS,
         "storage": "cloudinary" if cloudinary_configured() else "local",
     }

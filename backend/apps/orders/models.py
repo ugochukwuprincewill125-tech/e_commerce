@@ -156,6 +156,10 @@ class Order(TimeStampedModel):
     def can_pay(self):
         return self.status == OrderStatus.PLACED and self.payment_status in (PaymentStatus.PENDING, PaymentStatus.FAILED)
 
+    @property
+    def can_delete(self):
+        return self.status == OrderStatus.PLACED and self.payment_status != PaymentStatus.PAID
+
     def formatted_address(self):
         a = self.shipping_address or {}
         parts = [a.get("address"), a.get("city"), a.get("state"), a.get("country"), a.get("postal_code")]

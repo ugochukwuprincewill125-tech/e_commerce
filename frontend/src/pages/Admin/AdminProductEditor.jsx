@@ -5,6 +5,7 @@ import { ArrowLeft, UploadCloud, X } from 'lucide-react'
 
 import { AdminPage } from '../../components/Admin/AdminUI'
 import { useToast } from '../../context/ToastContext'
+import { cn } from '../../utils/format'
 import {
   createAdminProduct, deleteProductImage, fetchAdminBrands, fetchAdminCategories,
   fetchAdminProduct, reorderProductImages, updateAdminProduct, uploadProductImages,
@@ -320,25 +321,38 @@ function Editor({ productId }) {
           </div>
           {files.length > 0 && (
             <ul className="mt-3 flex flex-wrap gap-2 text-xs">
-              {files.map((f, i) => (
-                <li key={`${f.name}-${i}`} className="flex items-center gap-1.5 rounded bg-metal-50 px-2 py-1 text-ink-700">
-                  {f.name}
-                  <button
-                    type="button"
-                    onClick={() => setFiles(files.filter((_, j) => j !== i))}
-                    className="text-danger"
-                    aria-label={`Remove ${f.name}`}
+              {files.map((f, i) => {
+                const tooLarge = f.size > 4 * 1024 * 1024
+                return (
+                  <li
+                    key={`${f.name}-${i}`}
+                    className={cn(
+                      'flex items-center gap-1.5 rounded bg-metal-50 px-2 py-1 text-ink-700',
+                      tooLarge && 'border border-red-200 bg-red-50 text-red-700',
+                    )}
                   >
-                    <X className="h-3 w-3" />
-                  </button>
-                </li>
-              ))}
+                    {f.name}
+                    {tooLarge && <span className="font-semibold">(too large)</span>}
+                    <button
+                      type="button"
+                      onClick={() => setFiles(files.filter((_, j) => j !== i))}
+                      className="text-danger"
+                      aria-label={`Remove ${f.name}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </li>
+                )
+              })}
             </ul>
+          )}
+          {files.some((f) => f.size > 4 * 1024 * 1024) && (
+            <p className="mt-2 text-xs text-danger">One or more files exceed the 4MB limit. Remove or compress them before uploading.</p>
           )}
           <p className="mt-2 text-xs text-metal-500">
             {isEdit
               ? 'The first image becomes the product thumbnail.'
-              : 'JPG, PNG or WebP up to 5MB each — they are attached when you publish the product.'}
+              : 'JPG, PNG or WebP up to 4MB each — they are attached when you publish the product.'}
           </p>
         </div>
 

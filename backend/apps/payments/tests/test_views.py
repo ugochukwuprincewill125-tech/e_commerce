@@ -43,7 +43,7 @@ class TestPaymentConfigView:
 
 @pytest.mark.django_db
 class TestInitializePaymentView:
-    def test_initialize_success(self, auth_client, order, settings, payment):
+    def test_initialize_success(self, auth_client, order, settings):
         url = reverse("payment-initialize")
         with patch("apps.payments.views.paystack.initialize_transaction") as mock_init:
             mock_init.return_value = {
@@ -55,6 +55,15 @@ class TestInitializePaymentView:
         assert resp.data["authorization_url"] == "https://paystack.com/pay/abc"
         assert resp.data["reference"] is not None
         assert resp.data["test_mode"] is False
+
+    def test_initialize_idempotent_returns_existing(self, auth_client, order, payment, settings):
+        """An order with an existing INITIALIZED payment should reuse it."""
+        payment.status = Payment.Status.INITIALIZED
+        payment.save()
+        url = reverse("payment-initialize")
+        resp = auth_client.post(url, {"order_number": order.order_number})
+        assert resp.status_code == status.HTTP_200_OK
+        assert resp.data["reference"] == payment.reference
 
     def test_initialize_already_paid(self, auth_client, order, settings):
         order.payment_status = PaymentStatus.PAID

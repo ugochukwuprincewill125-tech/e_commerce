@@ -4,6 +4,47 @@ from .models import DeliveryMethod, Order, OrderItem, OrderStatusHistory
 from .services import tracking_steps
 
 
+class ReceiptItemSerializer(serializers.ModelSerializer):
+    product_slug = serializers.SerializerMethodField()
+    image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = OrderItem
+        fields = ("product_slug", "product_name", "variant_label", "quantity", "unit_price", "total_price", "image")
+
+    def get_product_slug(self, obj):
+        return obj.product.slug if obj.product_id and obj.product else None
+
+    def get_image(self, obj):
+        if not obj.product_id or not obj.product:
+            return None
+        images = list(obj.product.images.all())
+        if not images:
+            return None
+        request = self.context.get("request")
+        return request.build_absolute_uri(images[0].image.url) if request else images[0].image.url
+
+
+class ReceiptSerializer(serializers.ModelSerializer):
+    """Receipt data — a flat, print-friendly representation of a paid order."""
+
+    items = ReceiptItemSerializer(many=True, read_only=True)
+    delivery_method_display = serializers.CharField(source="get_delivery_method_display", read_only=True)
+    item_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Order
+        fields = (
+            "order_number", "created_at", "first_name", "last_name", "email", "phone",
+            "delivery_method", "delivery_method_display", "pickup_location", "shipping_address",
+            "subtotal", "shipping_fee", "discount", "coupon_code", "total",
+            "payment_reference", "paid_at", "items", "item_count",
+        )
+
+    def get_item_count(self, obj):
+        return sum(i.quantity for i in obj.items.all())
+
+
 class OrderItemSerializer(serializers.ModelSerializer):
     product_slug = serializers.SerializerMethodField()
     image = serializers.SerializerMethodField()
@@ -59,7 +100,7 @@ class OrderDetailSerializer(OrderListSerializer):
         fields = OrderListSerializer.Meta.fields + (
             "subtotal", "shipping_fee", "discount", "coupon_code", "first_name", "last_name", "email", "phone",
             "delivery_method", "delivery_method_display", "pickup_location", "shipping_address",
-            "customer_note", "payment_reference", "paid_at", "can_cancel", "history", "tracking", "updated_at",
+            "customer_note", "payment_reference", "paid_at", "can_cancel", "can_delete", "history", "tracking", "updated_at",
             "carrier", "tracking_number",
         )
 
