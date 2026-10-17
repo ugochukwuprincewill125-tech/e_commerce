@@ -1,0 +1,37 @@
+# Keeps the Render free-tier API instance awake.
+#
+# On Render's free plan the service sleeps after ~15 minutes without traffic.
+# The next request then has to first boot the instance: it can take about a
+# minute, and requests fired during that window fail at the network level —
+# the browser shows "Unable to reach the server" even though the action may
+# still land server-side. Pinging /api/health/ every 10 minutes keeps the
+# service inside its 15-minute idle window so users never hit a cold start.
+#
+# If the Render service is ever renamed, update HEALTH_URL below (it matches
+# the proxy target in frontend/vercel.json).
+name: Keep backend awake
+
+on:
+  schedule:
+    # Every 10 minutes. GitHub may delay scheduled runs under load; a missed
+    # run is harmless — the next ping still lands inside the sleep window.
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: keepalive
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      HEALTH_URL: https://timelineglobal.onrender.com/api/health/
+    steps:
+      - name: Ping the API health endpoint
+        run: |
+          # A cold instance accepts the connection first and boots while the
+          # request waits, so allow generous time for the very first ping.
+          # Even a failed ping triggers the wake-up, so no hard failure here.
+          curl -sS --max-time 130 "$HEALTH_URL" || echo "Ping did not complete (instance may have been waking up)."

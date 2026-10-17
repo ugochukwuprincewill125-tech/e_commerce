@@ -69,7 +69,12 @@ export const cartSession = {
 }
 
 /* ------------------------------ axios setup ----------------------------- */
-const api = axios.create({ baseURL: API_URL, timeout: 20000 })
+// 60s, not 20s: the API runs on a free tier that can take up to about a
+// minute to wake after idle. A shorter timeout aborts the request while the
+// server is still booting — the browser then reports a network error even
+// when the write actually went through. Steady-state responses are fast, so
+// this only matters for the first request after a quiet period.
+const api = axios.create({ baseURL: API_URL, timeout: 60000 })
 
 api.interceptors.request.use((config) => {
   if (accessToken) config.headers.Authorization = `Bearer ${accessToken}`
@@ -124,7 +129,7 @@ api.interceptors.response.use(
 export function errorMessage(error, fallback = 'Something went wrong. Please try again.') {
   if (!error) return fallback
   if (error.code === 'ECONNABORTED') return 'The request timed out. Check your connection and try again.'
-  if (!error.response) return 'Unable to reach the server. Check your internet connection.'
+  if (!error.response) return 'Unable to reach the server. If the site has been idle, it may be waking up — wait a moment and try again.'
   return error.response.data?.detail || fallback
 }
 

@@ -58,6 +58,16 @@ Notes:
 
 - **Free tier sleeps** after ~15 minutes idle — the next request takes about a
   minute to wake it. Starter ($7/mo) keeps it always-on.
+  While the instance is asleep/booting, requests can fail at the network
+  level: the UI shows *"Unable to reach the server"* (e.g. the Customers
+  filter or an order delete) even though the action may still land
+  server-side once the instance finishes waking. To avoid that, this repo
+  ships a keep-alive workflow: `.github/workflows/keepalive.yml` pings
+  `/api/health/` every 10 minutes from GitHub Actions, which keeps the
+  service inside its 15-minute idle window. It runs automatically on `main` —
+  nothing to configure. Alternatives: any uptime pinger (UptimeRobot,
+  cron-job.org) hitting `/api/health/` every 5–10 minutes, or upgrading the
+  Render plan to Starter.
 - Every push to `main` redeploys automatically (`autoDeploy`).
 - Migrations are **not** run at deploy time — run them from your machine (§5).
 - Uploads no longer hit Vercel's ~4.5MB request cap: Cloudinary stores the
