@@ -17,6 +17,7 @@ import { formatDateTime, formatNaira } from '../../utils/format'
 
 export default function OrderDetails() {
   const { orderNumber } = useParams()
+  const navigate = useNavigate()
   const toast = useToast()
   const queryClient = useQueryClient()
   const { company } = useStoreInfo()
