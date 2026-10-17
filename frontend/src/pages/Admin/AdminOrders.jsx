@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Eye, LayoutGrid, List, Loader2, Package, Printer, Search, Store, Truck, Undo2 } from 'lucide-react'
+import { Eye, LayoutGrid, List, Loader2, Package, Printer, Search, Store, Truck } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import {
@@ -12,7 +12,7 @@ import useDebounce from '../../hooks/useDebounce'
 import { useToast } from '../../context/ToastContext'
 import { formatNaira } from '../../utils/format'
 import {
-  fetchAdminOrder, fetchAdminOrders, refundOrder, setOrderPayment,
+  fetchAdminOrder, fetchAdminOrders, setOrderPayment,
   setOrderStatus, setOrderTracking,
 } from '../../services/adminApi'
 
@@ -132,7 +132,7 @@ export default function AdminOrders() {
           title: 'Awaiting payment',
           description: 'Orders placed but not yet paid. Follow up with the customer, or record a payment once it lands.',
         }
-      : { title: 'Orders', description: 'Every order, with fulfilment, courier tracking and refunds.' }
+      : { title: 'Orders', description: 'Every order, with fulfilment and courier tracking.' }
 
   return (
     <AdminPage
@@ -433,10 +433,6 @@ function OrderDetail({ order, invalidate }) {
   const toast = useToast()
   const [carrier, setCarrier] = useState(order.carrier || '')
   const [number, setNumber] = useState(order.tracking_number || '')
-  const alreadyRefunded = Number(order.refund_amount || 0)
-  const refundable = Math.max(Number(order.total) - alreadyRefunded, 0)
-  const [refundAmount, setRefundAmount] = useState(String(refundable))
-  const [refundReason, setRefundReason] = useState('')
 
   const statusMut = useAdminMutation({
     fn: (status) => setOrderStatus(order.id, { status }),
@@ -458,17 +454,6 @@ function OrderDetail({ order, invalidate }) {
     success: (d) => d.detail,
     onDone: invalidate,
   })
-  const refundMut = useAdminMutation({
-    fn: () =>
-      refundOrder(order.id, {
-        amount: Number(refundAmount),
-        reason: refundReason,
-      }),
-    success: (d) => d.detail,
-    onDone: invalidate,
-  })
-
-  const canRefund = order.payment_status === 'paid' && refundable > 0
   const isFinalState = isFinalStatus(order.status)
   const pickup = order.delivery_method === 'pickup'
   const pipeline = pickup
@@ -628,54 +613,21 @@ function OrderDetail({ order, invalidate }) {
             onChange={(e) => paymentMut.mutate(e.target.value)}
           >
             <option value={order.payment_status}>{order.payment_status_display} (current)</option>
-            {PAYMENTS.filter((p) => p !== order.payment_status && p !== 'refunded').map((p) => (
+            {PAYMENTS.filter((p) => p !== order.payment_status).map((p) => (
               <option key={p} value={p}>{p}</option>
             ))}
           </select>
+          {order.payment_status === 'paid' && (
+            <span className="mt-1 block text-xs font-normal text-metal-500">
+              Refunds are handled by support (WhatsApp, phone, email) — mark this as “refunded” once the customer has been refunded.
+            </span>
+          )}
         </label>
       </div>
 
-      {/* Refund */}
-      {canRefund && (
-        <div className="rounded-lg border border-line bg-metal-50 p-3">
-          <h3 className="mb-2 text-[13px] font-semibold uppercase tracking-wide text-ink-900">Refund</h3>
-          <div className="grid gap-2 sm:grid-cols-[140px_1fr_auto]">
-            <input
-              className="input"
-              type="number"
-              min="0.01"
-              step="0.01"
-              max={refundable}
-              value={refundAmount}
-              onChange={(e) => setRefundAmount(e.target.value)}
-              aria-label="Refund amount"
-            />
-            <input
-              className="input"
-              placeholder="Reason (customer returned, damaged…)"
-              value={refundReason}
-              onChange={(e) => setRefundReason(e.target.value)}
-            />
-            <button
-              type="button"
-              className="btn bg-danger text-white hover:bg-red-700"
-              disabled={refundMut.isPending}
-              onClick={() => refundMut.mutate()}
-            >
-              <Undo2 className="h-4 w-4" /> Refund
-            </button>
-          </div>
-          <p className="mt-1.5 text-xs text-metal-500">
-            {alreadyRefunded > 0
-              ? `Already refunded ${formatNaira(alreadyRefunded)} — ${formatNaira(refundable)} still refundable.`
-              : 'Full or partial. Sent to Paystack for paid orders; reserved stock is returned to inventory automatically.'}
-          </p>
-        </div>
-      )}
-
       {order.is_refunded && (
         <p className="rounded border border-red-200 bg-red-50 p-2.5 text-[13px] text-red-700">
-          Refunded {formatNaira(order.refund_amount)}
+          Refunded{order.refund_amount ? ` ${formatNaira(order.refund_amount)}` : ''}
           {order.refund_reason ? ` — ${order.refund_reason}` : ''}
           {order.refunded_at ? ` on ${new Date(order.refunded_at).toLocaleDateString()}` : ''}.
         </p>

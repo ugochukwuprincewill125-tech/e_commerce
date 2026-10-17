@@ -169,7 +169,7 @@ Full CRUD (`ModelViewSet`) at `/api/admin-api/categories/`, `/brands/`,
 | `GET /api/admin-api/orders/` | `?status=&payment_status=&delivery_method=&ordering=` |
 | `GET /api/admin-api/orders/<id>/` | Detail incl. history + tracking timeline |
 | `PATCH /api/admin-api/orders/<id>/status/` | `{status, note?}` — cancelling releases reserved stock |
-| `PATCH /api/admin-api/orders/<id>/payment/` | `{payment_status, payment_reference?, note?}` — `paid` uses the same idempotent service as Paystack; `refunded` returns stock |
+| `PATCH /api/admin-api/orders/<id>/payment/` | `{payment_status, payment_reference?, note?}` — `paid` uses the same idempotent service as Paystack; `refunded` records a support-processed refund (the money moves outside the store) |
 
 ### Customers
 | Endpoint | Description |

@@ -85,7 +85,6 @@ export const setOrderStatus = (id, payload) => api.patch(`/admin-api/orders/${id
 export const setOrderPayment = (id, payload) => api.patch(`/admin-api/orders/${id}/payment/`, payload).then((r) => r.data)
 /** Log the courier reference for a parcel; `mark_shipped` closes the fulfilment step. */
 export const setOrderTracking = (id, payload) => api.patch(`/admin-api/orders/${id}/tracking/`, payload).then((r) => r.data)
-export const refundOrder = (id, payload) => api.post(`/admin-api/orders/${id}/refund/`, payload).then((r) => r.data)
 /**
  * Staff-only receipt authenticity check. Verifies the code printed on a
  * receipt and returns the one order it belongs to — owner, items, payment.

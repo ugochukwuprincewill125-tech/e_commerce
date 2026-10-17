@@ -1,6 +1,4 @@
 """Serializers for the admin API (staff-only endpoints)."""
-from decimal import Decimal
-
 from rest_framework import serializers
 
 from apps.brands.models import Brand
@@ -261,28 +259,6 @@ class OrderTrackingUpdateSerializer(serializers.Serializer):
                 "Enter both a carrier and a tracking number, or leave both blank."
             )
         return attrs
-
-
-class OrderRefundSerializer(serializers.Serializer):
-    """Refund an order, optionally in part."""
-
-    amount = serializers.DecimalField(max_digits=14, decimal_places=2, min_value=Decimal("0.01"))
-    reason = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
-    reference = serializers.CharField(required=False, allow_blank=True, max_length=120)
-    restore_stock = serializers.BooleanField(required=False, default=True)
-    note = serializers.CharField(required=False, allow_blank=True, max_length=255)
-
-    def validate_amount(self, value):
-        order = self.context["order"]
-        if order.payment_status != PaymentStatus.PAID:
-            raise serializers.ValidationError("Only a paid order can be refunded.")
-        already_refunded = order.refund_amount or Decimal("0.00")
-        remaining = order.total - already_refunded
-        if value > remaining:
-            raise serializers.ValidationError(
-                f"Refund cannot be more than the remaining refundable amount ({remaining})."
-            )
-        return value
 
 
 # ---------------------------------------------------------------------------

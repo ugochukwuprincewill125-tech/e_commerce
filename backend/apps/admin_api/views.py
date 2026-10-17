@@ -26,8 +26,6 @@ from apps.core.models import ContactMessage
 from apps.orders.models import DeliveryMethod, Order, OrderItem, OrderStatus, PaymentStatus, status_flow
 from apps.orders.receipt_codes import code_matches
 from apps.orders.services import cancel_order, mark_order_paid
-from apps.payments import paystack
-from apps.payments.services import refund_order
 from apps.products.filters import CharInFilter, search_q
 from apps.products.models import Availability, Product, ProductImage, ProductVariant
 from apps.promotions.models import Coupon
@@ -567,7 +565,6 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
     GET   /api/admin/orders/<id>/
     PATCH /api/admin/orders/<id>/status/     {status, note?}
     PATCH /api/admin/orders/<id>/tracking/   {carrier, tracking_number, mark_shipped?}
-    POST  /api/admin/orders/<id>/refund/     {amount, reason?, reference?, restore_stock?}
     PATCH /api/admin/orders/<id>/payment/    {payment_status, payment_reference?, note?}
     """
     permission_classes = [IsStaff]
@@ -628,8 +625,11 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
 
         if new_status == OrderStatus.CANCELLED:
             if order.payment_status == PaymentStatus.PAID:
-                return Response({"detail": "Paid orders cannot be cancelled — refund them instead."},
-                                status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"detail": "Paid orders cannot be cancelled — refund the customer first, "
+                               "mark the payment as refunded, then cancel."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             cancel_order(order, note=note or "Cancelled by store staff.")
         else:
             order.status = new_status
@@ -681,52 +681,16 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
         order = self.queryset.get(pk=order.pk)
         return Response(s.AdminOrderDetailSerializer(order, context={"request": request}).data)
 
-    @action(detail=True, methods=["post"])
-    def refund(self, request, pk=None):
-        """Refund all or part of a paid order.
-
-        The money actually moves when the order was paid through Paystack:
-        the refund is sent to the gateway and the returned refund id is
-        recorded. Orders settled outside Paystack are recorded as manual
-        refunds. Partial refunds accumulate — the order only becomes
-        ``refunded`` once the whole paid amount is back.
-        """
-        order = self.get_object()
-        serializer = s.OrderRefundSerializer(data=request.data, context={"order": order})
-        serializer.is_valid(raise_exception=True)
-        try:
-            order, payment, gateway_data = refund_order(
-                order,
-                amount=serializer.validated_data["amount"],
-                reason=serializer.validated_data.get("reason", ""),
-                note=serializer.validated_data.get("note", ""),
-                reference=serializer.validated_data.get("reference", ""),
-                restore_stock_items=serializer.validated_data.get("restore_stock", True),
-            )
-        except paystack.PaystackError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
-
-        data = s.AdminOrderDetailSerializer(self.queryset.get(pk=order.pk), context={"request": request}).data
-        if gateway_data is not None:
-            data["detail"] = "Refund sent to Paystack and recorded."
-        elif payment is not None:
-            data["detail"] = "Refund recorded (no gateway call — Paystack is not configured)."
-        else:
-            data["detail"] = "Refund recorded as a manual refund (no Paystack transaction on file)."
-        return Response(data)
-
     @action(detail=True, methods=["patch", "post"])
     @transaction.atomic
     def payment(self, request, pk=None):
-        """Record a payment outcome. `refunded` also returns reserved stock."""
+        """Record a payment outcome — e.g. mark a support-processed refund.
+
+        Money is moved outside the store (support refunds through the Paystack
+        dashboard or by transfer); this endpoint only keeps the order's
+        records in step.
+        """
         order = self.get_object()
-
-        if request.data.get("payment_status") == PaymentStatus.REFUNDED:
-            return Response(
-                {"detail": "Use the refund action so the amount and reason are recorded."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
         serializer = s.PaymentStatusUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         new_payment = serializer.validated_data["payment_status"]
@@ -744,10 +708,18 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
         else:
             order.payment_status = new_payment
             fields = ["payment_status", "updated_at"]
+            if new_payment == PaymentStatus.REFUNDED and not order.refunded_at:
+                order.refunded_at = timezone.now()
+                fields.append("refunded_at")
             if serializer.validated_data.get("payment_reference"):
                 order.payment_reference = serializer.validated_data["payment_reference"]
                 fields.append("payment_reference")
-            order.add_history(order.status, note or f"Payment status set to '{new_payment}' by staff.")
+            default_note = (
+                "Payment marked as refunded by staff — refund handled outside the store."
+                if new_payment == PaymentStatus.REFUNDED
+                else f"Payment status set to '{new_payment}' by staff."
+            )
+            order.add_history(order.status, note or default_note)
             order.save(update_fields=fields)
         order = self.queryset.get(pk=order.pk)
         return Response(s.AdminOrderDetailSerializer(order, context={"request": request}).data)

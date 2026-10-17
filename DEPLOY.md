@@ -131,10 +131,7 @@ order is saved as unpaid.
 3. Test a checkout with Paystack's test card: `4084 0840 8408 4081`, any
    future expiry, CVV `408`, PIN `0000`, OTP `123456`.
 4. Paystack dashboard → Webhooks → `https://<service-name>.onrender.com/api/payments/webhook/`.
-5. Paystack dashboard → Settings → **enable Refunds** (refunds are disabled by
-   default — until this is on, the admin Refund button's gateway call is
-   rejected).
-6. Before selling for real: activate the business on Paystack, swap in
+5. Before selling for real: activate the business on Paystack, swap in
    `sk_live_…` / `pk_live_…`, redeploy.
 
 How money is handled in the store (no setup needed, listed so you know what to
@@ -142,15 +139,22 @@ expect in the admin):
 
 - Unpaid orders expire after `UNPAID_ORDER_EXPIRY_HOURS` (default 48h) and
   their reserved stock goes back on the shelf — see §7's `MAINTENANCE_TOKEN`.
-- The admin Orders page **Refund** button is real: for Paystack-paid orders it
-  sends the refund to Paystack and records the returned refund id. Partial
-  refunds accumulate — the order reads "refunded" only when the full paid
-  amount is back, and the remainder stays refundable meanwhile. Orders paid
-  outside Paystack (bank transfer, test mode) are recorded as manual refunds.
+- Refunds are handled by support, not by a button in the store: the customer
+  asks (WhatsApp / phone / email), you agree it, and you send the refund from
+  the Paystack dashboard (Transactions → the charge → Refund) — or by a plain
+  bank transfer for orders paid outside Paystack.
+- Paystack dashboard refunds reconcile themselves: the webhook records the
+  amount, partial refunds accumulate, and the order reads "refunded" once the
+  whole paid amount is back. For anything sent outside Paystack, mark it by
+  hand: admin → Orders → the order's Payment select → "refunded".
+- Two Paystack rules do apply to dashboard refunds: refunds are funded from
+  your **pending payout** (a Starter business has no Paystack balance), so a
+  refund is refused when the payout was already withdrawn; and transactions
+  older than a year can no longer be refunded. Paystack keeps its processing
+  fee on the original charge either way.
 - A duplicate or late charge (e.g. paid after cancellation) is never silently
-  kept: it is recorded and flagged in the order's history for staff to refund.
-- A refund issued directly from the Paystack dashboard is still picked up by
-  the webhook and lands in the order's books.
+  kept: it is recorded and flagged in the order's history so staff can refund
+  it from the Paystack dashboard.
 
 ## 7. Render environment reference
 

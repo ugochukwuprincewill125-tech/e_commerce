@@ -100,8 +100,9 @@ class Order(TimeStampedModel):
     delivered_at = models.DateTimeField(null=True, blank=True)
     staff_note = models.TextField(blank=True, max_length=2000)
 
-    # Refunds. A refund is a real event, not just a payment_status flip, so the
-    # amount, reference, reason and moment are all recorded for the books.
+    # Refunds. The money itself is moved outside the store (support refunds
+    # through the Paystack dashboard); these fields record what came back so
+    # the books stay straight either way.
     refund_amount = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
     refund_reference = models.CharField(max_length=120, blank=True)
     refund_reason = models.CharField(max_length=255, blank=True)

@@ -27,17 +27,6 @@ def customer(db):
 
 
 @pytest.fixture
-def staff_user(db):
-    return User.objects.create_superuser(
-        email="admin@example.com",
-        first_name="Admin",
-        last_name="User",
-        password="AdminPass123!",
-        email_verified=True,
-    )
-
-
-@pytest.fixture
 def category(db):
     return Category.objects.create(name="Gadgets", slug="gadgets", is_active=True)
 
@@ -133,11 +122,3 @@ def auth_client(api_client, customer):
     api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
     return api_client
 
-
-@pytest.fixture
-def staff_client(api_client, staff_user):
-    from rest_framework_simplejwt.tokens import AccessToken
-
-    token = str(AccessToken.for_user(staff_user))
-    api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
-    return api_client

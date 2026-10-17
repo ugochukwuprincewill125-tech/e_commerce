@@ -15,7 +15,6 @@ from apps.orders.services import mark_order_paid
 
 from . import paystack
 from .models import Payment
-from .services import refund_order
 
 logger = logging.getLogger(__name__)
 
@@ -168,13 +167,13 @@ def _finalise_success(payment, data, channel=""):
         # The money is real and recorded, but it must go back: leave a loud
         # trail for staff instead of silently keeping the customer's cash.
         logger.warning(
-            "Duplicate payment %s for already-paid order %s — refund the second charge.",
+            "Duplicate payment %s for already-paid order %s — refund needed.",
             payment.reference, order.order_number,
         )
         order.add_history(
             order.status,
             f"Duplicate payment of ₦{payment.amount} received (ref {payment.reference}) on an "
-            f"order already paid with ref {order.payment_reference} — refund this second charge.",
+            f"order already paid with ref {order.payment_reference} — refund it from the Paystack dashboard.",
         )
 
 
@@ -295,60 +294,14 @@ class VerifyPaymentView(APIView):
         )
 
 
-class RefundSerializer(serializers.Serializer):
-    amount = serializers.DecimalField(max_digits=14, decimal_places=2, required=False, min_value=Decimal("0.01"))
-    note = serializers.CharField(max_length=500, required=False, allow_blank=True)
-
-
-class RefundPaymentView(APIView):
-    """
-    POST /api/payments/refund/<order_number>/
-    Staff-only: initiate a (partial or full) refund through Paystack and
-    synchronise the order/payment records. Partial refunds accumulate; the
-    order only becomes ``refunded`` once the full paid amount is returned.
-    """
-
-    permission_classes = [permissions.IsAdminUser]
-
-    def post(self, request, order_number):
-        serializer = RefundSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        order = Order.objects.filter(order_number=order_number).first()
-        if not order:
-            return Response({"detail": "Order not found."}, status=status.HTTP_404_NOT_FOUND)
-        if order.payment_status != PaymentStatus.PAID:
-            return Response({"detail": "Only a paid order can be refunded."}, status=status.HTTP_400_BAD_REQUEST)
-
-        payment = Payment.objects.filter(
-            order=order, status=Payment.Status.SUCCESS, provider=Payment.Provider.PAYSTACK
-        ).first()
-        if not payment:
-            return Response({"detail": "No Paystack payment record found for this order."},
-                            status=status.HTTP_404_NOT_FOUND)
-
-        amount = serializer.validated_data.get("amount") or payment.amount
-        try:
-            order, payment, _ = refund_order(
-                order, amount=amount, note=serializer.validated_data.get("note", "")
-            )
-        except paystack.PaystackError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
-
-        return Response(
-            {"detail": "Refund initiated successfully.", "order_number": order.order_number, "refunded": str(amount)},
-            status=status.HTTP_200_OK,
-        )
-
-
 def record_gateway_refund(payment, data):
     """Reconcile a ``refund.processed`` webhook with our own records.
 
-    A refund we initiated ourselves carries its Paystack refund ``id`` in
-    ``order.refund_reference``: recognise it and never count it twice. A
-    refund issued directly from the Paystack dashboard is accumulated here so
-    the books stay straight either way. The order only flips to ``refunded``
-    once the whole paid amount has come back.
+    Refunds are arranged by the support team (usually from the Paystack
+    dashboard); this keeps the order's books in step with the money. Paystack
+    redelivers webhooks, and a refund that is already recorded (its refund
+    ``id`` is on the order) is recognised so it is never counted twice. The
+    order only flips to ``refunded`` once the whole paid amount has come back.
     """
     order = payment.order
     refund_id = str(data.get("id") or "")

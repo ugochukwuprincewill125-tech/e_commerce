@@ -68,7 +68,7 @@ class OrderAdmin(admin.ModelAdmin):
     date_hierarchy = "created_at"
     list_per_page = 30
     inlines = [OrderItemInline, OrderHistoryInline]
-    actions = ["action_processing", "action_ready", "action_ready_pickup", "action_shipped", "action_delivered", "action_picked_up", "action_mark_paid", "action_cancel", "action_refund"]
+    actions = ["action_processing", "action_ready", "action_ready_pickup", "action_shipped", "action_delivered", "action_picked_up", "action_mark_paid", "action_cancel"]
     readonly_fields = (
         "order_number", "user_link", "subtotal", "shipping_fee", "discount", "total", "coupon_code",
         "payment_reference", "paid_at", "created_at", "updated_at", "formatted_shipping",
@@ -111,7 +111,7 @@ class OrderAdmin(admin.ModelAdmin):
         colour = PAYMENT_COLOURS.get(obj.payment_status, "#111")
         text = obj.get_payment_status_display()
         if obj.payment_status == PaymentStatus.REFUNDED:
-            text = f"Refunded ({obj.refund_amount})"
+            text = f"Refunded (₦{obj.refund_amount:,.2f})" if obj.refund_amount else "Refunded"
         return pill(text, colour)
 
     @admin.display(description="Refund", ordering="refunded_at")
@@ -129,7 +129,6 @@ class OrderAdmin(admin.ModelAdmin):
     def save_model(self, request, obj, form, change):
         status_changed = change and "status" in form.changed_data
         payment_changed = change and "payment_status" in form.changed_data
-        refund_reason = change and "refund_reason" in form.changed_data
 
         if status_changed and obj.status == OrderStatus.CANCELLED:
             # Save other edits first, then cancel through the service so stock is returned.
@@ -147,14 +146,24 @@ class OrderAdmin(admin.ModelAdmin):
             obj.paid_at = timezone.now()
             obj.save(update_fields=["paid_at"])
 
+        if payment_changed:
+            from django.utils import timezone
+
+            touched = []
+            if obj.payment_status == PaymentStatus.PAID and not obj.paid_at:
+                obj.paid_at = timezone.now()
+                touched.append("paid_at")
+            if obj.payment_status == PaymentStatus.REFUNDED and not obj.refunded_at:
+                # Marking an order refunded here records the moment, same as
+                # the admin API and the Paystack refund webhook. The money
+                # itself is moved outside the store.
+                obj.refunded_at = timezone.now()
+                touched.append("refunded_at")
+            if touched:
+                obj.save(update_fields=touched)
+
         if status_changed:
             obj.add_history(obj.status, f"Updated by {request.user.email}.")
-
-        if refund_reason and obj.refunded_at:
-            # When refund reason is set, automatically update payment status to REFUNDED
-            obj.payment_status = PaymentStatus.REFUNDED
-            obj.add_history(obj.status, f"Refunded by {request.user.email}. Reason: {obj.refund_reason}")
-            obj.save(update_fields=["payment_status", "updated_at"])
 
     def _bulk_status(self, request, queryset, status):
         count = 0
@@ -200,44 +209,3 @@ class OrderAdmin(admin.ModelAdmin):
         for order in queryset:
             cancel_order(order, note=f"Cancelled by {request.user.email}.")
         self.message_user(request, "Selected orders cancelled; reserved stock returned to inventory.", messages.SUCCESS)
-
-    @admin.action(description="Initiate refund")
-    def action_refund(self, request, queryset):
-        from django.utils import timezone
-        from django.urls import reverse
-
-        for order in queryset:
-            if order.payment_status != PaymentStatus.PAID:
-                self.message_user(request, f"Order {order.order_number} is not paid.", messages.WARNING)
-                continue
-
-            refund_reason = request.POST.get(f"reason_{order.id}")
-            if not refund_reason:
-                self.message_user(request, f"Please specify a reason for order {order.order_number}.", messages.WARNING)
-                continue
-
-            if order.refunded_at:
-                self.message_user(request, f"Order {order.order_number} already refunded.", messages.WARNING)
-                continue
-
-            # Process refund
-            order.refund_amount = order.total
-            order.refund_reason = refund_reason
-            order.refunded_at = timezone.now()
-            order.payment_status = PaymentStatus.REFUNDED
-            order.save(update_fields=["refund_amount", "refund_reason", "refunded_at", "payment_status", "updated_at"])
-            order.add_history(order.status, f"Refunded: {refund_reason}")
-
-            self.message_user(request, f"Order {order.order_number} refunded: {refund_reason}", messages.SUCCESS)
-
-    def get_actions(self, request):
-        actions = super().get_actions(request)
-        if request.user.has_perm("orders.change_order"):
-            actions['action_refund'] = self.action_refund
-        return actions
-
-    @admin.display(description="Refund reason")
-    def refund_reason_display(self, obj):
-        if obj.refunded_at:
-            return f"{obj.refund_reason[:50]}..." if obj.refund_reason else "—"
-        return "—"

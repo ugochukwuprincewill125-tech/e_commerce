@@ -297,12 +297,14 @@ class TestWebhookRobustness:
         notes = " ".join(payment.order.history.values_list("note", flat=True))
         assert "Duplicate payment" in notes
 
-    def test_refund_processed_for_our_own_refund_is_not_double_counted(self, db, payment, settings):
+    def test_refund_processed_redelivery_is_not_double_counted(self, db, payment, settings):
+        """Paystack redelivers webhooks; a refund id already recorded on the
+        order is recognised, so its amount is never added twice."""
         from django.utils import timezone
 
         self._pay_order(payment)
         order = payment.order
-        order.refund_amount = order.total
+        order.refund_amount = order.total  # recorded by an earlier delivery
         order.refund_reference = "555"
         order.refunded_at = timezone.now()
         order.payment_status = PaymentStatus.REFUNDED

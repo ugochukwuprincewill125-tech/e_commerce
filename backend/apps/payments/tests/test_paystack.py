@@ -1,7 +1,6 @@
 """Tests for the Paystack HTTP client (apps/payments/paystack.py)."""
 import hashlib
 import hmac
-import json
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -136,87 +135,3 @@ class TestWebhookSignature:
         settings.PAYSTACK_SECRET_KEY = "sk_test_secret_key"
         assert paystack.valid_webhook_signature(b"body", "") is False
 
-
-# ------------------------ refund_transaction -------------------- #
-class TestRefundTransaction:
-    @resp.activate
-    def test_full_refund(self, settings):
-        settings.PAYSTACK_SECRET_KEY = "sk_test_dummy"
-        settings.PAYSTACK_BASE_URL = "https://api.paystack.co"
-        resp.add(
-            resp.POST,
-            "https://api.paystack.co/refund",
-            json={"status": True, "data": {"reference": "TGS-240101-XYZ-1234", "amount": 500000, "status": "success"}},
-            status=200,
-        )
-        data = paystack.refund_transaction("TGS-240101-XYZ-1234")
-        assert data["status"] == "success"
-
-    @resp.activate
-    def test_partial_refund(self, settings):
-        settings.PAYSTACK_SECRET_KEY = "sk_test_dummy"
-        settings.PAYSTACK_BASE_URL = "https://api.paystack.co"
-        resp.add(
-            resp.POST,
-            "https://api.paystack.co/refund",
-            json={"status": True, "data": {"reference": "TGS-240101-XYZ-1234", "amount": 100000, "status": "success"}},
-            status=200,
-        )
-        data = paystack.refund_transaction("TGS-240101-XYZ-1234", amount_naira=Decimal("1000.00"))
-        assert data["amount"] == 100000
-
-    @resp.activate
-    def test_failure(self, settings):
-        settings.PAYSTACK_SECRET_KEY = "sk_test_dummy"
-        settings.PAYSTACK_BASE_URL = "https://api.paystack.co"
-        resp.add(
-            resp.POST,
-            "https://api.paystack.co/refund",
-            json={"status": False, "message": "Transaction not found"},
-            status=404,
-        )
-        with pytest.raises(paystack.PaystackError, match="Transaction not found"):
-            paystack.refund_transaction("bad-ref")
-
-    @resp.activate
-    def test_payload_uses_transaction_field(self, settings):
-        """The refund API takes the reference in ``transaction`` — sending
-        ``reference`` instead makes every real refund fail."""
-        settings.PAYSTACK_SECRET_KEY = "sk_test_dummy"
-        settings.PAYSTACK_BASE_URL = "https://api.paystack.co"
-        captured = {}
-
-        def callback(request):
-            captured.update(json.loads(request.body))
-            return (200, {}, json.dumps({"status": True, "data": {"id": 42, "status": "pending"}}))
-
-        resp.add_callback(resp.POST, "https://api.paystack.co/refund", callback=callback)
-        data = paystack.refund_transaction("TGS-240101-XYZ-1234", Decimal("1000.00"))
-        assert captured == {"transaction": "TGS-240101-XYZ-1234", "amount": 100000}
-        assert data["id"] == 42
-
-    @resp.activate
-    def test_network_error(self, settings):
-        settings.PAYSTACK_SECRET_KEY = "sk_test_dummy"
-        settings.PAYSTACK_BASE_URL = "https://api.paystack.co"
-        resp.add(resp.POST, "https://api.paystack.co/refund", body=requests.ConnectionError("timeout"))
-        with pytest.raises(paystack.PaystackError, match="couldn't process"):
-            paystack.refund_transaction("ref")
-
-
-# ----------------------- partial_refund_amount ------------------ #
-class TestPartialRefundAmount:
-    def test_full_amount(self, settings):
-        settings.PAYSTACK_SECRET_KEY = "sk_test_dummy"
-        payment = type("P", (), {"amount": Decimal("5000.00")})()
-        assert paystack.partial_refund_amount(payment, Decimal("5000.00")) == 500000
-
-    def test_partial_amount(self, settings):
-        settings.PAYSTACK_SECRET_KEY = "sk_test_dummy"
-        payment = type("P", (), {"amount": Decimal("5000.00")})()
-        assert paystack.partial_refund_amount(payment, Decimal("1000.00")) == 100000
-
-    def test_capped_at_paid(self, settings):
-        settings.PAYSTACK_SECRET_KEY = "sk_test_dummy"
-        payment = type("P", (), {"amount": Decimal("5000.00")})()
-        assert paystack.partial_refund_amount(payment, Decimal("99999.00")) == 500000
