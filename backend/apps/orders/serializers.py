@@ -35,8 +35,8 @@ class ReceiptSerializer(serializers.ModelSerializer):
     verification_code = serializers.SerializerMethodField()
 
     def get_verification_code(self, obj):
-        # Printed on the receipt; anyone can check it against the public
-        # /api/orders/verify-receipt/ endpoint. Forged receipts fail.
+        # Printed on the receipt; staff check it against the order with the
+        # admin receipt-verify tool. Forged receipts fail that check.
         return verification_code(obj)
 
     class Meta:

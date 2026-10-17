@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
-  BarChart3, Box, Tags, Award, ReceiptText, Users, Star, MessageSquare,
+  BarChart3, BadgeCheck, Box, Tags, Award, ReceiptText, Users, Star, MessageSquare,
   TicketPercent, LogOut, Store, TrendingUp, ExternalLink, X, Menu, Plus, PackageSearch, Clock3,
 } from 'lucide-react'
 
@@ -24,6 +24,7 @@ const NAV_GROUPS = [
       { to: '/admin/orders', label: 'All orders', icon: ReceiptText, exact: true, fallback: true },
       { to: '/admin/orders?status=processing', label: 'In progress', icon: PackageSearch, params: true },
       { to: '/admin/orders?payment=pending', label: 'Awaiting payment', icon: Clock3, params: true },
+      { to: '/admin/receipt-verify', label: 'Verify receipt', icon: BadgeCheck, exact: true },
       { to: '/admin/customers', label: 'Customers', icon: Users, exact: true },
       { to: '/admin/messages', label: 'Messages', icon: MessageSquare, exact: true },
     ],

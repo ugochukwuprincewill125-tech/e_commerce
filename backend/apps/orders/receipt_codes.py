@@ -4,7 +4,8 @@ A receipt's code is an HMAC (keyed with the server SECRET_KEY) over the
 receipt's key facts — who paid, how much, the payment reference and the
 moment it cleared. Only receipts this backend actually issued can produce a
 code that re-derives correctly, so a doctored screenshot that "looks" like a
-receipt will fail /api/orders/verify-receipt/ the moment anybody checks it.
+receipt will fail the staff receipt check (/api/admin/receipts/verify/) the
+moment anybody checks it.
 
 The code needs no storage: it is derived from the order row itself, so it
 survives database restores and cannot get out of sync with reality. Forging

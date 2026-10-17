@@ -1,3 +1,6 @@
+import hmac
+
+from django.conf import settings
 from django.db.models import Prefetch
 from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.decorators import action
@@ -7,8 +10,7 @@ from rest_framework.views import APIView
 from apps.cart.services import get_cart
 from apps.products.models import ProductImage
 
-from .models import Order, OrderItem
-from .receipt_codes import code_matches
+from .models import Order, OrderItem, OrderStatus, PaymentStatus
 from .serializers import (
     CreateOrderSerializer,
     OrderDetailSerializer,
@@ -17,7 +19,7 @@ from .serializers import (
     ReceiptSerializer,
     TrackOrderSerializer,
 )
-from .services import cancel_order, create_order_from_cart, delete_order
+from .services import cancel_order, create_order_from_cart, delete_order, release_stale_unpaid_orders
 
 
 def order_queryset():
@@ -79,6 +81,12 @@ class OrderViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Crea
     def destroy(self, request, *args, **kwargs):
         order = self.get_object()
         if not order.can_delete:
+            if order.status == OrderStatus.CANCELLED and order.payment_status == PaymentStatus.PAID:
+                return Response(
+                    {"detail": "This order received a payment after it was cancelled. Contact support so "
+                               "the payment can be refunded before the order is deleted."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             return Response(
                 {"detail": "Only cancelled or delivered orders can be deleted."},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -92,39 +100,6 @@ class OrderViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Crea
         if not order.is_paid:
             return Response({"detail": "Receipts are only available for paid orders."}, status=status.HTTP_404_NOT_FOUND)
         return Response(ReceiptSerializer(order, context={"request": request}).data)
-class ReceiptVerifyView(APIView):
-    """
-    GET /api/orders/verify-receipt/?order_number=&code=  — public, no sign-in.
-    Anyone handed a "receipt" (support, the store, a third party) can confirm
-    it actually came from us: the code printed on the receipt is an HMAC over
-    the order's own facts, so forged receipts do not verify. Deliberately
-    returns minimal data — no customer PII through this endpoint.
-    """
-
-    permission_classes = [permissions.AllowAny]
-    throttle_scope = "auth"
-
-    def get(self, request):
-        number = (request.query_params.get("order_number") or "").strip().upper()
-        code = request.query_params.get("code") or ""
-        if not number or not code.strip():
-            return Response(
-                {"valid": False, "detail": "Enter both the order number and the verification code from the receipt."}
-            )
-        order = Order.objects.filter(order_number__iexact=number).first()
-        if order and order.is_paid and code_matches(order, code):
-            return Response(
-                {
-                    "valid": True,
-                    "order_number": order.order_number,
-                    "status": order.get_status_display(),
-                    "total": str(order.total),
-                    "paid_at": order.paid_at,
-                }
-            )
-        return Response(
-            {"valid": False, "detail": "This receipt does not verify — it did not come from us. Contact the store before treating it as proof of payment."}
-        )
 
 
 class TrackOrderView(APIView):
@@ -146,3 +121,29 @@ class TrackOrderView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
         return Response(PublicTrackingSerializer(order, context={"request": request}).data)
+
+
+class ReleaseUnpaidOrdersView(APIView):
+    """POST /api/orders/maintenance/release-unpaid/ — token-guarded upkeep.
+
+    Render's free tier has no cron, so `.github/workflows/maintenance.yml`
+    calls this on a schedule (with the X-Maintenance-Token header) to cancel
+    unpaid orders past their expiry and put the reserved stock back on the
+    shelf. Disabled (404) until MAINTENANCE_TOKEN is configured.
+    """
+
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []
+    throttle_scope = "auth"
+
+    def post(self, request):
+        token = settings.MAINTENANCE_TOKEN
+        supplied = request.META.get("HTTP_X_MAINTENANCE_TOKEN", "")
+        if not token or not hmac.compare_digest(token, supplied):
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        try:
+            hours = int(request.data.get("hours", 0)) or None
+        except (TypeError, ValueError):
+            hours = None
+        count = release_stale_unpaid_orders(hours)
+        return Response({"cancelled": count})

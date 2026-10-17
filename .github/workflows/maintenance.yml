@@ -1,0 +1,43 @@
+# Releases stock held by unpaid orders.
+#
+# Render's free tier has no cron jobs, so this workflow does the upkeep from
+# GitHub Actions instead: it calls the token-guarded maintenance endpoint,
+# which cancels unpaid orders past UNPAID_ORDER_EXPIRY_HOURS (default 48h) and
+# puts their reserved stock back on the shelf. Without this, one customer who
+# never pays could hold the last unit of a product forever.
+#
+# Setup (once): generate any long random string and set it BOTH as:
+#   - GitHub repo secret: MAINTENANCE_TOKEN
+#   - Render env var:     MAINTENANCE_TOKEN
+# If the secret is not set the job skips quietly (the endpoint stays disabled).
+name: Release unpaid orders
+
+on:
+  schedule:
+    # Hourly. GitHub may delay scheduled runs under load; an expired order
+    # simply waits for the next run.
+    - cron: "23 * * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: maintenance-release-unpaid
+  cancel-in-progress: false
+
+jobs:
+  release-unpaid:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Cancel expired unpaid orders
+        env:
+          MAINTENANCE_TOKEN: ${{ secrets.MAINTENANCE_TOKEN }}
+          MAINTENANCE_URL: https://timelineglobal.onrender.com/api/orders/maintenance/release-unpaid/
+        run: |
+          if [ -z "$MAINTENANCE_TOKEN" ]; then
+            echo "MAINTENANCE_TOKEN is not configured — skipping (the endpoint is disabled)."
+            exit 0
+          fi
+          # A cold instance accepts the connection first and boots while the
+          # request waits, so allow generous time for the very first call.
+          curl -sS -f -X POST -H "X-Maintenance-Token: $MAINTENANCE_TOKEN" \
+            --max-time 130 "$MAINTENANCE_URL"

@@ -245,6 +245,9 @@ SHIPPING_FEE_SOUTH_WEST = int(os.getenv("SHIPPING_FEE_SOUTH_WEST", "5500"))
 SHIPPING_FEE_DEFAULT = int(os.getenv("SHIPPING_FEE_DEFAULT", "7500"))
 FREE_SHIPPING_THRESHOLD = int(os.getenv("FREE_SHIPPING_THRESHOLD", "1000000"))
 UNPAID_ORDER_EXPIRY_HOURS = int(os.getenv("UNPAID_ORDER_EXPIRY_HOURS", "48"))
+# Token for the maintenance endpoint the scheduled GitHub workflow calls
+# (cancels expired unpaid orders so they stop holding stock). Unset = disabled.
+MAINTENANCE_TOKEN = os.getenv("MAINTENANCE_TOKEN", "")
 REVIEWS_REQUIRE_APPROVAL = env_bool("REVIEWS_REQUIRE_APPROVAL", False)
 
 # ---------------------------------------------------------------------------

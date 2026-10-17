@@ -18,6 +18,7 @@ router.register("messages", views.AdminMessageViewSet, basename="admin-message")
 urlpatterns = [
     path("stats/", views.AdminStatsView.as_view(), name="admin-stats"),
     path("reports/", views.AdminReportsView.as_view(), name="admin-reports"),
+    path("receipts/verify/", views.AdminReceiptVerifyView.as_view(), name="admin-receipt-verify"),
     path("uploads/sign/", views.DirectUploadView.as_view(), name="admin-upload-sign"),
     path("uploads/local/", views.LocalUploadPutView.as_view(), name="admin-upload-local"),
 ] + router.urls

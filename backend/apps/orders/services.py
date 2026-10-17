@@ -1,11 +1,14 @@
 import logging
 from collections import defaultdict
+from datetime import timedelta
 
+from django.conf import settings
 from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
+from apps.cart.models import CartItem
 from apps.cart.pricing import calculate_totals
 from apps.products.models import Product, ProductVariant
 from apps.promotions.models import Coupon
@@ -23,9 +26,12 @@ def create_order_from_cart(user, cart, data):
 
     * Prices come from the database (locked rows), never from the client.
     * Stock is validated and reserved atomically (SELECT … FOR UPDATE).
+    * The cart items are row-locked first, so a double-submitted checkout
+      (two tabs, double click) can only ever turn into ONE order: the second
+      transaction waits, then finds the cart already emptied.
     * The cart is emptied once the order exists.
     """
-    items = list(cart.items.all())
+    items = list(CartItem.objects.select_for_update().filter(cart=cart))
     if not items:
         raise ValidationError({"detail": "Your cart is empty."})
 
@@ -190,6 +196,30 @@ def delete_order(order):
     if order.status == OrderStatus.CANCELLED:
         restore_stock(order)
     order.delete()
+
+
+def release_stale_unpaid_orders(hours=None):
+    """Cancel unpaid orders older than ``hours`` and return their stock.
+
+    Shared by the ``release_unpaid_orders`` management command and the
+    maintenance endpoint the scheduled workflow calls, so an order that is
+    never paid for cannot hold stock hostage forever — especially the last
+    unit of a hot product.
+    """
+    hours = settings.UNPAID_ORDER_EXPIRY_HOURS if hours is None else hours
+    cutoff = timezone.now() - timedelta(hours=hours)
+    stale = Order.objects.filter(
+        status=OrderStatus.PLACED,
+        payment_status__in=[PaymentStatus.PENDING, PaymentStatus.FAILED],
+        created_at__lt=cutoff,
+    )
+    count = 0
+    for order in stale:
+        cancel_order(order, note="Automatically cancelled — payment not received in time.")
+        count += 1
+    if count:
+        logger.info("Released %s expired unpaid order(s) (older than %sh).", count, hours)
+    return count
 
 
 def tracking_steps(order):

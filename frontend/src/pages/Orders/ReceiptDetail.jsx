@@ -169,8 +169,8 @@ export default function ReceiptDetail() {
                 {r.verification_code}
               </p>
               <p className="mt-1.5">
-                Anyone can confirm this receipt is genuinely ours — check this code with the order number at{' '}
-                <Link to="/receipt-verify" className="font-semibold text-brand-700 hover:text-brand-800">/receipt-verify</Link>. A fake receipt fails that check.
+                This code proves the receipt was issued by Timeline Gadgets. Store staff can check it against the order
+                before treating the receipt as proof of purchase.
               </p>
             </div>
           )}

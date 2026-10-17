@@ -24,7 +24,10 @@ from apps.categories.models import Category
 from apps.core import uploads
 from apps.core.models import ContactMessage
 from apps.orders.models import DeliveryMethod, Order, OrderItem, OrderStatus, PaymentStatus, status_flow
-from apps.orders.services import cancel_order, mark_order_paid, restore_stock
+from apps.orders.receipt_codes import code_matches
+from apps.orders.services import cancel_order, mark_order_paid
+from apps.payments import paystack
+from apps.payments.services import refund_order
 from apps.products.filters import CharInFilter, search_q
 from apps.products.models import Availability, Product, ProductImage, ProductVariant
 from apps.promotions.models import Coupon
@@ -679,31 +682,38 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(s.AdminOrderDetailSerializer(order, context={"request": request}).data)
 
     @action(detail=True, methods=["post"])
-    @transaction.atomic
     def refund(self, request, pk=None):
-        """Refund all or part of a paid order. Returns stock when asked to."""
+        """Refund all or part of a paid order.
+
+        The money actually moves when the order was paid through Paystack:
+        the refund is sent to the gateway and the returned refund id is
+        recorded. Orders settled outside Paystack are recorded as manual
+        refunds. Partial refunds accumulate — the order only becomes
+        ``refunded`` once the whole paid amount is back.
+        """
         order = self.get_object()
         serializer = s.OrderRefundSerializer(data=request.data, context={"order": order})
         serializer.is_valid(raise_exception=True)
-        amount = serializer.validated_data["amount"]
+        try:
+            order, payment, gateway_data = refund_order(
+                order,
+                amount=serializer.validated_data["amount"],
+                reason=serializer.validated_data.get("reason", ""),
+                note=serializer.validated_data.get("note", ""),
+                reference=serializer.validated_data.get("reference", ""),
+                restore_stock_items=serializer.validated_data.get("restore_stock", True),
+            )
+        except paystack.PaystackError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
 
-        order.payment_status = PaymentStatus.REFUNDED
-        order.refund_amount = amount
-        order.refund_reason = serializer.validated_data.get("reason", "")
-        order.refund_reference = serializer.validated_data.get("reference", "")
-        order.refunded_at = timezone.now()
-        order.save(update_fields=["payment_status", "refund_amount", "refund_reason",
-                                  "refund_reference", "refunded_at", "updated_at"])
-
-        if serializer.validated_data.get("restore_stock", True) and not order.stock_restored:
-            restore_stock(order)
-
-        order.add_history(
-            order.status,
-            serializer.validated_data.get("note") or f"Refunded {amount} by store staff.",
-        )
-        order = self.queryset.get(pk=order.pk)
-        return Response(s.AdminOrderDetailSerializer(order, context={"request": request}).data)
+        data = s.AdminOrderDetailSerializer(self.queryset.get(pk=order.pk), context={"request": request}).data
+        if gateway_data is not None:
+            data["detail"] = "Refund sent to Paystack and recorded."
+        elif payment is not None:
+            data["detail"] = "Refund recorded (no gateway call — Paystack is not configured)."
+        else:
+            data["detail"] = "Refund recorded as a manual refund (no Paystack transaction on file)."
+        return Response(data)
 
     @action(detail=True, methods=["patch", "post"])
     @transaction.atomic
@@ -737,11 +747,91 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
             if serializer.validated_data.get("payment_reference"):
                 order.payment_reference = serializer.validated_data["payment_reference"]
                 fields.append("payment_reference")
-            if note:
-                order.add_history(order.status, note)
+            order.add_history(order.status, note or f"Payment status set to '{new_payment}' by staff.")
             order.save(update_fields=fields)
         order = self.queryset.get(pk=order.pk)
         return Response(s.AdminOrderDetailSerializer(order, context={"request": request}).data)
+
+
+class AdminReceiptVerifyView(APIView):
+    """
+    GET /api/admin/receipts/verify/?order_number=&code=
+
+    Staff-only receipt authenticity check. The code printed on a receipt is
+    an HMAC over the order's own facts, so a doctored receipt never matches
+    while every genuine receipt maps back to exactly one order.
+
+    The response therefore identifies that order in full — who it belongs to,
+    what it covers, and whether payment still stands. A receipt is unique:
+    two people presenting the same one cannot both be its owner, and an old
+    receipt cannot stand in for a newer purchase. Staff compare the person in
+    front of them, and what they claim to have bought, against these details
+    before accepting the receipt as proof.
+    """
+
+    permission_classes = [IsStaff]
+
+    def get(self, request):
+        number = (request.query_params.get("order_number") or "").strip().upper()
+        code = (request.query_params.get("code") or "").strip()
+        if not number or not code:
+            raise ValidationError("Enter both the order number and the verification code from the receipt.")
+
+        order = (
+            Order.objects.prefetch_related("items")
+            .filter(order_number__iexact=number)
+            .first()
+        )
+        if not order or not code_matches(order, code):
+            return Response({
+                "valid": False,
+                "detail": (
+                    "This receipt does not verify — the code does not match the receipt we issued "
+                    "for that order. It did not come from us: do not treat it as proof of purchase."
+                ),
+            })
+
+        if order.is_paid:
+            detail = f"Genuine receipt for {order.order_number}, issued to {order.customer_name} ({order.email})."
+        else:
+            detail = (
+                f"The code is genuine, but this order's payment status is currently "
+                f"'{order.get_payment_status_display()}' — it is not proof that payment stands."
+            )
+
+        return Response({
+            "valid": True,
+            "detail": detail,
+            "order": {
+                "order_number": order.order_number,
+                "created_at": order.created_at,
+                "status": order.status,
+                "status_display": order.get_status_display(),
+                "payment_status": order.payment_status,
+                "payment_status_display": order.get_payment_status_display(),
+                "is_paid": order.is_paid,
+                "total": str(order.total),
+                "paid_at": order.paid_at,
+                "payment_reference": order.payment_reference,
+                "customer_name": order.customer_name,
+                "email": order.email,
+                "phone": order.phone,
+                "items": [
+                    {
+                        "product_name": item.product_name,
+                        "product_sku": item.product_sku,
+                        "variant_label": item.variant_label,
+                        "quantity": item.quantity,
+                        "unit_price": str(item.unit_price),
+                        "total_price": str(item.total_price),
+                    }
+                    for item in order.items.all()
+                ],
+                "refund_amount": str(order.refund_amount) if order.refund_amount is not None else None,
+                "refund_reason": order.refund_reason,
+                "refunded_at": order.refunded_at,
+            },
+        })
 
 
 # ---------------------------------------------------------------------------

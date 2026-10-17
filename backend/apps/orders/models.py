@@ -161,7 +161,11 @@ class Order(TimeStampedModel):
         # Customers may only tidy up their history: a cancelled order (its
         # stock gets released) or a delivered one (fully completed). Anything
         # still in flight must be cancelled first, never silently deleted.
-        return self.status in (OrderStatus.CANCELLED, OrderStatus.DELIVERED)
+        # A cancelled order whose payment landed late (refund pending) keeps
+        # its records until staff resolve the money — see the destroy view.
+        if self.status == OrderStatus.DELIVERED:
+            return True
+        return self.status == OrderStatus.CANCELLED and self.payment_status != PaymentStatus.PAID
 
     def formatted_address(self):
         a = self.shipping_address or {}

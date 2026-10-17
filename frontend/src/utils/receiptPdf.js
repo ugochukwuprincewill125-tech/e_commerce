@@ -154,14 +154,12 @@ export function buildReceiptPdf(r) {
   y += 14
   doc.setFont('helvetica', 'normal')
   colour(LINE)
-  text('Check the code below with the order number at our receipt-verify page.', M)
+  text('Timeline Gadgets staff can confirm this code against our records.', M)
   y += 14
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(12)
   colour(INK)
   text(`Code: ${r.verification_code || '—'}`, M)
-  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://timeline-gadgets.com'
-  text(`${origin}/receipt-verify`, pageW - M, { align: 'right' })
   y += 22
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(9)

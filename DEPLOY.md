@@ -131,8 +131,26 @@ order is saved as unpaid.
 3. Test a checkout with Paystack's test card: `4084 0840 8408 4081`, any
    future expiry, CVV `408`, PIN `0000`, OTP `123456`.
 4. Paystack dashboard → Webhooks → `https://<service-name>.onrender.com/api/payments/webhook/`.
-5. Before selling for real: activate the business on Paystack, swap in
+5. Paystack dashboard → Settings → **enable Refunds** (refunds are disabled by
+   default — until this is on, the admin Refund button's gateway call is
+   rejected).
+6. Before selling for real: activate the business on Paystack, swap in
    `sk_live_…` / `pk_live_…`, redeploy.
+
+How money is handled in the store (no setup needed, listed so you know what to
+expect in the admin):
+
+- Unpaid orders expire after `UNPAID_ORDER_EXPIRY_HOURS` (default 48h) and
+  their reserved stock goes back on the shelf — see §7's `MAINTENANCE_TOKEN`.
+- The admin Orders page **Refund** button is real: for Paystack-paid orders it
+  sends the refund to Paystack and records the returned refund id. Partial
+  refunds accumulate — the order reads "refunded" only when the full paid
+  amount is back, and the remainder stays refundable meanwhile. Orders paid
+  outside Paystack (bank transfer, test mode) are recorded as manual refunds.
+- A duplicate or late charge (e.g. paid after cancellation) is never silently
+  kept: it is recorded and flagged in the order's history for staff to refund.
+- A refund issued directly from the Paystack dashboard is still picked up by
+  the webhook and lands in the order's books.
 
 ## 7. Render environment reference
 
@@ -148,6 +166,7 @@ order is saved as unpaid.
 | `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` | Cloudinary console → API Keys | Required in production |
 | `PAYSTACK_SECRET_KEY` / `PAYSTACK_PUBLIC_KEY` | `sk_test_…` / `pk_test_…` | Add when ready (§6) |
 | `ALLOW_MISSING_PAYSTACK` | `True` | Keeps deploys working until Paystack keys exist; delete afterwards |
+| `MAINTENANCE_TOKEN` | any long random string | Enables the expired-unpaid-order upkeep. Set the same string as a GitHub repo secret (Actions use it hourly) — see `.github/workflows/maintenance.yml` |
 | `EMAIL_BACKEND`, `EMAIL_HOST`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS` | your SMTP provider | Until set, emails print to the Render logs |
 
 **Not needed on Render:** `DEBUG` (prod hard-codes it off), `PAYMENT_TEST_MODE`
@@ -167,6 +186,8 @@ Optional tuning (all have sane defaults): `THROTTLE_ANON`, `THROTTLE_USER`,
 - [ ] Cart → checkout → order placed; visible in the admin
 - [ ] Admin: edit a product and upload an image
 - [ ] Paystack set up (§6) before taking real orders
+- [ ] (Recommended) Set `MAINTENANCE_TOKEN` on Render **and** as a GitHub
+      secret, so unpaid orders stop holding stock after their expiry
 - [ ] (Optional) Custom domain: add it on Vercel + Render, then update
       `FRONTEND_URL`, `CORS_ALLOWED_ORIGINS` and `ALLOWED_HOSTS`
 

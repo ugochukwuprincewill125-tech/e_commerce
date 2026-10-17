@@ -115,6 +115,8 @@ def payment(db, order):
         amount=order.total,
         currency="NGN",
         status=Payment.Status.INITIALIZED,
+        # A real initialized payment always carries the hosted checkout URL.
+        authorization_url="https://paystack.com/pay/test-link",
     )
 
 

@@ -1,6 +1,7 @@
 """Tests for the Paystack HTTP client (apps/payments/paystack.py)."""
 import hashlib
 import hmac
+import json
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -176,6 +177,23 @@ class TestRefundTransaction:
         )
         with pytest.raises(paystack.PaystackError, match="Transaction not found"):
             paystack.refund_transaction("bad-ref")
+
+    @resp.activate
+    def test_payload_uses_transaction_field(self, settings):
+        """The refund API takes the reference in ``transaction`` — sending
+        ``reference`` instead makes every real refund fail."""
+        settings.PAYSTACK_SECRET_KEY = "sk_test_dummy"
+        settings.PAYSTACK_BASE_URL = "https://api.paystack.co"
+        captured = {}
+
+        def callback(request):
+            captured.update(json.loads(request.body))
+            return (200, {}, json.dumps({"status": True, "data": {"id": 42, "status": "pending"}}))
+
+        resp.add_callback(resp.POST, "https://api.paystack.co/refund", callback=callback)
+        data = paystack.refund_transaction("TGS-240101-XYZ-1234", Decimal("1000.00"))
+        assert captured == {"transaction": "TGS-240101-XYZ-1234", "amount": 100000}
+        assert data["id"] == 42
 
     @resp.activate
     def test_network_error(self, settings):

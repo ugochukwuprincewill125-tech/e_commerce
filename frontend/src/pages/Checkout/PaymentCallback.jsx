@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
-import { CheckCircle2, LoaderCircle, Package, XCircle } from 'lucide-react'
+import { CheckCircle2, Clock3, LoaderCircle, Package, XCircle } from 'lucide-react'
 import { useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
@@ -49,6 +49,22 @@ export default function PaymentCallback() {
         <LoaderCircle className="mx-auto h-14 w-14 animate-spin text-brand-500" />
         <h1 className="mt-6 text-2xl font-bold">Confirming your payment…</h1>
         <p className="mt-2 text-metal-500">Please don’t close this page.</p>
+      </>
+    )
+  } else if (data?.pending) {
+    // Paystack hasn't finished (common with bank transfers): the payment is
+    // still open — nothing has failed, so don't look like something did.
+    content = (
+      <>
+        <Clock3 className="mx-auto h-16 w-16 text-amber-500" />
+        <h1 className="mt-6 text-2xl font-bold">Payment still processing</h1>
+        <p className="mt-2 text-metal-500">{data?.detail}</p>
+        <div className="mt-8 flex flex-wrap justify-center gap-3">
+          <Button onClick={() => refetch()} variant="outline">
+            Check again
+          </Button>
+          {data?.order_number && <Button to={`/account/orders/${data.order_number}`}>Go to order</Button>}
+        </div>
       </>
     )
   } else if (isError || !data?.success) {

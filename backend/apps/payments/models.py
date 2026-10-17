@@ -12,6 +12,7 @@ class Payment(models.Model):
     class Provider(models.TextChoices):
         PAYSTACK = "paystack", "Paystack"
         TEST = "test", "Test mode (no real charge)"
+        FREE = "free", "Free order (fully discounted)"
 
     order = models.ForeignKey("orders.Order", on_delete=models.CASCADE, related_name="payments")
     provider = models.CharField(max_length=20, choices=Provider.choices, default=Provider.PAYSTACK)

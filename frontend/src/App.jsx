@@ -17,6 +17,7 @@ const AdminProducts = lazy(() => import('./pages/Admin/AdminProducts'))
 const AdminProductNew = lazy(() => import('./pages/Admin/AdminProductEditor').then((m) => ({ default: m.AdminProductNew })))
 const AdminProductEdit = lazy(() => import('./pages/Admin/AdminProductEditor').then((m) => ({ default: m.AdminProductEdit })))
 const AdminOrders = lazy(() => import('./pages/Admin/AdminOrders'))
+const AdminReceiptVerify = lazy(() => import('./pages/Admin/AdminReceiptVerify'))
 const AdminRoute = lazy(() => import('./pages/Admin/AdminRoute'))
 const AdminCategories = lazy(() => import('./pages/Admin/AdminTaxonomy').then((m) => ({ default: m.AdminCategories })))
 const AdminBrands = lazy(() => import('./pages/Admin/AdminTaxonomy').then((m) => ({ default: m.AdminBrands })))
@@ -44,7 +45,6 @@ const Overview = lazy(() => import('./pages/Dashboard/Overview'))
 const Orders = lazy(() => import('./pages/Orders/Orders'))
 const OrderDetails = lazy(() => import('./pages/Orders/OrderDetails'))
 const Receipts = lazy(() => import('./pages/Orders/Receipts'))
-const ReceiptVerify = lazy(() => import('./pages/Orders/ReceiptVerify'))
 const ReceiptDetail = lazy(() => import('./pages/Orders/ReceiptDetail'))
 const Wishlist = lazy(() => import('./pages/Wishlist/Wishlist'))
 const Profile = lazy(() => import('./pages/Dashboard/Profile'))
@@ -86,7 +86,6 @@ export default function App() {
             <Route path="/reset-password/:uid/:token" element={<Page><ResetPassword /></Page>} />
             <Route path="/verify-email/:uid/:token" element={<Page><VerifyEmail /></Page>} />
             <Route path="/track-order" element={<Page><AccountShell><TrackOrder /></AccountShell></Page>} />
-            <Route path="/receipt-verify" element={<Page><AccountShell><ReceiptVerify /></AccountShell></Page>} />
             <Route path="/wishlist" element={<Navigate to="/account/wishlist" replace />} />
             <Route path="/account" element={<ProtectedRoute><Page><Dashboard /></Page></ProtectedRoute>}>
               <Route index element={<Overview />} />
@@ -103,6 +102,7 @@ export default function App() {
             <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
               <Route index element={<AdminHome />} />
               <Route path="/admin/orders" element={<AdminOrders />} />
+              <Route path="/admin/receipt-verify" element={<AdminReceiptVerify />} />
               <Route path="/admin/products" element={<AdminProducts />} />
               <Route path="/admin/products/new" element={<AdminProductNew />} />
               <Route path="/admin/products/:id/edit" element={<AdminProductEdit />} />

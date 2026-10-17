@@ -69,10 +69,15 @@ def valid_webhook_signature(raw_body: bytes, signature: str) -> bool:
 def refund_transaction(reference, amount_naira=None):
     """Initiate a refund via Paystack.
 
+    Paystack's refund endpoint takes the transaction reference in the
+    ``transaction`` field — NOT ``reference`` (see
+    https://paystack.com/docs/api/refund/). Sending the wrong name makes every
+    refund fail, so the field is set explicitly here.
+
     If ``amount_naira`` is given the refund is partial (in Naira, converted to
     kobo); otherwise the full transaction amount is refunded.
     """
-    payload = {"reference": reference}
+    payload = {"transaction": reference}
     if amount_naira is not None:
         payload["amount"] = to_kobo(amount_naira)
     try:

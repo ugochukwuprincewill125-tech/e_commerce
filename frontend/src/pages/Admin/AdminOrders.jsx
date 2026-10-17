@@ -433,7 +433,9 @@ function OrderDetail({ order, invalidate }) {
   const toast = useToast()
   const [carrier, setCarrier] = useState(order.carrier || '')
   const [number, setNumber] = useState(order.tracking_number || '')
-  const [refundAmount, setRefundAmount] = useState(String(order.total))
+  const alreadyRefunded = Number(order.refund_amount || 0)
+  const refundable = Math.max(Number(order.total) - alreadyRefunded, 0)
+  const [refundAmount, setRefundAmount] = useState(String(refundable))
   const [refundReason, setRefundReason] = useState('')
 
   const statusMut = useAdminMutation({
@@ -466,7 +468,7 @@ function OrderDetail({ order, invalidate }) {
     onDone: invalidate,
   })
 
-  const canRefund = order.payment_status === 'paid'
+  const canRefund = order.payment_status === 'paid' && refundable > 0
   const isFinalState = isFinalStatus(order.status)
   const pickup = order.delivery_method === 'pickup'
   const pipeline = pickup
@@ -641,9 +643,9 @@ function OrderDetail({ order, invalidate }) {
             <input
               className="input"
               type="number"
-              min="1"
+              min="0.01"
               step="0.01"
-              max={order.total}
+              max={refundable}
               value={refundAmount}
               onChange={(e) => setRefundAmount(e.target.value)}
               aria-label="Refund amount"
@@ -664,7 +666,9 @@ function OrderDetail({ order, invalidate }) {
             </button>
           </div>
           <p className="mt-1.5 text-xs text-metal-500">
-            Full or partial. Reserved stock is returned to inventory automatically.
+            {alreadyRefunded > 0
+              ? `Already refunded ${formatNaira(alreadyRefunded)} — ${formatNaira(refundable)} still refundable.`
+              : 'Full or partial. Sent to Paystack for paid orders; reserved stock is returned to inventory automatically.'}
           </p>
         </div>
       )}
