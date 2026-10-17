@@ -49,7 +49,7 @@ export default function Receipts() {
             {data.results.map((o) => (
               <li key={o.id}>
                 <Link
-                  to={`/account/receipts/${o.payment_reference || o.order_number}`}
+                  to={`/account/receipts/${o.order_number}`}
                   className="flex items-center gap-4 px-4 py-3.5 text-sm transition-colors hover:bg-metal-50"
                 >
                   <FileText className="h-5 w-5 flex-none text-metal-400" strokeWidth={1.75} />

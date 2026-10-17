@@ -44,6 +44,7 @@ const Overview = lazy(() => import('./pages/Dashboard/Overview'))
 const Orders = lazy(() => import('./pages/Orders/Orders'))
 const OrderDetails = lazy(() => import('./pages/Orders/OrderDetails'))
 const Receipts = lazy(() => import('./pages/Orders/Receipts'))
+const ReceiptVerify = lazy(() => import('./pages/Orders/ReceiptVerify'))
 const ReceiptDetail = lazy(() => import('./pages/Orders/ReceiptDetail'))
 const Wishlist = lazy(() => import('./pages/Wishlist/Wishlist'))
 const Profile = lazy(() => import('./pages/Dashboard/Profile'))
@@ -85,6 +86,7 @@ export default function App() {
             <Route path="/reset-password/:uid/:token" element={<Page><ResetPassword /></Page>} />
             <Route path="/verify-email/:uid/:token" element={<Page><VerifyEmail /></Page>} />
             <Route path="/track-order" element={<Page><AccountShell><TrackOrder /></AccountShell></Page>} />
+            <Route path="/receipt-verify" element={<Page><AccountShell><ReceiptVerify /></AccountShell></Page>} />
             <Route path="/wishlist" element={<Navigate to="/account/wishlist" replace />} />
             <Route path="/account" element={<ProtectedRoute><Page><Dashboard /></Page></ProtectedRoute>}>
               <Route index element={<Overview />} />

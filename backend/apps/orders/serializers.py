@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from .models import DeliveryMethod, Order, OrderItem, OrderStatusHistory
+from .receipt_codes import verification_code
 from .services import tracking_steps
 
 
@@ -10,7 +11,7 @@ class ReceiptItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = OrderItem
-        fields = ("product_slug", "product_name", "variant_label", "quantity", "unit_price", "total_price", "image")
+        fields = ("id", "product_slug", "product_name", "variant_label", "quantity", "unit_price", "total_price", "image")
 
     def get_product_slug(self, obj):
         return obj.product.slug if obj.product_id and obj.product else None
@@ -31,6 +32,12 @@ class ReceiptSerializer(serializers.ModelSerializer):
     items = ReceiptItemSerializer(many=True, read_only=True)
     delivery_method_display = serializers.CharField(source="get_delivery_method_display", read_only=True)
     item_count = serializers.SerializerMethodField()
+    verification_code = serializers.SerializerMethodField()
+
+    def get_verification_code(self, obj):
+        # Printed on the receipt; anyone can check it against the public
+        # /api/orders/verify-receipt/ endpoint. Forged receipts fail.
+        return verification_code(obj)
 
     class Meta:
         model = Order
@@ -38,7 +45,7 @@ class ReceiptSerializer(serializers.ModelSerializer):
             "order_number", "created_at", "first_name", "last_name", "email", "phone",
             "delivery_method", "delivery_method_display", "pickup_location", "shipping_address",
             "subtotal", "shipping_fee", "discount", "coupon_code", "total",
-            "payment_reference", "paid_at", "items", "item_count",
+            "payment_reference", "paid_at", "items", "item_count", "verification_code",
         )
 
     def get_item_count(self, obj):

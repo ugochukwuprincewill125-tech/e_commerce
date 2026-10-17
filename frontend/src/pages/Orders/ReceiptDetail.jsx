@@ -1,14 +1,19 @@
 import { useQuery } from '@tanstack/react-query'
-import { PackageX, Printer } from 'lucide-react'
+import { Download, PackageX, Printer } from 'lucide-react'
+import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import EmptyState, { ErrorState } from '../../components/EmptyState/EmptyState'
 import { Skeleton } from '../../components/Loader/Skeleton'
+import { useToast } from '../../context/ToastContext'
 import { formatDate, formatDateTime, formatNaira } from '../../utils/format'
+import { downloadReceiptPdf } from '../../utils/receiptPdf'
 import { orderService } from '../../services/orderService'
 
 export default function ReceiptDetail() {
   const { reference } = useParams()
+  const toast = useToast()
+  const [downloading, setDownloading] = useState(false)
   const { data: r, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['receipt', reference],
     queryFn: () => orderService.receipt(reference),
@@ -18,6 +23,19 @@ export default function ReceiptDetail() {
 
   const handlePrint = () => {
     window.print()
+  }
+
+  const handleDownload = async () => {
+    setDownloading(true)
+    try {
+      downloadReceiptPdf(r)
+      toast.success('Receipt downloaded', 'Saved as receipt-' + r.order_number + '.pdf')
+    } catch (e) {
+      console.error(e)
+      toast.error('Download failed', 'Your browser blocked the PDF. Allow downloads for this site or use Print → Save as PDF.')
+    } finally {
+      setDownloading(false)
+    }
   }
 
   if (isLoading)
@@ -55,14 +73,25 @@ export default function ReceiptDetail() {
         <Link to="/account/receipts" className="text-[13px] font-semibold text-metal-500 hover:text-ink-900">
           &larr; All receipts
         </Link>
-        <button
-          onClick={handlePrint}
-          type="button"
-          className="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-[13px] font-medium text-ink-800 hover:border-ink-900 hover:text-ink-900"
-        >
-          <Printer className="h-4 w-4" strokeWidth={1.75} />
-          Print
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleDownload}
+            type="button"
+            disabled={downloading}
+            className="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-[13px] font-medium text-ink-800 hover:border-ink-900 hover:text-ink-900 disabled:opacity-60"
+          >
+            <Download className="h-4 w-4" strokeWidth={1.75} />
+            {downloading ? 'Preparing…' : 'Download PDF'}
+          </button>
+          <button
+            onClick={handlePrint}
+            type="button"
+            className="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-[13px] font-medium text-ink-800 hover:border-ink-900 hover:text-ink-900"
+          >
+            <Printer className="h-4 w-4" strokeWidth={1.75} />
+            Print
+          </button>
+        </div>
       </div>
 
       <div className="receipt printable card p-6 sm:p-8">
@@ -133,6 +162,18 @@ export default function ReceiptDetail() {
         <div className="mt-6 border-t border-line pt-4 text-xs text-metal-600">
           <p>Payment reference: {r.payment_reference}</p>
           <p>Paid on: {formatDateTime(r.paid_at)}</p>
+          {r.verification_code && (
+            <div className="mt-3">
+              <p className="font-semibold uppercase tracking-wide text-ink-800">Verification code</p>
+              <p className="mt-1 inline-block rounded-lg border border-line bg-metal-50 px-3 py-1.5 font-mono text-[14px] font-semibold tracking-widest text-ink-900">
+                {r.verification_code}
+              </p>
+              <p className="mt-1.5">
+                Anyone can confirm this receipt is genuinely ours — check this code with the order number at{' '}
+                <Link to="/receipt-verify" className="font-semibold text-brand-700 hover:text-brand-800">/receipt-verify</Link>. A fake receipt fails that check.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="print:hidden mt-6 border-t border-line pt-4 text-center text-xs text-metal-500">

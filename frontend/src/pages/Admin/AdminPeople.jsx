@@ -23,6 +23,7 @@ const CUSTOMER_CSV = [
   { label: 'Name', get: (c) => c.full_name },
   { label: 'Email', get: (c) => c.email },
   { label: 'Phone', get: (c) => c.phone },
+  { label: 'Role', get: (c) => (c.is_superuser ? 'admin' : c.is_staff ? 'staff' : 'customer') },
   { label: 'Orders', get: (c) => c.order_count },
   { label: 'Total spent', get: (c) => c.total_spent },
   { label: 'Verified', get: (c) => (c.email_verified ? 'yes' : 'no') },
@@ -98,7 +99,7 @@ export function AdminCustomers() {
         </select>
         <select className="input w-auto" value={staffOnly} onChange={(e) => setParam('is_staff', e.target.value)} aria-label="Filter by role">
           <option value="">Everyone</option>
-          <option value="true">Staff only</option>
+          <option value="true">Admins only</option>
           <option value="false">Customers only</option>
         </select>
       </div>
@@ -140,7 +141,8 @@ export function AdminCustomers() {
                             <span className={`chip ${c.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
                               {c.is_active ? 'Active' : 'Blocked'}
                             </span>
-                            {c.is_staff && <span className="chip bg-ink-900 text-white">Staff</span>}
+                            {c.is_superuser && <span className="chip bg-ink-900 text-white">Admin</span>}
+                            {!c.is_superuser && c.is_staff && <span className="chip bg-ink-900 text-white">Staff</span>}
                             {!c.email_verified && <span className="chip bg-amber-100 text-amber-800">Unverified</span>}
                           </div>
                         </td>

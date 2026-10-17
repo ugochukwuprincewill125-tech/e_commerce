@@ -57,10 +57,16 @@ class InitializePaymentView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     throttle_scope = "payments"
 
+    @transaction.atomic
     def post(self, request):
         serializer = InitializeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        order = Order.objects.filter(user=request.user, order_number=serializer.validated_data["order_number"]).first()
+        # Row-lock the order so two tabs (or a double click) can never race "does
+        # an initialized payment exist?" and create two references for one order.
+        # The second caller waits, then is handed the same authorization_url.
+        order = Order.objects.select_for_update().filter(
+            user=request.user, order_number=serializer.validated_data["order_number"]
+        ).first()
         if not order:
             return Response({"detail": "Order not found."}, status=status.HTTP_404_NOT_FOUND)
         if order.is_paid:
@@ -72,6 +78,8 @@ class InitializePaymentView(APIView):
             order=order, status=Payment.Status.INITIALIZED, provider=Payment.Provider.PAYSTACK
         ).first()
         if existing:
+            # Already-opened checkout for this order: reuse it instead of starting
+            # a second transaction the customer could pay twice.
             return Response(
                 {"authorization_url": existing.authorization_url, "access_code": "", "reference": existing.reference, "test_mode": False}
             )

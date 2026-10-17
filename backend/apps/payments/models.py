@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Q
 
 
 class Payment(models.Model):
@@ -28,6 +29,18 @@ class Payment(models.Model):
 
     class Meta:
         ordering = ("-created_at",)
+        constraints = [
+            # Database-level duplicate-payment guard: an order can only ever
+            # have ONE open payment per provider (Paystack or test mode). The
+            # initialize view reuses that payment; this keeps a race (double
+            # click, second tab) from minting a second reference for the same
+            # order, which is how a customer could pay twice.
+            models.UniqueConstraint(
+                fields=("order", "provider"),
+                condition=Q(status="initialized"),
+                name="one_initialized_payment_per_order",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.reference} ({self.get_status_display()})"

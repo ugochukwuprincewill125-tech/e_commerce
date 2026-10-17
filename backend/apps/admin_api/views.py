@@ -754,7 +754,7 @@ class AdminCustomerViewSet(
     viewsets.GenericViewSet,
 ):
     """
-    GET   /api/admin/customers/    ?search=<name/email/phone>&is_active=&ordering=
+    GET   /api/admin/customers/    ?search=<name/email/phone>&is_active=&ordering=&is_staff=
     GET   /api/admin/customers/<id>/
     PATCH /api/admin/customers/<id>/            edit basic details
     POST  /api/admin/customers/<id>/set_active/ {is_active}
@@ -770,9 +770,12 @@ class AdminCustomerViewSet(
     http_method_names = ["get", "post", "patch", "put", "head", "options"]
 
     def get_queryset(self):
+        # Everyone is listed here — customers AND admins — so staff admins can
+        # see (and the owner can audit) exactly who has admin access. Writes to
+        # superuser accounts stay blocked by the guards in _toggle/set_staff.
         spent = Sum("orders__total", output_field=DecimalField())
         return (
-            User.objects.filter(is_superuser=False)
+            User.objects.all()
             .annotate(order_count=Count("orders", distinct=True),
                       total_spent=Coalesce(spent, 0, output_field=DecimalField()))
         )

@@ -13,6 +13,10 @@ import {
 
 const TYPES = ['device', 'computing', 'audio', 'wearable', 'power', 'storage', 'networking', 'accessory', 'gaming', 'security', 'software']
 
+/** Hosting (Vercel/Cloudinary path) rejects request bodies above 4MB, so any
+ *  image over 4MB can never be uploaded — block it at pick time. */
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024
+
 const EMPTY = {
   name: '', sku: '', category: '', brand: '', product_type: 'accessory',
   price: '', discount_price: '', stock_quantity: '', short_description: '',
@@ -185,6 +189,23 @@ function Editor({ productId }) {
     deleteProductImage(productId, image.id).then(invalidate, (e) => toast.error(e.message || 'Could not delete the image.'))
   }
 
+  /** Pop the too-large warning the moment an oversized image is selected.
+   *  The rejected files never enter the staged list, so publishing cannot fail later on size. */
+  const pickFiles = (e) => {
+    const picked = Array.from(e.target.files || [])
+    e.target.value = '' // allow re-picking the same file after a failed pick
+    const oversize = picked.filter((f) => f.size > MAX_IMAGE_BYTES)
+    const acceptable = picked.filter((f) => f.size <= MAX_IMAGE_BYTES)
+    if (oversize.length) {
+      const listing = oversize.map((f) => `${f.name} (${(f.size / 1024 / 1024).toFixed(1)}MB)`).join(', ')
+      toast.error(
+        oversize.length === 1 ? 'Image too large — 4MB limit' : `${oversize.length} images too large — 4MB limit`,
+        `Images above 4MB can't be uploaded (our host enforces a 4MB limit). Please compress ${listing} to 4MB or less and pick it again.`,
+      )
+    }
+    if (acceptable.length) setFiles((prev) => [...prev, ...acceptable])
+  }
+
   if (isEdit && isLoading) {
     return (
       <AdminPage title="Edit product" description="Loading the product…">
@@ -315,14 +336,14 @@ function Editor({ productId }) {
               accept="image/*"
               multiple
               hidden
-              onChange={(e) => setFiles([...e.target.files])}
+              onChange={pickFiles}
             />
             {progress !== null && <span className="text-xs font-medium text-ink-700">Uploading {Math.round(progress * 100)}%…</span>}
           </div>
           {files.length > 0 && (
             <ul className="mt-3 flex flex-wrap gap-2 text-xs">
               {files.map((f, i) => {
-                const tooLarge = f.size > 4 * 1024 * 1024
+                const tooLarge = f.size > MAX_IMAGE_BYTES
                 return (
                   <li
                     key={`${f.name}-${i}`}
@@ -346,7 +367,7 @@ function Editor({ productId }) {
               })}
             </ul>
           )}
-          {files.some((f) => f.size > 4 * 1024 * 1024) && (
+          {files.some((f) => f.size > MAX_IMAGE_BYTES) && (
             <p className="mt-2 text-xs text-danger">One or more files exceed the 4MB limit. Remove or compress them before uploading.</p>
           )}
           <p className="mt-2 text-xs text-metal-500">

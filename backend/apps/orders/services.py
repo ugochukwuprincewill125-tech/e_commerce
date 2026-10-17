@@ -11,7 +11,7 @@ from apps.products.models import Product, ProductVariant
 from apps.promotions.models import Coupon
 from apps.users.models import Address
 
-from .models import Order, OrderItem, OrderStatus, PaymentStatus
+from .models import Order, OrderItem, OrderStatus, PaymentStatus, status_flow
 
 logger = logging.getLogger(__name__)
 
@@ -178,13 +178,17 @@ def mark_order_paid(order, reference, note="Payment confirmed via Paystack."):
 
 @transaction.atomic
 def delete_order(order):
-    """Permanently remove an unpaid/unprocessed order and restore its stock. Idempotent."""
+    """Permanently remove one of the customer's own orders.
+
+    Only cancelled or delivered orders qualify (the caller checks `can_delete`).
+    A cancelled order may still be holding reserved stock, so it is released
+    first; a delivered order's stock has already left the store — nothing to
+    return. Deleting a delivered order also deletes its payment rows and
+    receipt data, which is exactly the tidy-up the customer asked for.
+    """
     order = Order.objects.select_for_update().get(pk=order.pk)
-    if order.status != OrderStatus.CANCELLED:
-        order.status = OrderStatus.CANCELLED
-        order.save(update_fields=["status"])
-        order.add_history(OrderStatus.CANCELLED, "Order cancelled before deletion.")
-    restore_stock(order)
+    if order.status == OrderStatus.CANCELLED:
+        restore_stock(order)
     order.delete()
 
 

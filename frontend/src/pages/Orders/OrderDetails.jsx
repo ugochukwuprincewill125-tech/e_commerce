@@ -142,7 +142,7 @@ export default function OrderDetails() {
             <p className="font-semibold text-ink-900">Payment confirmed</p>
             <p className="text-sm text-metal-600">A receipt has been generated for this order.</p>
           </div>
-          <Link to={`/account/receipts/${order.payment_reference || order.order_number}`}>
+          <Link to={`/account/receipts/${order.order_number}`}>
             <Button variant="outline" size="sm">
               View receipt
             </Button>
@@ -241,7 +241,17 @@ export default function OrderDetails() {
       </Modal>
       <Modal open={confirmDelete} onClose={() => setConfirmDelete(false)} title="Delete this order?">
         <div className="p-5 sm:p-6">
-          <p className="text-sm text-metal-600">Order {order.order_number} will be permanently deleted along with its items. This cannot be undone.</p>
+          {order.status === 'delivered' ? (
+            <p className="text-sm text-metal-600">
+              Order {order.order_number} was delivered — it can be removed from your history.
+              Its receipt will be deleted too, so download it first if you still need it. This cannot be undone.
+            </p>
+          ) : (
+            <p className="text-sm text-metal-600">
+              Order {order.order_number} was cancelled — it will be permanently deleted along with its items.
+              This cannot be undone.
+            </p>
+          )}
           <div className="mt-6 flex justify-end gap-3">
             <Button variant="outline" onClick={() => setConfirmDelete(false)}>
               Keep order

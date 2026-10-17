@@ -1,5 +1,6 @@
 import api from './api'
 
+/* Public (no-auth) + customer endpoints live here. */
 export const orderService = {
   list: (params) => api.get('/orders/', { params }).then((r) => r.data),
   detail: (orderNumber) => api.get(`/orders/${orderNumber}/`).then((r) => r.data),
@@ -8,6 +9,8 @@ export const orderService = {
   delete: (orderNumber) => api.delete(`/orders/${orderNumber}/`).then((r) => r.data),
   receipt: (orderNumber) => api.get(`/orders/${orderNumber}/receipt/`).then((r) => r.data),
   track: (payload) => api.post('/orders/track/', payload).then((r) => r.data),
+  /** Public receipt authenticity check — no sign-in needed. */
+  verifyReceipt: (params) => api.get('/orders/verify-receipt/', { params }).then((r) => r.data),
 }
 
 export const paymentService = {

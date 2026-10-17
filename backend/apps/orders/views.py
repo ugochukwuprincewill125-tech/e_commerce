@@ -8,6 +8,7 @@ from apps.cart.services import get_cart
 from apps.products.models import ProductImage
 
 from .models import Order, OrderItem
+from .receipt_codes import code_matches
 from .serializers import (
     CreateOrderSerializer,
     OrderDetailSerializer,
@@ -37,7 +38,7 @@ class OrderViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Crea
        ?status=delivered                       filter by status
          GET  /api/orders/<order_number>/          order details + tracking timeline
          POST /api/orders/<order_number>/cancel/   cancel an unpaid order (stock is released)
-         DELETE /api/orders/<order_number>/         delete an unpaid, unprocessed order
+         DELETE /api/orders/<order_number>/         delete one of the customer's own orders — only cancelled or delivered ones
          GET  /api/orders/<order_number>/receipt/    receipt data for a paid order
     """
 
@@ -79,7 +80,7 @@ class OrderViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Crea
         order = self.get_object()
         if not order.can_delete:
             return Response(
-                {"detail": "This order can no longer be deleted. Please contact support."},
+                {"detail": "Only cancelled or delivered orders can be deleted."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         delete_order(order)
@@ -91,6 +92,41 @@ class OrderViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Crea
         if not order.is_paid:
             return Response({"detail": "Receipts are only available for paid orders."}, status=status.HTTP_404_NOT_FOUND)
         return Response(ReceiptSerializer(order, context={"request": request}).data)
+class ReceiptVerifyView(APIView):
+    """
+    GET /api/orders/verify-receipt/?order_number=&code=  — public, no sign-in.
+    Anyone handed a "receipt" (support, the store, a third party) can confirm
+    it actually came from us: the code printed on the receipt is an HMAC over
+    the order's own facts, so forged receipts do not verify. Deliberately
+    returns minimal data — no customer PII through this endpoint.
+    """
+
+    permission_classes = [permissions.AllowAny]
+    throttle_scope = "auth"
+
+    def get(self, request):
+        number = (request.query_params.get("order_number") or "").strip().upper()
+        code = request.query_params.get("code") or ""
+        if not number or not code.strip():
+            return Response(
+                {"valid": False, "detail": "Enter both the order number and the verification code from the receipt."}
+            )
+        order = Order.objects.filter(order_number__iexact=number).first()
+        if order and order.is_paid and code_matches(order, code):
+            return Response(
+                {
+                    "valid": True,
+                    "order_number": order.order_number,
+                    "status": order.get_status_display(),
+                    "total": str(order.total),
+                    "paid_at": order.paid_at,
+                }
+            )
+        return Response(
+            {"valid": False, "detail": "This receipt does not verify — it did not come from us. Contact the store before treating it as proof of payment."}
+        )
+
+
 class TrackOrderView(APIView):
     """POST /api/orders/track/ {order_number, email} — public order tracking."""
 

@@ -158,7 +158,10 @@ class Order(TimeStampedModel):
 
     @property
     def can_delete(self):
-        return self.status == OrderStatus.PLACED and self.payment_status != PaymentStatus.PAID
+        # Customers may only tidy up their history: a cancelled order (its
+        # stock gets released) or a delivered one (fully completed). Anything
+        # still in flight must be cancelled first, never silently deleted.
+        return self.status in (OrderStatus.CANCELLED, OrderStatus.DELIVERED)
 
     def formatted_address(self):
         a = self.shipping_address or {}
