@@ -1,16 +1,19 @@
-# Releases stock held by unpaid orders.
+# Scheduled upkeep: releases stock held by unpaid orders, then reconciles
+# recent payments against Paystack.
 #
 # Render's free tier has no cron jobs, so this workflow does the upkeep from
-# GitHub Actions instead: it calls the token-guarded maintenance endpoint,
-# which cancels unpaid orders past UNPAID_ORDER_EXPIRY_HOURS (default 48h) and
-# puts their reserved stock back on the shelf. Without this, one customer who
-# never pays could hold the last unit of a product forever.
+# GitHub Actions instead: it calls the token-guarded maintenance endpoints.
+# The first cancels unpaid orders past UNPAID_ORDER_EXPIRY_HOURS (default 48h)
+# and puts their reserved stock back on the shelf — without it, one customer
+# who never pays could hold the last unit of a product forever. The second
+# re-verifies open Paystack payments so a late settlement (a checkout that
+# charged after the customer cancelled) or a missed webhook is never lost.
 #
 # Setup (once): generate any long random string and set it BOTH as:
 #   - GitHub repo secret: MAINTENANCE_TOKEN
 #   - Render env var:     MAINTENANCE_TOKEN
-# If the secret is not set the job skips quietly (the endpoint stays disabled).
-name: Release unpaid orders
+# If the secret is not set the job skips quietly (the endpoints stay disabled).
+name: Scheduled maintenance
 
 on:
   schedule:
@@ -41,3 +44,17 @@ jobs:
           # request waits, so allow generous time for the very first call.
           curl -sS -f -X POST -H "X-Maintenance-Token: $MAINTENANCE_TOKEN" \
             --max-time 130 "$MAINTENANCE_URL"
+
+      - name: Reconcile recent payments
+        env:
+          MAINTENANCE_TOKEN: ${{ secrets.MAINTENANCE_TOKEN }}
+          RECONCILE_URL: https://timelineglobal.onrender.com/api/payments/maintenance/reconcile/
+        run: |
+          if [ -z "$MAINTENANCE_TOKEN" ]; then
+            echo "MAINTENANCE_TOKEN is not configured — skipping (the endpoint is disabled)."
+            exit 0
+          fi
+          # Re-checks recent open Paystack payments: late settlements and
+          # missed webhooks reach the books here.
+          curl -sS -f -X POST -H "X-Maintenance-Token: $MAINTENANCE_TOKEN" \
+            --max-time 130 "$RECONCILE_URL"

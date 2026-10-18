@@ -57,13 +57,21 @@ class TestInitializePaymentView:
         assert resp.data["test_mode"] is False
 
     def test_initialize_idempotent_returns_existing(self, auth_client, order, payment, settings):
-        """An order with an existing INITIALIZED payment should reuse it."""
+        """An attempt Paystack still has open is re-checked and handed back —
+        the customer finishes the same checkout instead of getting a second
+        reference they could also pay."""
+        settings.PAYSTACK_SECRET_KEY = "sk_test_dummy"
         payment.status = Payment.Status.INITIALIZED
         payment.save()
         url = reverse("payment-initialize")
-        resp = auth_client.post(url, {"order_number": order.order_number})
+        with patch("apps.payments.views.paystack.verify_transaction") as mock_verify:
+            mock_verify.return_value = {"status": "ongoing", "reference": payment.reference}
+            resp = auth_client.post(url, {"order_number": order.order_number})
         assert resp.status_code == status.HTTP_200_OK
         assert resp.data["reference"] == payment.reference
+        assert resp.data["pending"] is True
+        assert resp.data["authorization_url"] == payment.authorization_url
+        assert order.payments.count() == 1
 
     def test_initialize_retires_attempt_without_checkout_url(self, auth_client, order, payment, settings):
         """An initialized payment that stored no checkout URL is a dead end —

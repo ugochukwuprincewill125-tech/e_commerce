@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, CreditCard, PackageX, Trash2, XCircle } from 'lucide-react'
-import { useState } from 'react'
+import { ArrowLeft, CreditCard, PackageX, RefreshCw, Trash2, XCircle } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import Button from '../../components/Button/Button'
@@ -26,12 +26,72 @@ export default function OrderDetails() {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [cancelling, setCancelling] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [checking, setChecking] = useState(false)
   const { data: order, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['orders', 'detail', orderNumber],
     queryFn: () => orderService.detail(orderNumber),
     refetchInterval: 30000,
     refetchIntervalInBackground: true,
   })
+
+  // Heal late payments: when a customer returns to an unpaid order, quietly
+  // re-check our open Paystack attempts against Paystack — a charge that
+  // settled after they cancelled the checkout gets confirmed here instead of
+  // staying invisible. Keeps checking while the page stays open.
+  const autoCheckedFor = useRef(null)
+  const hasOrder = Boolean(order)
+  const isPaid = order?.is_paid
+  const paymentStatus = order?.payment_status
+  useEffect(() => {
+    if (!orderNumber || !hasOrder || isPaid || paymentStatus === 'refunded') return undefined
+    let cancelled = false
+    const check = async () => {
+      try {
+        const fresh = await orderService.refreshPayment(orderNumber)
+        if (cancelled || !fresh?.is_paid) return
+        queryClient.setQueryData(['orders', 'detail', orderNumber], fresh)
+        queryClient.invalidateQueries({ queryKey: ['orders'] })
+        queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+        if (fresh.status === 'cancelled') {
+          toast.info('Payment received', 'We found a payment for this cancelled order — our team will contact you about a refund.')
+        } else {
+          toast.success('Payment confirmed', 'We found your payment — your order is confirmed. Thank you!')
+        }
+      } catch {
+        // best-effort — the next visit (or the scheduled sweep) can try again
+      }
+    }
+    if (autoCheckedFor.current !== orderNumber) {
+      autoCheckedFor.current = orderNumber
+      check()
+    }
+    const id = setInterval(check, 60000)
+    return () => {
+      cancelled = true
+      clearInterval(id)
+    }
+  }, [orderNumber, hasOrder, isPaid, paymentStatus, queryClient, toast])
+
+  const checkPayment = async () => {
+    setChecking(true)
+    try {
+      const fresh = await orderService.refreshPayment(order.order_number)
+      if (fresh?.is_paid) {
+        queryClient.setQueryData(['orders', 'detail', orderNumber], fresh)
+        queryClient.invalidateQueries({ queryKey: ['orders'] })
+        queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+        toast.success('Payment confirmed', 'Thank you — your order is now confirmed.')
+      } else if (fresh?.payment_check === 'unavailable') {
+        toast.error('Couldn’t reach Paystack', 'Please try again in a moment.')
+      } else {
+        toast.info('No payment found yet', 'If you were just debited it can take a few minutes to land — this page updates automatically.')
+      }
+    } catch (err) {
+      toast.error('Couldn’t check payment', errorMessage(err))
+    } finally {
+      setChecking(false)
+    }
+  }
 
   const pay = async () => {
     setPaying(true)
@@ -124,12 +184,15 @@ export default function OrderDetails() {
             <p className="font-semibold text-ink-900">Payment pending</p>
             <p className="text-sm text-metal-600">Complete payment to confirm this order. Unpaid orders are released after a while.</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {order.can_cancel && (
               <Button variant="outline" onClick={() => setConfirmCancel(true)} icon={XCircle}>
                 Cancel
               </Button>
             )}
+            <Button variant="ghost" onClick={checkPayment} loading={checking} icon={RefreshCw}>
+              Check payment status
+            </Button>
             <Button variant="accent" onClick={pay} loading={paying} icon={CreditCard}>
               Pay {formatNaira(order.total)}
             </Button>

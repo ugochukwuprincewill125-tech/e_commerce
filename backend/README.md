@@ -92,7 +92,7 @@ Copy `.env.example` → `.env`. Key variables:
 | `GET/DELETE /api/cart/` · `POST /api/cart/items/` · `PATCH/DELETE /api/cart/items/<id>/` | Server-side cart (guests use `X-Cart-Session` header) |
 | `POST /api/cart/merge/` · `POST /api/cart/quote/` | Guest-cart merge · totals |
 | `GET/POST /api/wishlist/` · `DELETE /api/wishlist/<id>/` · `POST …/move-to-cart/` | Wishlist |
-| `GET/POST /api/orders/` · `GET /api/orders/<num>/` · `POST …/cancel/` | Orders |
+| `GET/POST /api/orders/` · `GET /api/orders/<num>/` · `POST …/cancel/` · `POST …/refresh-payment/` | Orders — refresh-payment re-checks open Paystack attempts |
 | `GET/POST /api/reviews/` (+ `eligibility/`, `mine/`) | Verified-purchase reviews |
 | `POST /api/coupons/apply/` | Coupon validation |
 | `GET /api/store-info/` · `POST /api/contact/` · `GET /api/health/` | Store meta |

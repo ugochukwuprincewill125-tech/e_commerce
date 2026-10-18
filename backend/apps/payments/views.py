@@ -1,7 +1,7 @@
+import hmac
 import json
 import logging
-import secrets
-from decimal import Decimal
+from datetime import timedelta
 
 from django.conf import settings
 from django.db import transaction
@@ -10,21 +10,24 @@ from rest_framework import permissions, serializers, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.orders.models import Order, PaymentStatus
+from apps.orders.models import Order
 from apps.orders.services import mark_order_paid
 
 from . import paystack
 from .models import Payment
+from .services import (
+    OPEN_ATTEMPT_WINDOW_HOURS,
+    _close_payment,
+    _finalise_success,
+    new_reference,
+    open_payments,
+    process_paystack_result,
+    record_gateway_refund,
+    test_mode_enabled,
+    verify_payment_with_provider,
+)
 
 logger = logging.getLogger(__name__)
-
-
-def new_reference(order):
-    return f"{order.order_number}-{secrets.token_hex(4).upper()}"
-
-
-def test_mode_enabled():
-    return settings.DEBUG and settings.PAYMENT_TEST_MODE
 
 
 class PaymentConfigView(APIView):
@@ -66,10 +69,12 @@ class InitializePaymentView(APIView):
     def post(self, request):
         serializer = InitializeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        # Row-lock the order so two tabs (or a double click) can never race "does
-        # an initialized payment exist?" and create two references for one order.
-        # The second caller waits, then is handed the same authorization_url.
-        order = Order.objects.select_for_update().filter(
+        # First read the order without a lock: the provider re-check below runs
+        # before any row lock is taken, and the order is locked afterwards.
+        # Every path in this app locks the payment row (if any) before the
+        # order row — the webhook does the same — so concurrent checkouts,
+        # order-page refreshes and webhook deliveries can never deadlock.
+        order = Order.objects.filter(
             user=request.user, order_number=serializer.validated_data["order_number"]
         ).first()
         if not order:
@@ -80,6 +85,11 @@ class InitializePaymentView(APIView):
             return Response({"detail": "This order can no longer be paid for."}, status=status.HTTP_400_BAD_REQUEST)
 
         if order.total <= 0:
+            # A free order never touches Paystack, so the order lock taken here
+            # cannot clash with any provider call.
+            order = Order.objects.select_for_update().get(pk=order.pk)
+            if order.is_paid:
+                return Response({"detail": "This order has already been paid."}, status=status.HTTP_400_BAD_REQUEST)
             # Fully discounted (e.g. a 100%-off coupon): there is nothing to
             # charge, so confirm the order immediately and walk the customer
             # through the normal callback — a ₦0 Paystack charge would be
@@ -99,6 +109,74 @@ class InitializePaymentView(APIView):
             return Response(
                 {"authorization_url": url, "access_code": "", "reference": reference, "test_mode": False, "free_order": True}
             )
+
+        # Re-check the latest open attempt with Paystack before starting or
+        # reusing a checkout. A customer who cancelled on the Paystack screen —
+        # or whose webhook never arrived — must never be walked into paying
+        # twice: if the charge actually settled, confirm it now and send them
+        # through the ordinary callback; if Paystack still has the attempt
+        # open (typical for bank transfers), hand the same checkout back.
+        latest = (
+            Payment.objects.filter(order=order, provider=Payment.Provider.PAYSTACK)
+            .exclude(status=Payment.Status.SUCCESS)
+            .order_by("-created_at")
+            .first()
+        )
+        if (
+            latest
+            and settings.PAYSTACK_SECRET_KEY
+            and latest.created_at >= timezone.now() - timedelta(hours=OPEN_ATTEMPT_WINDOW_HOURS)
+        ):
+            outcome = verify_payment_with_provider(latest)
+            if outcome == "success":
+                url = f"{settings.FRONTEND_URL}/payment/callback?reference={latest.reference}"
+                return Response(
+                    {
+                        "authorization_url": url,
+                        "access_code": "",
+                        "reference": latest.reference,
+                        "test_mode": False,
+                        "already_paid": True,
+                    }
+                )
+            if outcome == "pending":
+                url = latest.authorization_url or f"{settings.FRONTEND_URL}/payment/callback?reference={latest.reference}"
+                return Response(
+                    {
+                        "authorization_url": url,
+                        "access_code": "",
+                        "reference": latest.reference,
+                        "test_mode": False,
+                        "pending": True,
+                    }
+                )
+            # "failed" / "abandoned" / "not_found": the attempt is now closed
+            # (verify_payment_with_provider recorded that), so fall through and
+            # start a fresh one. "error" means Paystack was unreachable — fall
+            # through to the normal reuse-or-create logic below.
+
+        # From here on the order is row-locked so two tabs (or a double click)
+        # can never race "does an initialized payment exist?" and create two
+        # references for one order. The second caller waits, then is handed
+        # the same authorization_url.
+        order = Order.objects.select_for_update().get(pk=order.pk)
+        if order.is_paid:
+            # The re-check above, or a concurrent webhook, settled this order
+            # while we were deciding — never start a fresh charge for it.
+            if order.payment_reference:
+                url = f"{settings.FRONTEND_URL}/payment/callback?reference={order.payment_reference}"
+                return Response(
+                    {
+                        "authorization_url": url,
+                        "access_code": "",
+                        "reference": order.payment_reference,
+                        "test_mode": False,
+                        "already_paid": True,
+                    }
+                )
+            return Response({"detail": "This order has already been paid."}, status=status.HTTP_400_BAD_REQUEST)
+        if not order.can_pay:
+            return Response({"detail": "This order can no longer be paid for."}, status=status.HTTP_400_BAD_REQUEST)
 
         existing = Payment.objects.filter(
             order=order, status=Payment.Status.INITIALIZED, provider=Payment.Provider.PAYSTACK
@@ -151,85 +229,6 @@ class InitializePaymentView(APIView):
             {"detail": "Online payment is not configured yet. Please contact the store to complete your order."},
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
-
-
-def _finalise_success(payment, data, channel=""):
-    order = payment.order
-    payment.status = Payment.Status.SUCCESS
-    payment.verified_at = timezone.now()
-    payment.channel = channel
-    payment.gateway_response = str(data.get("gateway_response", ""))[:255]
-    payment.raw_response = data
-    payment.save()
-    order, first_time = mark_order_paid(order, payment.reference)
-    if not first_time and order.payment_reference != payment.reference:
-        # A second, different charge landed on an order that was already paid.
-        # The money is real and recorded, but it must go back: leave a loud
-        # trail for staff instead of silently keeping the customer's cash.
-        logger.warning(
-            "Duplicate payment %s for already-paid order %s — refund needed.",
-            payment.reference, order.order_number,
-        )
-        order.add_history(
-            order.status,
-            f"Duplicate payment of ₦{payment.amount} received (ref {payment.reference}) on an "
-            f"order already paid with ref {order.payment_reference} — refund it from the Paystack dashboard.",
-        )
-
-
-def _close_payment(payment, new_status, data, *, fail_order=False):
-    """Record a terminal outcome for a payment that is NOT successful."""
-    payment.status = new_status
-    payment.gateway_response = str(data.get("gateway_response", data.get("status", "")))[:255]
-    payment.raw_response = data
-    payment.save(update_fields=["status", "gateway_response", "raw_response"])
-    if fail_order and payment.order.payment_status == PaymentStatus.PENDING:
-        payment.order.payment_status = PaymentStatus.FAILED
-        payment.order.save(update_fields=["payment_status", "updated_at"])
-
-
-def process_paystack_result(payment, data):
-    """Validate a Paystack transaction payload against our own records.
-
-    Returns one of ``"success"``, ``"failed"``, ``"abandoned"`` or
-    ``"pending"``. Anything Paystack has not finished with (``pending``,
-    ``ongoing``, ``processing``, ``queued``, unknown values) leaves the
-    payment initialized so a later webhook or retry can still complete it —
-    marking those failed is how a customer gets scared into paying twice.
-    """
-    status_value = str(data.get("status") or "").lower()
-
-    if status_value == "success":
-        ok = (
-            int(data.get("amount", 0)) == paystack.to_kobo(payment.amount)
-            and str(data.get("currency", "NGN")).upper() == payment.currency
-            and data.get("reference") == payment.reference
-        )
-        if ok:
-            _finalise_success(payment, data, data.get("channel", ""))
-            return "success"
-        # A "success" that doesn't match our records is never trusted, and the
-        # order is deliberately left pending until staff reconcile it.
-        logger.warning(
-            "Paystack reported success for %s that failed validation (amount/currency/reference mismatch).",
-            payment.reference,
-        )
-        _close_payment(payment, Payment.Status.FAILED, data)
-        return "failed"
-
-    if status_value in ("failed", "reversed"):
-        _close_payment(payment, Payment.Status.FAILED, data, fail_order=True)
-        return "failed"
-
-    if status_value == "abandoned":
-        _close_payment(payment, Payment.Status.ABANDONED, data)
-        return "abandoned"
-
-    # Not final yet: keep the payment initialized and just record the glimpse.
-    payment.gateway_response = str(data.get("gateway_response", status_value))[:255]
-    payment.raw_response = data
-    payment.save(update_fields=["gateway_response", "raw_response"])
-    return "pending"
 
 
 class VerifyPaymentView(APIView):
@@ -294,37 +293,6 @@ class VerifyPaymentView(APIView):
         )
 
 
-def record_gateway_refund(payment, data):
-    """Reconcile a ``refund.processed`` webhook with our own records.
-
-    Refunds are arranged by the support team (usually from the Paystack
-    dashboard); this keeps the order's books in step with the money. Paystack
-    redelivers webhooks, and a refund that is already recorded (its refund
-    ``id`` is on the order) is recognised so it is never counted twice. The
-    order only flips to ``refunded`` once the whole paid amount has come back.
-    """
-    order = payment.order
-    refund_id = str(data.get("id") or "")
-    amount_kobo = data.get("amount")
-    already_counted = bool(refund_id) and order.refund_reference == refund_id
-
-    accumulated = False
-    refund_naira = None
-    if not already_counted and isinstance(amount_kobo, (int, float)) and amount_kobo > 0:
-        refund_naira = (Decimal(int(amount_kobo)) / 100).quantize(Decimal("0.01"))
-        order.refund_amount = (order.refund_amount or Decimal("0.00")) + refund_naira
-        if refund_id:
-            order.refund_reference = refund_id
-        accumulated = True
-
-    order.refunded_at = order.refunded_at or timezone.now()
-    if (order.refund_amount or Decimal("0.00")) >= payment.amount:
-        order.payment_status = PaymentStatus.REFUNDED
-    order.save(update_fields=["payment_status", "refund_amount", "refund_reference", "refunded_at", "updated_at"])
-    if accumulated:
-        order.add_history(order.status, f"Paystack processed a refund of ₦{refund_naira} for this order.")
-
-
 class PaystackWebhookView(APIView):
     """
     POST /api/payments/webhook/ — configure this URL in the Paystack dashboard.
@@ -342,6 +310,10 @@ class PaystackWebhookView(APIView):
     def post(self, request):
         raw = request.body
         if not paystack.valid_webhook_signature(raw, request.META.get("HTTP_X_PAYSTACK_SIGNATURE", "")):
+            logger.warning(
+                "Rejected a Paystack webhook: bad signature. Check that PAYSTACK_SECRET_KEY "
+                "matches the keys configured in the Paystack dashboard."
+            )
             return Response(status=status.HTTP_401_UNAUTHORIZED)
         try:
             event = json.loads(raw)
@@ -424,6 +396,50 @@ class PaystackWebhookView(APIView):
             logger.info("Un-handled Paystack event: %s", event_type)
 
         return Response(status=status.HTTP_200_OK)
+
+
+class ReconcilePaymentsView(APIView):
+    """POST /api/payments/maintenance/reconcile/ — token-guarded upkeep.
+
+    Re-verifies recent open Paystack payments so late outcomes (a checkout
+    that settled after the customer cancelled it, a webhook that never
+    arrived) reach the books. The scheduled GitHub workflow calls it next to
+    the unpaid-order release; staff can also run ``manage.py
+    reconcile_payments`` locally. Disabled (404) until MAINTENANCE_TOKEN is
+    configured.
+    """
+
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []
+    throttle_scope = "auth"
+
+    def post(self, request):
+        token = settings.MAINTENANCE_TOKEN
+        supplied = request.META.get("HTTP_X_MAINTENANCE_TOKEN", "")
+        if not token or not hmac.compare_digest(token, supplied):
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            hours = int(request.data.get("hours", 48))
+        except (TypeError, ValueError):
+            hours = 48
+        try:
+            limit = min(max(int(request.data.get("limit", 20)), 1), 50)
+        except (TypeError, ValueError):
+            limit = 20
+
+        checked = newly_paid = 0
+        for payment in open_payments(hours=hours, limit=limit):
+            outcome = verify_payment_with_provider(payment)
+            checked += 1
+            if outcome == "success":
+                newly_paid += 1
+            elif outcome == "error":
+                # Paystack looks unreachable — stop before the request budget
+                # runs out. The next scheduled run picks up from here.
+                logger.warning("Reconcile sweep stopped early: Paystack unreachable.")
+                break
+        return Response({"checked": checked, "newly_paid": newly_paid})
 
 
 

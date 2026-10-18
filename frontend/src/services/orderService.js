@@ -8,6 +8,7 @@ export const orderService = {
   cancel: (orderNumber) => api.post(`/orders/${orderNumber}/cancel/`).then((r) => r.data),
   delete: (orderNumber) => api.delete(`/orders/${orderNumber}/`).then((r) => r.data),
   receipt: (orderNumber) => api.get(`/orders/${orderNumber}/receipt/`).then((r) => r.data),
+  refreshPayment: (orderNumber) => api.post(`/orders/${orderNumber}/refresh-payment/`).then((r) => r.data),
 }
 
 export const paymentService = {

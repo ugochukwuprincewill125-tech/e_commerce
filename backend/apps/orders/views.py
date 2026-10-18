@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.cart.services import get_cart
+from apps.payments.services import reconcile_order_payments
 from apps.products.models import ProductImage
 
 from .models import Order, OrderItem, OrderStatus, PaymentStatus
@@ -38,6 +39,7 @@ class OrderViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Crea
        ?status=delivered                       filter by status
          GET  /api/orders/<order_number>/          order details + tracking timeline
          POST /api/orders/<order_number>/cancel/   cancel an unpaid order (stock is released)
+         POST /api/orders/<order_number>/refresh-payment/  re-check open Paystack attempts on demand
          DELETE /api/orders/<order_number>/         delete one of the customer's own orders — only cancelled or delivered ones
          GET  /api/orders/<order_number>/receipt/    receipt data for a paid order
     """
@@ -98,6 +100,28 @@ class OrderViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Crea
         if not order.is_paid:
             return Response({"detail": "Receipts are only available for paid orders."}, status=status.HTTP_404_NOT_FOUND)
         return Response(ReceiptSerializer(order, context={"request": request}).data)
+
+    @action(detail=True, methods=["post"], url_path="refresh-payment")
+    def refresh_payment(self, request, order_number=None):
+        """Re-check this order's open Paystack attempts against Paystack.
+
+        The webhook reconciles automatically in production, but a customer
+        can return before it lands (or the webhook can be delayed or missed —
+        it cannot reach a local dev backend at all). This lets the order page
+        heal the books on demand, so a charge that settled after the customer
+        cancelled the checkout is confirmed here instead of staying invisible.
+        """
+        order = self.get_object()
+        changed, results = reconcile_order_payments(order)
+        order = order_queryset().get(pk=order.pk)
+        data = OrderDetailSerializer(order, context={"request": request}).data
+        if changed:
+            data["payment_check"] = "updated"
+        elif results and all(outcome == "error" for _, outcome in results):
+            data["payment_check"] = "unavailable"
+        else:
+            data["payment_check"] = "no_change"
+        return Response(data)
 
 
 class ReleaseUnpaidOrdersView(APIView):

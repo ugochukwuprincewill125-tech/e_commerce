@@ -113,6 +113,36 @@ class TestVerifyTransaction:
         with pytest.raises(paystack.PaystackError, match="Reference not found"):
             paystack.verify_transaction("bad-ref")
 
+    @resp.activate
+    def test_unknown_reference_raises_not_found(self, settings):
+        """The live API answers unknown references with HTTP 400 + 'Transaction
+        reference not found.' — recognised distinctly so callers can close
+        stale attempts instead of retrying them forever."""
+        settings.PAYSTACK_SECRET_KEY = "sk_test_dummy"
+        settings.PAYSTACK_BASE_URL = "https://api.paystack.co"
+        resp.add(
+            resp.GET,
+            "https://api.paystack.co/transaction/verify/unknown-ref",
+            json={"status": False, "message": "Transaction reference not found."},
+            status=400,
+        )
+        with pytest.raises(paystack.PaystackNotFound, match="not found"):
+            paystack.verify_transaction("unknown-ref")
+
+    @resp.activate
+    def test_other_400s_stay_generic_errors(self, settings):
+        settings.PAYSTACK_SECRET_KEY = "sk_test_dummy"
+        settings.PAYSTACK_BASE_URL = "https://api.paystack.co"
+        resp.add(
+            resp.GET,
+            "https://api.paystack.co/transaction/verify/bad-ref",
+            json={"status": False, "message": "Invalid key"},
+            status=400,
+        )
+        with pytest.raises(paystack.PaystackError) as excinfo:
+            paystack.verify_transaction("bad-ref")
+        assert not isinstance(excinfo.value, paystack.PaystackNotFound)
+
 
 # --------------------- webhook signature ------------------------ #
 class TestWebhookSignature:

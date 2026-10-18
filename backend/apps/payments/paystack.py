@@ -17,6 +17,10 @@ class PaystackError(Exception):
     pass
 
 
+class PaystackNotFound(PaystackError):
+    """Paystack has no record of the reference (HTTP 400/404, "Transaction reference not found.")."""
+
+
 def _headers():
     if not settings.PAYSTACK_SECRET_KEY:
         raise PaystackError("Paystack is not configured. Set PAYSTACK_SECRET_KEY in backend/.env.")
@@ -54,6 +58,8 @@ def verify_transaction(reference):
     except (requests.RequestException, ValueError) as exc:
         logger.exception("Paystack verify failed")
         raise PaystackError("We couldn't confirm the payment right now. Please try again shortly.") from exc
+    if resp.status_code in (400, 404) and "not found" in str(body.get("message", "")).lower():
+        raise PaystackNotFound(body.get("message") or "Transaction not found.")
     if not resp.ok or not body.get("status"):
         raise PaystackError(body.get("message") or "Payment verification failed.")
     return body["data"]

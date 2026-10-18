@@ -236,16 +236,28 @@ Media layout: `media/products/`, `media/brands/`, `media/categories/`, `media/us
 The payment flow runs entirely through the backend:
 
 1. `POST /api/orders/` creates the order from the **server-side cart**. Prices, discount, delivery fee and total are calculated on the server, and stock is reserved atomically.
-2. `POST /api/payments/initialize/` sends Paystack the **server's** order total and returns Paystack's hosted checkout URL.
+2. `POST /api/payments/initialize/` sends Paystack the **server's** order total and returns Paystack's hosted checkout URL. Before starting or reusing a checkout it re-checks the order's latest open attempt with Paystack: a charge that settled after the customer cancelled is confirmed right there (the response carries `already_paid`), and an attempt Paystack still has open is handed back (`pending`) instead of minting a second reference — a customer is never walked into paying twice.
 3. Paystack redirects the customer to `FRONTEND_URL/payment/callback?reference=…`.
 4. `GET /api/payments/verify/<reference>/` confirms the transaction with Paystack and checks that the amount, currency and reference match before marking the order **Paid / Payment Confirmed**.
-5. `POST /api/payments/webhook/` receives `charge.success` events, verified with the `x-paystack-signature` HMAC-SHA512 header. It is idempotent.
+5. `POST /api/payments/webhook/` receives `charge.success` events, verified with the `x-paystack-signature` HMAC-SHA512 header. It is idempotent. Every event is acknowledged with 200 once the signature checks out (even if unknown) so Paystack doesn't retry-spam; anything we can't match is logged loudly for manual reconciliation in the Paystack dashboard.
+6. `POST /api/orders/<order_number>/refresh-payment/` re-checks an order's open attempts on demand. The customer's order page calls it automatically, so a return visit self-heals the books.
+
+**Nothing settles silently.** Cancelling on the Paystack checkout does *not* necessarily cancel an in-flight charge, and webhooks can be delayed — or, in local development, unreachable entirely. Reconciliation re-verifies open attempts against Paystack from three places, so late money is always found:
+
+- the order page (`refresh-payment/` above) and the payment callback page, which re-check automatically;
+- the scheduled GitHub workflow, which calls the token-guarded `POST /api/payments/maintenance/reconcile/` hourly next to the unpaid-order release;
+- manually, any time:
+
+```bash
+python manage.py reconcile_payments --hours 48     # re-check recent open payments
+python manage.py reconcile_payments --dry-run      # list what would be checked
+```
 
 **To enable real payments:**
 
 1. Get your keys from <https://dashboard.paystack.com/#/settings/developers>
 2. In `backend/.env` set `PAYSTACK_SECRET_KEY=sk_live_…` (or `sk_test_…`) and `PAYSTACK_PUBLIC_KEY=pk_…`
-3. In the Paystack dashboard, set the **Webhook URL** to `https://YOUR-API-DOMAIN/api/payments/webhook/`
+3. In the Paystack dashboard, set the **Webhook URL** to `https://YOUR-API-DOMAIN/api/payments/webhook/` — Paystack's cloud can only reach a **public HTTPS** backend, so a local dev server never receives webhooks; the callback verify and reconciliation above keep local payments in step.
 4. Restart Django.
 
 **Test mode:** with no secret key and `DEBUG=True`, checkout completes with a clearly labelled *simulated* payment, so you can test the full flow locally. Test mode is always disabled in production settings.
@@ -308,7 +320,8 @@ All endpoints are under `/api/`. Authentication uses `Authorization: Bearer <acc
 | `GET / POST /api/orders/` | list (`?status=`) / create from cart |
 | `GET /api/orders/<order_number>/` | details + tracking timeline |
 | `POST /api/orders/<order_number>/cancel/` | unpaid orders only, stock is returned |
-| `GET /api/payments/config/` · `POST initialize/` · `GET verify/<ref>/` · `POST webhook/` | |
+| `POST /api/orders/<order_number>/refresh-payment/` | re-check open Paystack attempts (used by the order page) |
+| `GET /api/payments/config/` · `POST initialize/` · `GET verify/<ref>/` · `POST webhook/` · `POST maintenance/reconcile/` | reconcile is token-guarded (`X-Maintenance-Token`) |
 | `GET /api/reviews/?product=<slug>` · `POST /api/reviews/` · `GET eligibility/?product=` · `GET mine/` | only customers who purchased a product can review it |
 | `GET /api/store-info/` · `POST /api/contact/` · `GET /api/health/` | |
 
