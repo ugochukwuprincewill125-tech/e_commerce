@@ -6,12 +6,14 @@ import Button from '../../components/Button/Button'
 import { Field, FormAlert } from '../../components/Form/Field'
 import { useAuth } from '../../context/AuthContext'
 import { useToast } from '../../context/ToastContext'
+import useConfirmAction from '../../hooks/useConfirmAction'
 import { errorMessage, fieldErrors } from '../../services/api'
 import { authService } from '../../services/authService'
 
 function ProfileForm() {
   const { user, setUser } = useAuth()
   const toast = useToast()
+  const confirm = useConfirmAction()
   const fileRef = useRef(null)
   const [preview, setPreview] = useState(user.profile_image)
   const [file, setFile] = useState(null)
@@ -34,7 +36,7 @@ function ProfileForm() {
     return undefined
   }
 
-  const onSubmit = handleSubmit(async (values) => {
+  const doSave = async (values) => {
     setError('')
     const form = new FormData()
     Object.entries(values).forEach(([k, v]) => form.append(k, v ?? ''))
@@ -50,7 +52,22 @@ function ProfileForm() {
       Object.entries(fe).forEach(([k, v]) => setFieldError(k, { message: v }))
       setError(errorMessage(err))
     }
-  })
+  }
+
+  // Saving always asks for confirmation first.
+  const onSubmit = handleSubmit((values) =>
+    confirm.ask({
+      title: 'Save these changes?',
+      body: file
+        ? 'Are you sure you want to save this? Your profile details and the new photo will be updated.'
+        : removeImage
+          ? 'Are you sure you want to save this? Your profile details will be updated and your photo removed.'
+          : 'Are you sure you want to save this? Your profile details will be updated.',
+      confirmLabel: 'Save changes',
+      tone: 'primary',
+      action: () => doSave(values),
+    }),
+  )
 
   return (
     <form onSubmit={onSubmit} className="card p-5 sm:p-7" noValidate>
@@ -89,15 +106,17 @@ function ProfileForm() {
       <div className="mt-5">
         <FormAlert>{error}</FormAlert>
       </div>
-      <Button type="submit" className="mt-6" loading={isSubmitting} disabled={!isDirty && !file && !removeImage}>
+      <Button type="submit" className="mt-6" loading={isSubmitting || confirm.busy} disabled={!isDirty && !file && !removeImage}>
         Save changes
       </Button>
+      {confirm.modal}
     </form>
   )
 }
 
 function PasswordForm() {
   const toast = useToast()
+  const confirm = useConfirmAction()
   const [error, setError] = useState('')
   const {
     register,
@@ -108,7 +127,7 @@ function PasswordForm() {
     formState: { errors, isSubmitting },
   } = useForm()
 
-  const onSubmit = handleSubmit(async ({ current_password, new_password }) => {
+  const doSave = async ({ current_password, new_password }) => {
     setError('')
     try {
       await authService.changePassword({ current_password, new_password })
@@ -119,7 +138,18 @@ function PasswordForm() {
       Object.entries(fe).forEach(([k, v]) => setFieldError(k, { message: v }))
       if (!Object.keys(fe).length) setError(errorMessage(err))
     }
-  })
+  }
+
+  // Saving always asks for confirmation first.
+  const onSubmit = handleSubmit((values) =>
+    confirm.ask({
+      title: 'Update your password?',
+      body: 'Are you sure you want to save this? Your sign-in password will change to the new one you just entered.',
+      confirmLabel: 'Update password',
+      tone: 'primary',
+      action: () => doSave(values),
+    }),
+  )
 
   return (
     <form onSubmit={onSubmit} className="card p-5 sm:p-7" noValidate>
@@ -132,9 +162,10 @@ function PasswordForm() {
       <div className="mt-5">
         <FormAlert>{error}</FormAlert>
       </div>
-      <Button type="submit" className="mt-6" loading={isSubmitting}>
+      <Button type="submit" className="mt-6" loading={isSubmitting || confirm.busy}>
         Update password
       </Button>
+      {confirm.modal}
     </form>
   )
 }

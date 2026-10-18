@@ -6,6 +6,7 @@ import {
   AdminCard, AdminEmpty, AdminError, AdminPage, ConfirmDialog, useAdminMutation,
 } from '../../components/Admin/AdminUI'
 import Modal from '../../components/Modal/Modal'
+import useConfirmAction from '../../hooks/useConfirmAction'
 import { formatNaira } from '../../utils/format'
 import {
   createAdminCoupon, deleteAdminCoupon, fetchAdminCoupons, updateAdminCoupon,
@@ -155,6 +156,7 @@ export default function AdminCoupons() {
 }
 
 function CouponForm({ initial, onClose }) {
+  const confirm = useConfirmAction()
   const [form, setForm] = useState(() => ({
     ...BLANK,
     ...initial,
@@ -227,11 +229,25 @@ function CouponForm({ initial, onClose }) {
         </label>
         <div className="flex justify-end gap-2 border-t border-line pt-4">
           <button type="button" onClick={onClose} className="btn-outline">Cancel</button>
-          <button type="button" className="btn-accent" disabled={mutation.isPending} onClick={() => mutation.mutate()}>
+          <button
+            type="button"
+            className="btn-accent"
+            disabled={mutation.isPending}
+            onClick={() =>
+              confirm.ask({
+                title: initial.id ? 'Save these changes?' : 'Create the coupon?',
+                body: `Are you sure you want to save this? “${form.code.trim().toUpperCase() || 'this coupon'}” will be ${initial.id ? 'updated' : 'live for customers'} immediately.`,
+                confirmLabel: 'Save',
+                tone: 'primary',
+                action: () => mutation.mutate(),
+              })
+            }
+          >
             {mutation.isPending ? 'Saving…' : 'Save'}
           </button>
         </div>
       </div>
+      {confirm.modal}
     </Modal>
   )
 }

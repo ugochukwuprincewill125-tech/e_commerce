@@ -6,10 +6,21 @@ import Button from '../../components/Button/Button'
 import EmptyState, { ErrorState } from '../../components/EmptyState/EmptyState'
 import { ProductGridSkeleton } from '../../components/Loader/Skeleton'
 import { useWishlist } from '../../context/WishlistContext'
+import useConfirmAction from '../../hooks/useConfirmAction'
 import { formatNaira } from '../../utils/format'
 
 export default function Wishlist() {
   const { items, isLoading, isError, toggle, moveToCart, pending } = useWishlist()
+  const confirm = useConfirmAction()
+
+  // Removing a saved item always asks first.
+  const askRemove = (product) =>
+    confirm.ask({
+      title: 'Remove from wishlist?',
+      body: `Are you sure you want to delete this? “${product.name}” will no longer be saved on your wishlist.`,
+      confirmLabel: 'Remove',
+      action: () => toggle(product),
+    })
 
   if (isLoading) return <ProductGridSkeleton count={6} className="md:grid-cols-3 xl:grid-cols-3" />
   if (isError) return <ErrorState title="Unable to load your wishlist" />
@@ -55,8 +66,8 @@ export default function Wishlist() {
                     </Button>
                     <button
                       type="button"
-                      onClick={() => toggle(product)}
-                      disabled={busy}
+                      onClick={() => askRemove(product)}
+                      disabled={busy || confirm.busy}
                       className="rounded-lg border border-metal-200 p-2 text-metal-500 transition hover:border-danger hover:text-danger"
                       aria-label={`Remove ${product.name} from wishlist`}
                     >
@@ -69,6 +80,8 @@ export default function Wishlist() {
           })}
         </AnimatePresence>
       </ul>
+
+      {confirm.modal}
     </div>
   )
 }

@@ -9,6 +9,7 @@ import {
 } from '../../components/Admin/AdminUI'
 import Modal from '../../components/Modal/Modal'
 import useDebounce from '../../hooks/useDebounce'
+import useConfirmAction from '../../hooks/useConfirmAction'
 import { useAuth } from '../../context/AuthContext'
 import { formatNaira } from '../../utils/format'
 import {
@@ -196,6 +197,7 @@ export function AdminCustomers() {
 
 function CustomerModal({ id, onClose }) {
   const { user: me } = useAuth()
+  const saveConfirm = useConfirmAction()
   const [form, setForm] = useState(null)
   const [confirm, setConfirm] = useState(null)
 
@@ -263,7 +265,20 @@ function CustomerModal({ id, onClose }) {
             )}
 
             <div className="flex justify-end">
-              <button type="button" className="btn-primary" disabled={saveMut.isPending} onClick={() => saveMut.mutate()}>
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={saveMut.isPending}
+                onClick={() =>
+                  saveConfirm.ask({
+                    title: 'Save these changes?',
+                    body: 'Are you sure you want to save this? The customer’s name and phone will be updated.',
+                    confirmLabel: 'Save changes',
+                    tone: 'primary',
+                    action: () => saveMut.mutate(),
+                  })
+                }
+              >
                 {saveMut.isPending ? 'Saving…' : 'Save changes'}
               </button>
             </div>
@@ -311,6 +326,8 @@ function CustomerModal({ id, onClose }) {
               : 'They will be able to sign in and order again.'
         }
       />
+
+      {saveConfirm.modal}
     </>
   )
 }

@@ -9,6 +9,7 @@ import {
 } from '../../components/Admin/AdminUI'
 import Modal from '../../components/Modal/Modal'
 import useDebounce from '../../hooks/useDebounce'
+import useConfirmAction from '../../hooks/useConfirmAction'
 import { useToast } from '../../context/ToastContext'
 import { formatNaira } from '../../utils/format'
 import {
@@ -431,6 +432,7 @@ function OrderDetailModal({ id, onClose, invalidate }) {
 
 function OrderDetail({ order, invalidate }) {
   const toast = useToast()
+  const confirm = useConfirmAction()
   const [carrier, setCarrier] = useState(order.carrier || '')
   const [number, setNumber] = useState(order.tracking_number || '')
 
@@ -536,7 +538,15 @@ function OrderDetail({ order, invalidate }) {
                 type="button"
                 className="btn-outline"
                 disabled={trackingMut.isPending}
-                onClick={() => trackingMut.mutate()}
+                onClick={() =>
+                  confirm.ask({
+                    title: 'Save tracking details?',
+                    body: `Are you sure you want to save this? Order ${order.order_number} will carry carrier “${carrier || '—'}” and tracking number “${number || '—'}” for the customer to follow.`,
+                    confirmLabel: 'Save',
+                    tone: 'primary',
+                    action: () => trackingMut.mutate(),
+                  })
+                }
               >
                 Save
               </button>
@@ -660,6 +670,8 @@ function OrderDetail({ order, invalidate }) {
           {order.order_number}
         </Link>
       </p>
+
+      {confirm.modal}
     </div>
   )
 }

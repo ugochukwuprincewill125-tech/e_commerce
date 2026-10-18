@@ -10,7 +10,6 @@ import {
   Search,
   ShoppingCart,
   Store,
-  Truck,
   User,
 } from 'lucide-react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
@@ -27,7 +26,6 @@ export const ACCOUNT_NAV = [
   { to: '/account', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/account/orders', label: 'My Orders', icon: Package },
   { to: '/account/receipts', label: 'My Receipts', icon: Receipt },
-  { to: '/track-order', label: 'Track Order', icon: Truck },
   { to: '/account/wishlist', label: 'My Wishlist', icon: Heart },
   { to: '/cart', label: 'My Cart', icon: ShoppingCart, badge: 'cart' },
   { to: '/account/addresses', label: 'Saved Addresses', icon: MapPin },

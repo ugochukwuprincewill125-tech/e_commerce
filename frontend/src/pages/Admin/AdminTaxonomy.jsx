@@ -7,6 +7,7 @@ import {
   AdminCard, AdminEmpty, AdminError, AdminPage, ConfirmDialog, useAdminMutation,
 } from '../../components/Admin/AdminUI'
 import Modal from '../../components/Modal/Modal'
+import useConfirmAction from '../../hooks/useConfirmAction'
 import {
   createAdminBrand, createAdminCategory, deleteAdminBrand, deleteAdminCategory,
   fetchAdminBrands, fetchAdminCategories, updateAdminBrand, updateAdminCategory,
@@ -249,6 +250,7 @@ export function AdminBrands() {
 
 function CrudDialog({ title, fields, initial, onClose, save, pending }) {
   const [form, setForm] = useState(initial)
+  const confirm = useConfirmAction()
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
 
   return (
@@ -262,11 +264,25 @@ function CrudDialog({ title, fields, initial, onClose, save, pending }) {
         ))}
         <div className="flex justify-end gap-2 border-t border-line pt-4">
           <button type="button" onClick={onClose} className="btn-outline">Cancel</button>
-          <button type="button" onClick={() => save(form)} disabled={pending} className="btn-accent">
+          <button
+            type="button"
+            disabled={pending}
+            className="btn-accent"
+            onClick={() =>
+              confirm.ask({
+                title: initial?.id ? 'Save these changes?' : 'Create it?',
+                body: `Are you sure you want to save this? “${form?.name || ''}” will be ${initial?.id ? 'updated' : 'added to the catalogue'}.`,
+                confirmLabel: 'Save',
+                tone: 'primary',
+                action: () => save(form),
+              })
+            }
+          >
             {pending ? 'Saving…' : 'Save'}
           </button>
         </div>
       </div>
+      {confirm.modal}
     </Modal>
   )
 }

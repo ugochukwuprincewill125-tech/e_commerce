@@ -11,6 +11,7 @@ import { Skeleton } from '../../components/Loader/Skeleton'
 import Modal from '../../components/Modal/Modal'
 import { useAuth } from '../../context/AuthContext'
 import { useToast } from '../../context/ToastContext'
+import useConfirmAction from '../../hooks/useConfirmAction'
 import useStoreInfo from '../../hooks/useStoreInfo'
 import { errorMessage, fieldErrors } from '../../services/api'
 import { userService } from '../../services/authService'
@@ -28,7 +29,7 @@ function AddressForm({ initial, onSaved, onCancel }) {
     defaultValues: initial || { first_name: user.first_name, last_name: user.last_name, phone: user.phone, country: 'Nigeria', state: 'Lagos', is_default: false },
   })
 
-  const onSubmit = handleSubmit(async (values) => {
+  const doSave = async (values) => {
     setError('')
     try {
       const saved = initial?.id ? await userService.updateAddress(initial.id, values) : await userService.createAddress(values)
@@ -38,7 +39,19 @@ function AddressForm({ initial, onSaved, onCancel }) {
       Object.entries(fe).forEach(([k, v]) => setFieldError(k, { message: v }))
       setError(errorMessage(err))
     }
-  })
+  }
+
+  // Saving always asks for confirmation first.
+  const confirm = useConfirmAction()
+  const onSubmit = handleSubmit((values) =>
+    confirm.ask({
+      title: initial?.id ? 'Save these changes?' : 'Add this address?',
+      body: 'Are you sure you want to save this? The address will be saved exactly as filled in.',
+      confirmLabel: 'Save address',
+      tone: 'primary',
+      action: () => doSave(values),
+    }),
+  )
 
   const req = { required: 'Required' }
   return (
@@ -68,10 +81,11 @@ function AddressForm({ initial, onSaved, onCancel }) {
         <Button variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="submit" loading={isSubmitting}>
+        <Button type="submit" loading={isSubmitting || confirm.busy}>
           Save address
         </Button>
       </div>
+      {confirm.modal}
     </form>
   )
 }
@@ -79,6 +93,7 @@ function AddressForm({ initial, onSaved, onCancel }) {
 export default function Addresses() {
   const toast = useToast()
   const queryClient = useQueryClient()
+  const confirm = useConfirmAction()
   const [editing, setEditing] = useState(null) // null | {} (new) | address
   const { data = [], isLoading, isError, refetch } = useQuery({ queryKey: ['addresses'], queryFn: userService.addresses })
 
@@ -87,7 +102,7 @@ export default function Addresses() {
     queryClient.invalidateQueries({ queryKey: ['dashboard'] })
   }
 
-  const remove = async (a) => {
+  const removeAddress = async (a) => {
     try {
       await userService.deleteAddress(a.id)
       toast.info('Address removed')
@@ -96,6 +111,15 @@ export default function Addresses() {
       toast.error('Couldn’t remove address', errorMessage(err))
     }
   }
+
+  // Deleting a saved address always asks first.
+  const askDeleteAddress = (a) =>
+    confirm.ask({
+      title: 'Delete this address?',
+      body: `Are you sure you want to delete this? “${[a.label, a.address].filter(Boolean)[0] || [a.first_name, a.last_name].filter(Boolean).join(' ')}” will be removed from your address book. This cannot be undone.`,
+      confirmLabel: 'Delete address',
+      action: () => removeAddress(a),
+    })
 
   const makeDefault = async (a) => {
     try {
@@ -138,7 +162,7 @@ export default function Addresses() {
                       <button type="button" onClick={() => setEditing(a)} className="rounded-lg p-1.5 text-metal-500 hover:bg-metal-100 hover:text-ink-900" aria-label="Edit address">
                         <Pencil className="h-4 w-4" />
                       </button>
-                      <button type="button" onClick={() => remove(a)} className="rounded-lg p-1.5 text-metal-500 hover:bg-red-50 hover:text-danger" aria-label="Delete address">
+                      <button type="button" onClick={() => askDeleteAddress(a)} className="rounded-lg p-1.5 text-metal-500 hover:bg-red-50 hover:text-danger" aria-label="Delete address">
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
@@ -173,6 +197,8 @@ export default function Addresses() {
           />
         )}
       </Modal>
+
+      {confirm.modal}
     </div>
   )
 }

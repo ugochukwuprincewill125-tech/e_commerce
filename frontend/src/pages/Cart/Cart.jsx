@@ -12,6 +12,7 @@ import Seo from '../../components/Seo/Seo'
 import { useCart } from '../../context/CartContext'
 import { useToast } from '../../context/ToastContext'
 import useCheckoutPrefs from '../../hooks/useCheckoutPrefs'
+import useConfirmAction from '../../hooks/useConfirmAction'
 import useQuote from '../../hooks/useQuote'
 import useStoreInfo from '../../hooks/useStoreInfo'
 import { errorMessage } from '../../services/api'
@@ -48,6 +49,7 @@ export default function Cart() {
   const { states, shipping } = useStoreInfo()
   const [prefs, setPrefs] = useCheckoutPrefs()
   const [couponError, setCouponError] = useState('')
+  const confirm = useConfirmAction()
   const toast = useToast()
   const quote = useQuote(prefs)
 
@@ -111,7 +113,17 @@ export default function Cart() {
             </h1>
             <button
               type="button"
-              onClick={() => clearCart().then(() => toast.info('Your cart has been cleared.'))}
+              onClick={() =>
+                confirm.ask({
+                  title: 'Clear your cart?',
+                  body: 'Are you sure you want to delete this? Clearing removes every item in your cart — you will have to re-add them.',
+                  confirmLabel: 'Clear cart',
+                  action: async () => {
+                    await clearCart()
+                    toast.info('Your cart has been cleared.')
+                  },
+                })
+              }
               className="flex items-center gap-1.5 text-[13px] font-medium text-metal-500 transition-colors hover:text-danger"
             >
               <Trash2 className="h-4 w-4" strokeWidth={1.75} /> Clear cart
@@ -225,6 +237,8 @@ export default function Cart() {
           </div>
         </div>
       </div>
+
+      {confirm.modal}
     </>
   )
 }

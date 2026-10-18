@@ -5,6 +5,7 @@ import { ArrowLeft, UploadCloud, X } from 'lucide-react'
 
 import { AdminPage } from '../../components/Admin/AdminUI'
 import { useToast } from '../../context/ToastContext'
+import useConfirmAction from '../../hooks/useConfirmAction'
 import { cn } from '../../utils/format'
 import {
   createAdminProduct, deleteProductImage, fetchAdminBrands, fetchAdminCategories,
@@ -57,6 +58,7 @@ function Editor({ productId }) {
   const [progress, setProgress] = useState(null)
   const [specError, setSpecError] = useState(null)
   const [seeded, setSeeded] = useState(false)
+  const confirm = useConfirmAction()
   const fileRef = useRef()
 
   const { data: categories } = useQuery({ queryKey: ['admin-categories'], queryFn: fetchAdminCategories })
@@ -184,10 +186,15 @@ function Editor({ productId }) {
     reorderProductImages(productId, ids).then(invalidate, (e) => toast.error(e.message || 'Could not reorder images.'))
   }
 
-  const removeImage = (image) => {
-    if (!window.confirm('Delete this image?')) return
-    deleteProductImage(productId, image.id).then(invalidate, (e) => toast.error(e.message || 'Could not delete the image.'))
-  }
+  // Deleting a stored product image always asks first.
+  const removeImage = (image) =>
+    confirm.ask({
+      title: 'Delete this image?',
+      body: 'Are you sure you want to delete this? The image is removed from the product immediately; other images are untouched.',
+      confirmLabel: 'Delete image',
+      action: () =>
+        deleteProductImage(productId, image.id).then(invalidate, (e) => toast.error(e.message || 'Could not delete the image.')),
+    })
 
   /** Pop the too-large warning the moment an oversized image is selected.
    *  The rejected files never enter the staged list, so publishing cannot fail later on size. */
@@ -383,11 +390,28 @@ function Editor({ productId }) {
 
         <div className="mt-6 flex justify-end gap-2 border-t border-line pt-5">
           <Link to="/admin/products" className="btn-outline">Cancel</Link>
-          <button type="button" onClick={save} disabled={saving} className="btn-accent">
+          <button
+            type="button"
+            disabled={saving || confirm.busy}
+            className="btn-accent"
+            onClick={() =>
+              confirm.ask({
+                title: isEdit ? 'Save these changes?' : 'Publish this product?',
+                body: isEdit
+                  ? `Are you sure you want to save this? Every change to “${form.name}” goes live in the store the moment you confirm.`
+                  : `Are you sure you want to save this? “${form.name}” will be published to the store immediately.`,
+                confirmLabel: isEdit ? 'Save changes' : 'Publish product',
+                tone: 'primary',
+                action: save,
+              })
+            }
+          >
             {saving ? 'Saving…' : isEdit ? 'Save changes' : 'Publish product'}
           </button>
         </div>
       </div>
+
+      {confirm.modal}
     </AdminPage>
   )
 }

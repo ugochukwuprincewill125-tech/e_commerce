@@ -9,6 +9,7 @@ import {
 } from '../../components/Admin/AdminUI'
 import Modal from '../../components/Modal/Modal'
 import useDebounce from '../../hooks/useDebounce'
+import useConfirmAction from '../../hooks/useConfirmAction'
 import { useToast } from '../../context/ToastContext'
 import { formatNaira } from '../../utils/format'
 import {
@@ -310,6 +311,7 @@ export default function AdminProducts() {
 
 function StockDialog({ product, onClose, onDone }) {
   const [value, setValue] = useState(String(product?.stock_quantity ?? 0))
+  const confirm = useConfirmAction()
   const toast = useToast()
 
   const mutation = useAdminMutation({
@@ -358,7 +360,13 @@ function StockDialog({ product, onClose, onDone }) {
                   toast.error('Stock cannot go below zero.')
                   return
                 }
-                mutation.mutate()
+                confirm.ask({
+                  title: 'Save this stock level?',
+                  body: `Are you sure you want to save this? “${product.name}” will show ${value} unit(s) in stock.`,
+                  confirmLabel: 'Save stock',
+                  tone: 'primary',
+                  action: () => mutation.mutate(),
+                })
               }}
             >
               {mutation.isPending ? 'Saving…' : 'Save stock'}
@@ -366,6 +374,7 @@ function StockDialog({ product, onClose, onDone }) {
           </div>
         </div>
       )}
+      {confirm.modal}
     </Modal>
   )
 }

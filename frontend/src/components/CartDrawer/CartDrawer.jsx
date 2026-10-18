@@ -5,6 +5,7 @@ import { Link, useLocation } from 'react-router-dom'
 
 import { useCart } from '../../context/CartContext'
 import useLockBody from '../../hooks/useLockBody'
+import useConfirmAction from '../../hooks/useConfirmAction'
 import useStoreInfo from '../../hooks/useStoreInfo'
 import { cn, formatNaira } from '../../utils/format'
 import Button from '../Button/Button'
@@ -13,8 +14,18 @@ import QuantitySelector from '../QuantitySelector/QuantitySelector'
 export function CartLine({ item, compact = false }) {
   const { updateItem, removeItem, pending } = useCart()
   const busy = pending === item.id
+  const confirm = useConfirmAction()
   const { product } = item
   const overStock = item.quantity > item.available_stock
+
+  // Removing an item from the cart always asks first.
+  const askRemove = () =>
+    confirm.ask({
+      title: 'Remove this item?',
+      body: `Are you sure you want to delete this? “${product.name}” will be removed from your cart.`,
+      confirmLabel: 'Remove item',
+      action: () => removeItem(item.id),
+    })
 
   return (
     <motion.li
@@ -70,8 +81,8 @@ export function CartLine({ item, compact = false }) {
 
         <button
           type="button"
-          onClick={() => removeItem(item.id)}
-          disabled={busy}
+          onClick={askRemove}
+          disabled={busy || confirm.busy}
           className="rounded p-1.5 text-metal-400 transition-colors hover:bg-red-50 hover:text-danger"
           aria-label={`Remove ${product.name} from cart`}
         >
@@ -81,12 +92,14 @@ export function CartLine({ item, compact = false }) {
 
       <button
         type="button"
-        onClick={() => removeItem(item.id)}
-        disabled={busy}
+        onClick={askRemove}
+        disabled={busy || confirm.busy}
         className="col-span-2 -mt-1 flex items-center gap-1.5 self-start justify-self-start text-xs font-medium text-metal-500 transition-colors hover:text-danger sm:hidden"
       >
         <X className="h-3.5 w-3.5" strokeWidth={1.75} /> Remove
       </button>
+
+      {confirm.modal}
     </motion.li>
   )
 }

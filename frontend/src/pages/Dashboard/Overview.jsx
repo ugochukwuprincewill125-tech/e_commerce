@@ -137,7 +137,6 @@ export default function Overview() {
       <div className="grid gap-3 sm:grid-cols-2">
         {[
           { to: '/account/addresses', Icon: MapPin, title: 'Saved addresses', sub: `${data?.address_count ?? 0} saved` },
-          { to: '/track-order', Icon: Truck, title: 'Track an order', sub: 'Use your order number and email' },
         ].map(({ to, Icon, title, sub }) => (
           <Link
             key={to}
