@@ -113,7 +113,8 @@ Product photos use a sign → PUT → attach flow:
 
 1. `POST /api/admin-api/uploads/sign/` — tiny JSON request:
    `{"items": [{"filename": "macbook.jpg", "content_type": "image/jpeg", "product_id": 7}]}`
-   → returns `{uploads: [{upload_url, key, headers, expires_in, storage}]}` (≤20 files at once)
+   → returns `{uploads: [{upload_url, key, headers, expires_in, storage}]}` (≤20 files at once).
+   Categories sign through the same endpoint with `"category_id": 12` instead of `product_id`.
 2. `PUT upload_url` with the raw file bytes + the returned `headers` — the URL
    is same-origin (`/api/admin-api/uploads/local/`, staff JWT required) and
    writes through the default media storage: **Cloudinary in production**,
@@ -121,9 +122,12 @@ Product photos use a sign → PUT → attach flow:
 3. Include the returned `key` values in product create/update via
    `uploaded_images: ["media/products/7/<rand>-macbook.jpg", …]` — each key is
    verified (well-formed **and** present in the storage backend) before attaching.
+   Category covers are attached with `image_key: "media/categories/12/<rand>-phones.jpg"`
+   on the category update call; `image_key: ""` removes the image.
 
 Constraints enforced server-side: JPEG/PNG/WebP/AVIF only, 10MB per file,
-keys scoped to `media/products/<id>/…`, signatures expire in 15 minutes.
+keys scoped to `media/products/<id>/…` or `media/categories/<id>/…`, signatures
+expire in 15 minutes.
 Because the PUT passes through the API server the body counts against the
 host's limits; on Render that is generous, so the 10MB-per-file limit above
 is what applies.

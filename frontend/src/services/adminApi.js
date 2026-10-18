@@ -33,15 +33,32 @@ export async function uploadProductImages(productId, files, onProgress) {
   if (!files?.length) return []
   const items = files.map((f) => ({ filename: f.name, content_type: f.type || 'image/jpeg', product_id: productId }))
   const { uploads } = await api.post('/admin-api/uploads/sign/', { items }).then((r) => r.data)
+  return putSignedUploads(uploads, files, onProgress)
+}
 
+/**
+ * Category cover image (shown on the storefront /categories page). Same
+ * sign+PUT flow as product images; the returned key is attached with
+ * `image_key` on the category update call.
+ */
+export async function uploadCategoryImage(categoryId, file) {
+  const items = [{ filename: file.name, content_type: file.type || 'image/jpeg', category_id: categoryId }]
+  const { uploads } = await api.post('/admin-api/uploads/sign/', { items }).then((r) => r.data)
+  const [key] = await putSignedUploads(uploads, [file])
+  return key
+}
+
+/**
+ * PUT each file to its signed URL. Same-origin upload URLs live on our API and
+ * need the JWT (raw fetch bypasses the axios interceptor, so set it here);
+ * foreign upload URLs must not carry our Authorization header at all.
+ */
+async function putSignedUploads(uploads, files, onProgress) {
   const keys = []
   const apiOrigin = new URL(api.defaults.baseURL || window.location.origin, window.location.origin).origin
   for (let i = 0; i < uploads.length; i += 1) {
     const signed = uploads[i]
     const file = files[i]
-    // Same-origin upload URLs live on our API and need the JWT (raw fetch
-    // bypasses the axios interceptor, so set it here); foreign upload URLs
-    // must not carry our Authorization header at all.
     const isLocal = new URL(signed.upload_url, window.location.origin).origin === apiOrigin
     const headers = { ...signed.headers }
     if (isLocal) headers.Authorization = `Bearer ${tokens.access}`
@@ -72,6 +89,8 @@ export const fetchAdminCategories = () => api.get('/admin-api/categories/').then
 export const createAdminCategory = (payload) => api.post('/admin-api/categories/', payload).then((r) => r.data)
 export const updateAdminCategory = (id, payload) => api.patch(`/admin-api/categories/${id}/`, payload).then((r) => r.data)
 export const deleteAdminCategory = (id) => api.delete(`/admin-api/categories/${id}/`).then((r) => r.data)
+/** Show/hide a category on the storefront (hidden categories' pages 404). */
+export const setCategoryActive = (id, is_active) => api.patch(`/admin-api/categories/${id}/`, { is_active }).then((r) => r.data)
 
 export const fetchAdminBrands = () => api.get('/admin-api/brands/').then((r) => r.data)
 export const createAdminBrand = (payload) => api.post('/admin-api/brands/', payload).then((r) => r.data)

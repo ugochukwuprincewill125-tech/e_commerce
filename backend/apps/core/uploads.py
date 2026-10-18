@@ -5,8 +5,9 @@ The admin panel:
 1. POSTs a tiny JSON request to /api/admin-api/uploads/sign/
    -> receives a same-origin upload URL (browser -> Django -> Cloudinary)
 2. PUTs the file to that URL
-3. Sends the resulting key back to the product endpoint (`uploaded_images`),
-   which is verified and stored as the ProductImage image name.
+3. Sends the resulting key back to the target endpoint — `uploaded_images` on
+   products, `image_key` on categories — which is verified and stored as the
+   model's image name.
 """
 import re
 import secrets
@@ -23,7 +24,7 @@ ALLOWED_CONTENT_TYPES = {
     "image/avif": ".avif",
 }
 
-_KEY_RE = re.compile(r"^media/products/\d+/[A-Za-z0-9._-]+$")
+_KEY_RE = re.compile(r"^media/(?:products|categories)/\d+/[A-Za-z0-9._-]+$")
 
 
 def cloudinary_configured() -> bool:
@@ -43,21 +44,28 @@ def _validate(content_type: str, filename: str) -> str:
     return ext
 
 
-def make_key(product_id: int, filename: str, content_type: str) -> str:
+def _make_key(scope: str, target_id: int, filename: str, content_type: str) -> str:
     ext = _validate(content_type, filename)
     stem = re.sub(r"[^A-Za-z0-9._-]", "", filename.rsplit(".", 1)[0])[:60] or "image"
-    return f"media/products/{product_id}/{secrets.token_hex(4)}-{stem}{ext}"
+    return f"media/{scope}/{target_id}/{secrets.token_hex(4)}-{stem}{ext}"
+
+
+def make_key(product_id: int, filename: str, content_type: str) -> str:
+    return _make_key("products", product_id, filename, content_type)
+
+
+def make_category_key(category_id: int, filename: str, content_type: str) -> str:
+    return _make_key("categories", category_id, filename, content_type)
 
 
 def key_to_field_name(key: str) -> str:
     return key.removeprefix("media/")
 
 
-def sign_product_image(product_id: int, filename: str, content_type: str) -> dict:
+def _sign(key: str, content_type: str) -> dict:
     from urllib.parse import quote
     from django.urls import reverse
 
-    key = make_key(product_id, filename, content_type)
     url = reverse("admin-upload-local") + "?key=" + quote(key, safe="")
     return {
         "upload_url": url,
@@ -67,6 +75,14 @@ def sign_product_image(product_id: int, filename: str, content_type: str) -> dic
         "expires_in": SIGNING_TTL_SECONDS,
         "storage": "cloudinary" if cloudinary_configured() else "local",
     }
+
+
+def sign_product_image(product_id: int, filename: str, content_type: str) -> dict:
+    return _sign(make_key(product_id, filename, content_type), content_type)
+
+
+def sign_category_image(category_id: int, filename: str, content_type: str) -> dict:
+    return _sign(make_category_key(category_id, filename, content_type), content_type)
 
 
 def key_is_wellformed(key: str) -> bool:

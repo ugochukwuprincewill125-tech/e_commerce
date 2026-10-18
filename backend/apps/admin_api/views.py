@@ -400,11 +400,14 @@ class DirectUploadView(APIView):
     """
     POST /api/admin-api/uploads/sign/
     {"items": [{"filename": "macbook.jpg", "content_type": "image/jpeg", "product_id": 7}, …]}
+    or        [{"filename": "phones.jpg",  "content_type": "image/jpeg", "category_id": 12}, …]
     -> {"uploads": [{"upload_url", "key", "headers", "expires_in", "storage"}, …]}
 
     Issues upload URLs so the browser can PUT image bytes (Cloudinary-backed
-    in production; local media fallback in development). Echo the returned
-    `key` values back via `uploaded_images` on the product create/update call.
+    in production; local media fallback in development). Each item targets
+    exactly one existing row: product images are echoed back via
+    `uploaded_images` on the product create/update call, category images via
+    `image_key` on the category update call.
     """
 
     permission_classes = [IsStaff]
@@ -412,22 +415,40 @@ class DirectUploadView(APIView):
     def post(self, request):
         items = request.data.get("items")
         if not isinstance(items, list) or not items or len(items) > 20:
-            raise ValidationError("Provide `items`: a list of 1-20 {filename, content_type, product_id} objects.")
+            raise ValidationError(
+                "Provide `items`: a list of 1-20 {filename, content_type, product_id|category_id} objects."
+            )
         results = []
         for item in items:
             if not isinstance(item, dict):
                 raise ValidationError("Each item must be an object.")
             product_id = item.get("product_id")
+            category_id = item.get("category_id")
             filename = str(item.get("filename") or "")
             content_type = str(item.get("content_type") or "").lower()
-            if not isinstance(product_id, int):
-                raise ValidationError("Each item needs an integer product_id (create the product first, then add images).")
-            if not Product.objects.filter(pk=product_id).exists():
-                raise ValidationError(f"Product {product_id} does not exist.")
-            try:
-                signed = uploads.sign_product_image(product_id, filename, content_type)
-            except ValueError as exc:
-                raise ValidationError(str(exc))
+            if (product_id is None) == (category_id is None):
+                raise ValidationError(
+                    "Each item needs exactly one of product_id or category_id "
+                    "(save the product or category first, then upload its image)."
+                )
+            if product_id is not None:
+                if not isinstance(product_id, int):
+                    raise ValidationError("product_id must be an integer.")
+                if not Product.objects.filter(pk=product_id).exists():
+                    raise ValidationError(f"Product {product_id} does not exist.")
+                try:
+                    signed = uploads.sign_product_image(product_id, filename, content_type)
+                except ValueError as exc:
+                    raise ValidationError(str(exc))
+            else:
+                if not isinstance(category_id, int):
+                    raise ValidationError("category_id must be an integer.")
+                if not Category.objects.filter(pk=category_id).exists():
+                    raise ValidationError(f"Category {category_id} does not exist.")
+                try:
+                    signed = uploads.sign_category_image(category_id, filename, content_type)
+                except ValueError as exc:
+                    raise ValidationError(str(exc))
             # Local fallback URLs are relative (same origin); make them absolute
             # so the browser can PUT directly to whatever host signed them.
             if signed["upload_url"].startswith("/"):

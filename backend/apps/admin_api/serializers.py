@@ -5,6 +5,7 @@ from apps.brands.models import Brand
 from apps.brands.serializers import BrandMiniSerializer
 from apps.categories.models import Category
 from apps.categories.serializers import CategoryMiniSerializer
+from apps.core import uploads
 from apps.core.models import ContactMessage
 from apps.orders.models import Order, OrderStatus, PaymentStatus
 from apps.orders.serializers import OrderItemSerializer
@@ -134,14 +135,44 @@ class AdminCategorySerializer(serializers.ModelSerializer):
         source="parent_category", queryset=Category.objects.all(), allow_null=True, required=False
     )
     product_count = serializers.IntegerField(read_only=True, default=0)
+    # Category images travel through the same sign+PUT flow as product images:
+    # pass the signed key to attach it, "" to remove it. The raw `image` field
+    # stays available for direct writes (e.g. scripts).
+    image_key = serializers.CharField(required=False, allow_blank=True, write_only=True)
 
     class Meta:
         model = Category
         fields = (
-            "id", "name", "slug", "description", "image", "icon", "parent_id",
+            "id", "name", "slug", "description", "image", "image_key", "icon", "parent_id",
             "is_active", "is_featured", "display_order", "product_count", "created_at",
         )
         read_only_fields = ("id", "slug", "created_at")
+
+    def validate_image_key(self, value):
+        if value == "":
+            return value
+        if not uploads.key_is_wellformed(value):
+            raise serializers.ValidationError("This upload key was not issued by the API.")
+        if not value.startswith("media/categories/"):
+            raise serializers.ValidationError("That upload key is not a category image.")
+        if not uploads.object_exists(value):
+            raise serializers.ValidationError("Upload not found — upload the file to the signed URL first.")
+        return value
+
+    def _apply_image_key(self, instance, key):
+        instance.image = uploads.key_to_field_name(key) if key else None
+        instance.save(update_fields=["image"])
+        return instance
+
+    def create(self, validated_data):
+        key = validated_data.pop("image_key", None)
+        instance = super().create(validated_data)
+        return self._apply_image_key(instance, key) if key is not None else instance
+
+    def update(self, instance, validated_data):
+        key = validated_data.pop("image_key", None)
+        instance = super().update(instance, validated_data)
+        return self._apply_image_key(instance, key) if key is not None else instance
 
 
 class AdminBrandSerializer(serializers.ModelSerializer):
