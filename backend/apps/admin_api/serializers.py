@@ -321,17 +321,18 @@ class AdminCustomerDetailSerializer(AdminCustomerListSerializer):
 
 
 class AdminCustomerUpdateSerializer(serializers.ModelSerializer):
-    """Basic profile edits staff may make.
+    """Basic profile edits — name and phone.
 
-    `is_staff` is deliberately absent. Granting staff is a privilege change, not
-    a profile edit, so it stays behind the superuser-only `set_staff` action.
-    Exposing it here would let any staff PATCH a colleague (or themselves) up to
-    full admin with a single request.
+    Privilege and status fields are deliberately absent. `is_staff` is a
+    privilege change behind the superuser-only `set_staff` action, and
+    `is_active` goes through the guarded `set_active` action; exposing either
+    here would let one PATCH bypass those guards (e.g. block a superuser, or
+    lock an admin out of their own account).
     """
 
     class Meta:
         model = User
-        fields = ("first_name", "last_name", "phone", "is_active")
+        fields = ("first_name", "last_name", "phone")
 
 
 # ---------------------------------------------------------------------------

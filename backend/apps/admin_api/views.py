@@ -1,7 +1,10 @@
 """Staff-only REST API for managing the Timeline Gadgets store.
 
-Every view requires an authenticated user with `is_staff=True`. The admin
-frontend sends `Authorization: Bearer <access>` just like the customer API.
+Every view requires an authenticated user with `is_staff=True` (admins and
+superusers). Panel users manage the store and each other, with two hard
+limits: superuser accounts are never modifiable through the API, and nobody
+can change their own access. The admin frontend sends `Authorization: Bearer
+<access>` just like the customer API.
 """
 import json
 from datetime import timedelta
@@ -36,30 +39,16 @@ from . import serializers as s
 
 
 class IsStaff(permissions.IsAdminUser):
-    """Admin API gate — superuser-only by design.
+    """Admin API gate — any panel user may manage the store.
 
-    Despite the name (kept so every view reads the same), this checks
-    ``is_superuser``: the store is run by its owner(s), and any staff member
-    who can reach the admin API could otherwise grant themselves the same
-    rights via set_staff. Privilege changes need the same power they grant.
+    Admins (``is_staff``) and superusers (``is_superuser``) have the same
+    powers here, including managing other admins. The one thing nobody can
+    change through this API is a superuser account — see
+    `AdminCustomerViewSet`.
     """
 
     def has_permission(self, request, view):
-        return bool(request.user and request.user.is_authenticated and request.user.is_superuser)
-
-
-class IsSuperuser(permissions.BasePermission):
-    """For privilege changes only.
-
-    `is_staff` is the single gate on every admin endpoint, so letting any staff
-    member grant it would hand out the whole admin area. Only a superuser may
-    promote or demote staff.
-    """
-
-    message = "Only a superuser can change staff privileges."
-
-    def has_permission(self, request, view):
-        return bool(request.user and request.user.is_authenticated and request.user.is_superuser)
+        return bool(request.user and request.user.is_authenticated and request.user.is_staff)
 
 
 # ---------------------------------------------------------------------------
@@ -837,24 +826,29 @@ class AdminCustomerViewSet(
     viewsets.GenericViewSet,
 ):
     """
-    GET   /api/admin/customers/    ?search=<name/email/phone>&is_active=&ordering=&is_staff=
+    GET   /api/admin/customers/    ?search=<name/email/phone>&is_active=&is_staff=&is_superuser=&ordering=
     GET   /api/admin/customers/<id>/
     PATCH /api/admin/customers/<id>/            edit basic details
     POST  /api/admin/customers/<id>/set_active/ {is_active}
-    POST  /api/admin/customers/<id>/set_staff/  {is_staff}   (superuser only)
+    POST  /api/admin/customers/<id>/set_staff/  {is_staff}
+
+    Roles are a ladder: customers < admins (`is_staff`) < superusers. Any panel
+    user — admin or superuser — can promote customers, revoke an admin, or
+    block/unblock a customer or fellow admin. Two accounts are out of bounds
+    for everyone: superuser accounts, and your own (no self-lockout).
     """
     permission_classes = [IsStaff]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["email", "first_name", "last_name", "phone"]
-    filterset_fields = ["is_active", "is_staff", "email_verified"]
+    filterset_fields = ["is_active", "is_staff", "is_superuser", "email_verified"]
     ordering_fields = ["date_joined", "email", "total_spent", "order_count"]
     ordering = ["-date_joined"]
     # `post` is required by the set_active/set_staff @action endpoints.
     http_method_names = ["get", "post", "patch", "put", "head", "options"]
 
     def get_queryset(self):
-        # Everyone is listed here — customers AND admins — so staff admins can
-        # see (and the owner can audit) exactly who has admin access. Writes to
+        # Everyone is listed here — customers AND admins — so the team can see
+        # (and the owner can audit) exactly who has admin access. Writes to
         # superuser accounts stay blocked by the guards in _toggle/set_staff.
         spent = Sum("orders__total", output_field=DecimalField())
         return (
@@ -872,21 +866,19 @@ class AdminCustomerViewSet(
 
     def _toggle(self, request, field):
         user = self.get_object()
-        if user.is_superuser:
-            return Response({"detail": "Superusers cannot be modified from the API."},
-                            status=status.HTTP_400_BAD_REQUEST)
-        # Never let an admin lock themselves out mid-session, which would leave
-        # the store with no way back in through this API.
-        if user.pk == request.user.pk and field == "is_active" and not bool(request.data.get(field, True)):
+        value = bool(request.data.get(field, not getattr(user, field)))
+        # Never let a panel user lock themselves out mid-session, which would
+        # leave them no way back in through this API.
+        if user.pk == request.user.pk and not value:
             return Response({"detail": "You cannot deactivate your own account."},
                             status=status.HTTP_400_BAD_REQUEST)
-        if user.pk == request.user.pk and field in {"is_staff", "is_superuser"}:
-            return Response({"detail": "You cannot change your own admin status."},
+        if user.is_superuser:
+            return Response({"detail": "Superuser accounts cannot be changed from the admin panel."},
                             status=status.HTTP_400_BAD_REQUEST)
-        value = bool(request.data.get(field, not getattr(user, field)))
         setattr(user, field, value)
         user.save(update_fields=[field])
-        return Response({"detail": f"{user.email}: {field}={value}"})
+        label = f"{user.email} is now {'active' if value else 'blocked'}."
+        return Response({"detail": label})
 
     @action(detail=True, methods=["post"])
     def set_active(self, request, pk=None):
@@ -894,19 +886,27 @@ class AdminCustomerViewSet(
 
     @action(detail=True, methods=["post"])
     def set_staff(self, request, pk=None):
-        """Promote/demote an admin. Grants is_superuser + is_staff together so
-        a promoted account can actually use the admin area; revoking clears both.
-        The whole endpoint is superuser-only via the viewset's IsStaff gate."""
-        value = bool(request.data.get("is_superuser", request.data.get("is_staff", False)))
+        """Promote/demote an admin (`is_staff`) — any panel user may do this.
+
+        Promotion grants admin access, never superuser: superuser accounts can
+        be added from the server only and are never modifiable through this
+        API, so no admin can ever take the owner's place.
+        """
         user = self.get_object()
-        if user.is_superuser:
-            return Response({"detail": "Superusers cannot be modified from the API."},
+        if user.pk == request.user.pk:
+            return Response({"detail": "You cannot change your own admin status."},
                             status=status.HTTP_400_BAD_REQUEST)
-        user.is_superuser = value
+        if user.is_superuser:
+            return Response({"detail": "Superuser accounts cannot be changed from the admin panel."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if "is_staff" not in request.data:
+            return Response({"detail": "Provide is_staff: true to grant admin access, false to revoke it."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        value = bool(request.data.get("is_staff", False))
         user.is_staff = value
-        user.save(update_fields=["is_superuser", "is_staff"])
-        label = "admin" if value else "customer"
-        return Response({"detail": f"{user.email} is now an {label}.", "is_staff": value, "is_superuser": value})
+        user.save(update_fields=["is_staff"])
+        label = "an admin" if value else "a customer"
+        return Response({"detail": f"{user.email} is now {label}.", "is_staff": value})
 
 
 # ---------------------------------------------------------------------------

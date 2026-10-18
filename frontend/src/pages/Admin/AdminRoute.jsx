@@ -13,13 +13,13 @@ export default function AdminRoute({ children }) {
 
   if (initialising) return <PageLoader />
   if (!user) return <Navigate to="/login?next=/admin" replace />
-  // Only superusers may use the admin area — every admin API endpoint enforces
-  // is_superuser server-side, so the client gate must agree or a half-privileged
-  // account would reach a UI that 403s on every request.
-  if (!user.is_superuser) {
+  // Admins (`is_staff`) and superusers may use the admin area — every admin
+  // API endpoint requires at least is_staff. Superuser accounts are protected
+  // from change everywhere; no other control is role-restricted.
+  if (!user.is_staff) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 p-6 text-center">
-        <p className="text-lg font-bold text-ink-950">Staff access only</p>
+        <p className="text-lg font-bold text-ink-950">Admins only</p>
         <p className="max-w-sm text-sm text-neutral-500">
           This area is for store administrators. If you believe you should have access, contact the store owner.
         </p>

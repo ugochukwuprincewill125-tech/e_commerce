@@ -100,7 +100,12 @@ Copy `.env.example` → `.env`. Key variables:
 ## Admin API (mounted at `/api/admin-api/`, staff only)
 
 All endpoints require `Authorization: Bearer <access>` from an account with
-`is_staff=True`. The admin frontend uses the same JWT flow as customers.
+`is_staff=True` — admins and superusers both count. Roles are a ladder:
+customers < admins (`is_staff`) < superusers. Any panel user can promote a
+customer, revoke an admin, or block/unblock a customer or fellow admin. Two
+accounts are out of bounds for everyone — superuser accounts (never modifiable
+through the API) and your own (no self-lockout). The admin frontend uses the
+same JWT flow as customers.
 
 ### Dashboard
 | Endpoint | Description |
@@ -178,10 +183,11 @@ Full CRUD (`ModelViewSet`) at `/api/admin-api/categories/`, `/brands/`,
 ### Customers
 | Endpoint | Description |
 |---|---|
-| `GET /api/admin-api/customers/` | With `order_count`/`total_spent`; `?search=` |
+| `GET /api/admin-api/customers/` | With `order_count`/`total_spent`; `?search=`, `?is_staff=`, `?is_superuser=` |
 | `GET /api/admin-api/customers/<id>/` | Detail incl. addresses |
-| `PATCH /api/admin-api/customers/<id>/` | Edit basics |
-| `POST /api/admin-api/customers/<id>/set_active/` · `set_staff/` | Toggle flags (superusers protected) |
+| `PATCH /api/admin-api/customers/<id>/` | Edit basics (name/phone — never flags) |
+| `POST /api/admin-api/customers/<id>/set_active/` | Block/unblock an account; superusers protected, never yourself |
+| `POST /api/admin-api/customers/<id>/set_staff/` | Grant/revoke admin access (`{is_staff}`); superusers protected; never grants superuser |
 
 ### Moderation
 | Endpoint | Description |

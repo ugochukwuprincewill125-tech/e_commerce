@@ -115,7 +115,7 @@ export const fetchAdminCustomers = (params) => api.get('/admin-api/customers/', 
 export const fetchAdminCustomer = (id) => api.get(`/admin-api/customers/${id}/`).then((r) => r.data)
 export const updateAdminCustomer = (id, payload) => api.patch(`/admin-api/customers/${id}/`, payload).then((r) => r.data)
 export const setCustomerActive = (id, is_active) => api.post(`/admin-api/customers/${id}/set_active/`, { is_active }).then((r) => r.data)
-/** Superuser-only on the server: promotes or demotes a staff member. */
+/** Grants or revokes admin access (never superuser); superuser accounts are protected. */
 export const setCustomerStaff = (id, is_staff) => api.post(`/admin-api/customers/${id}/set_staff/`, { is_staff }).then((r) => r.data)
 
 /* --------------------------- reviews & messages --------------------------- */

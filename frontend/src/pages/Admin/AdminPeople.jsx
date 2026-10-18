@@ -24,7 +24,7 @@ const CUSTOMER_CSV = [
   { label: 'Name', get: (c) => c.full_name },
   { label: 'Email', get: (c) => c.email },
   { label: 'Phone', get: (c) => c.phone },
-  { label: 'Role', get: (c) => (c.is_superuser ? 'admin' : c.is_staff ? 'staff' : 'customer') },
+  { label: 'Role', get: (c) => (c.is_superuser ? 'superuser' : c.is_staff ? 'admin' : 'customer') },
   { label: 'Orders', get: (c) => c.order_count },
   { label: 'Total spent', get: (c) => c.total_spent },
   { label: 'Verified', get: (c) => (c.email_verified ? 'yes' : 'no') },
@@ -41,7 +41,7 @@ export function AdminCustomers() {
   const debounced = useDebounce(search)
 
   const verified = params.get('email_verified') || ''
-  const staffOnly = params.get('is_staff') || ''
+  const role = params.get('role') || ''
 
   const setParam = (key, value) => {
     const next = new URLSearchParams(params)
@@ -54,7 +54,11 @@ export function AdminCustomers() {
   const query = { page, page_size: 25 }
   if (debounced) query.search = debounced
   if (verified) query.email_verified = verified
-  if (staffOnly) query.is_staff = staffOnly
+  // One "role" filter maps onto the flags the API understands. Superusers are
+  // also is_staff, so "Admins" must exclude them explicitly.
+  if (role === 'superuser') query.is_superuser = 'true'
+  else if (role === 'admin') Object.assign(query, { is_staff: 'true', is_superuser: 'false' })
+  else if (role === 'customer') query.is_staff = 'false'
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['admin-customers', query],
@@ -98,10 +102,11 @@ export function AdminCustomers() {
           <option value="true">Verified</option>
           <option value="false">Unverified</option>
         </select>
-        <select className="input w-auto" value={staffOnly} onChange={(e) => setParam('is_staff', e.target.value)} aria-label="Filter by role">
+        <select className="input w-auto" value={role} onChange={(e) => setParam('role', e.target.value)} aria-label="Filter by role">
           <option value="">Everyone</option>
-          <option value="true">Admins only</option>
-          <option value="false">Customers only</option>
+          <option value="superuser">Superusers</option>
+          <option value="admin">Admins</option>
+          <option value="customer">Customers</option>
         </select>
       </div>
 
@@ -142,22 +147,32 @@ export function AdminCustomers() {
                             <span className={`chip ${c.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
                               {c.is_active ? 'Active' : 'Blocked'}
                             </span>
-                            {c.is_superuser && <span className="chip bg-ink-900 text-white">Admin</span>}
-                            {!c.is_superuser && c.is_staff && <span className="chip bg-ink-900 text-white">Staff</span>}
+                            {c.is_superuser && <span className="chip bg-ink-900 text-white">Superuser</span>}
+                            {!c.is_superuser && c.is_staff && <span className="chip bg-brand-50 text-brand-700">Admin</span>}
                             {!c.email_verified && <span className="chip bg-amber-100 text-amber-800">Unverified</span>}
                           </div>
                         </td>
                         <td className="px-4 py-3 text-right whitespace-nowrap">
-                          {me?.is_superuser && me?.id !== c.id && (
-                            <button
-                              type="button"
-                              onClick={() => setQuickStaff({ customer: c, value: !c.is_staff })}
-                              className={`btn-outline mr-1 px-2.5 py-1 text-xs ${c.is_staff ? 'text-danger' : ''}`}
-                              title={c.is_staff ? 'Remove admin access' : 'Make admin'}
+                          {me?.is_staff && me?.id !== c.id && (
+                            /* Disabled on superuser rows — the API protects them.
+                               The span keeps the reason readable on hover. */
+                            <span
+                              title={
+                                c.is_superuser
+                                  ? 'Superuser accounts cannot be changed from the admin panel'
+                                  : undefined
+                              }
                             >
-                              <Shield className={`h-3.5 w-3.5 ${c.is_staff ? 'text-emerald-600' : ''}`} />
-                              {c.is_staff ? 'Remove admin' : 'Make admin'}
-                            </button>
+                              <button
+                                type="button"
+                                disabled={c.is_superuser}
+                                onClick={() => setQuickStaff({ customer: c, value: !c.is_staff })}
+                                className={`btn-outline mr-1 px-2.5 py-1 text-xs ${c.is_staff ? 'text-danger' : ''}`}
+                              >
+                                <Shield className={`h-3.5 w-3.5 ${c.is_staff ? 'text-emerald-600' : ''}`} />
+                                {c.is_staff ? 'Remove admin' : 'Make admin'}
+                              </button>
+                            </span>
                           )}
                           <button type="button" onClick={() => setOpenId(c.id)} className="btn-outline px-3 py-1 text-xs">
                             Manage
@@ -286,7 +301,7 @@ function CustomerModal({ id, onClose }) {
             <div className="space-y-2 border-t border-line pt-4">
               <button
                 type="button"
-                disabled={isSelf}
+                disabled={isSelf || customer.is_superuser}
                 onClick={() => setConfirm({ kind: 'active', value: !customer.is_active })}
                 className={`btn w-full ${customer.is_active ? 'text-danger' : 'text-success'}`}
               >
@@ -294,17 +309,19 @@ function CustomerModal({ id, onClose }) {
               </button>
               {isSelf ? (
                 <p className="text-xs text-metal-500">You cannot change your own access.</p>
-              ) : me?.is_superuser ? (
+              ) : customer.is_superuser ? (
+                <p className="text-xs text-metal-500">
+                  This is a superuser account — it cannot be changed from the admin panel.
+                </p>
+              ) : (
                 <button
                   type="button"
                   onClick={() => setConfirm({ kind: 'staff', value: !customer.is_staff })}
                   className="btn-outline w-full"
                 >
                   <Shield className="h-4 w-4" />
-                  {customer.is_staff ? 'Revoke staff access' : 'Grant staff access'}
+                  {customer.is_staff ? 'Revoke admin access' : 'Grant admin access'}
                 </button>
-              ) : (
-                <p className="text-xs text-metal-500">Only the store owner can change staff access.</p>
               )}
             </div>
           </div>
@@ -313,14 +330,14 @@ function CustomerModal({ id, onClose }) {
 
       <ConfirmDialog
         open={Boolean(confirm)}
-        title={confirm?.kind === 'staff' ? 'Change staff access' : customer?.is_active ? 'Block account' : 'Unblock account'}
+        title={confirm?.kind === 'staff' ? 'Change admin access' : customer?.is_active ? 'Block account' : 'Unblock account'}
         confirmLabel="Confirm"
         busy={activeMut.isPending || staffMut.isPending}
         onClose={() => setConfirm(null)}
         onConfirm={() => (confirm.kind === 'staff' ? staffMut.mutate(confirm.value) : activeMut.mutate(confirm.value))}
         body={
           confirm?.kind === 'staff'
-            ? 'Staff accounts can reach every part of the admin area, including other staff accounts and all customer data.'
+            ? 'Admin accounts can reach every part of the admin area — products, orders, customers and messages.'
             : customer?.is_active
               ? 'They will not be able to sign in until the account is unblocked.'
               : 'They will be able to sign in and order again.'
