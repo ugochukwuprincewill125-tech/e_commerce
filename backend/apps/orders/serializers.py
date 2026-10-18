@@ -115,25 +115,6 @@ class OrderDetailSerializer(OrderListSerializer):
         return tracking_steps(obj)
 
 
-class PublicTrackingSerializer(serializers.ModelSerializer):
-    """Limited view for the public 'track my order' form."""
-
-    status_display = serializers.CharField(source="get_status_display", read_only=True)
-    payment_status_display = serializers.CharField(source="get_payment_status_display", read_only=True)
-    tracking = serializers.SerializerMethodField()
-    item_count = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Order
-        fields = ("order_number", "status", "status_display", "payment_status", "payment_status_display", "item_count", "created_at", "tracking")
-
-    def get_tracking(self, obj):
-        return tracking_steps(obj)
-
-    def get_item_count(self, obj):
-        return sum(i.quantity for i in obj.items.all())
-
-
 PICKUP_LOCATIONS = ("main-office", "branch")
 
 
@@ -162,8 +143,3 @@ class CreateOrderSerializer(serializers.Serializer):
             if not attrs.get("pickup_location"):
                 attrs["pickup_location"] = "main-office"
         return attrs
-
-
-class TrackOrderSerializer(serializers.Serializer):
-    order_number = serializers.CharField(max_length=30)
-    email = serializers.EmailField()

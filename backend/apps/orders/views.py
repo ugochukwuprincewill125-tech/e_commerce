@@ -15,9 +15,7 @@ from .serializers import (
     CreateOrderSerializer,
     OrderDetailSerializer,
     OrderListSerializer,
-    PublicTrackingSerializer,
     ReceiptSerializer,
-    TrackOrderSerializer,
 )
 from .services import cancel_order, create_order_from_cart, delete_order, release_stale_unpaid_orders
 
@@ -100,27 +98,6 @@ class OrderViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Crea
         if not order.is_paid:
             return Response({"detail": "Receipts are only available for paid orders."}, status=status.HTTP_404_NOT_FOUND)
         return Response(ReceiptSerializer(order, context={"request": request}).data)
-
-
-class TrackOrderView(APIView):
-    """POST /api/orders/track/ {order_number, email} — public order tracking."""
-
-    permission_classes = [permissions.AllowAny]
-    throttle_scope = "auth"
-
-    def post(self, request):
-        serializer = TrackOrderSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        order = order_queryset().filter(
-            order_number__iexact=serializer.validated_data["order_number"].strip(),
-            email__iexact=serializer.validated_data["email"].strip(),
-        ).first()
-        if not order:
-            return Response(
-                {"detail": "We couldn't find an order with those details. Check the order number and email."},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-        return Response(PublicTrackingSerializer(order, context={"request": request}).data)
 
 
 class ReleaseUnpaidOrdersView(APIView):

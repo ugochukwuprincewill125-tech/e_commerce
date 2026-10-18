@@ -12,9 +12,9 @@ import { AccountRail, activeLabel } from './AccountNav'
  * is offset into the column to its right.
  *
  * Used for every route the sidebar can reach, so navigating between Cart,
- * Track Order, Brands and the account tabs never drops the sidebar. For a
- * signed-out visitor the children render bare, because this is also used to
- * wrap public storefront pages.
+ * Brands and the account tabs never drops the sidebar. For a signed-out
+ * visitor the children render bare, because this is also used to wrap public
+ * storefront pages.
  */
 export default function AccountShell({ children }) {
   const { user } = useAuth()

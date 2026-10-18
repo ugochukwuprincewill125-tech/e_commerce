@@ -308,7 +308,6 @@ All endpoints are under `/api/`. Authentication uses `Authorization: Bearer <acc
 | `GET / POST /api/orders/` | list (`?status=`) / create from cart |
 | `GET /api/orders/<order_number>/` | details + tracking timeline |
 | `POST /api/orders/<order_number>/cancel/` | unpaid orders only, stock is returned |
-| `POST /api/orders/track/` | public: `{order_number, email}` |
 | `GET /api/payments/config/` · `POST initialize/` · `GET verify/<ref>/` · `POST webhook/` | |
 | `GET /api/reviews/?product=<slug>` · `POST /api/reviews/` · `GET eligibility/?product=` · `GET mine/` | only customers who purchased a product can review it |
 | `GET /api/store-info/` · `POST /api/contact/` · `GET /api/health/` | |

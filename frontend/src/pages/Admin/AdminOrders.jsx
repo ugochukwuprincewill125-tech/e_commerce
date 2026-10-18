@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Eye, LayoutGrid, List, Loader2, Package, Printer, Search, Store, Truck } from 'lucide-react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 
 import {
   AdminCard, AdminEmpty, AdminError, AdminPage, ExportButton,
@@ -663,13 +663,6 @@ function OrderDetail({ order, invalidate }) {
           {!order.history?.length && <li className="text-[13px] text-metal-500">No history recorded.</li>}
         </ol>
       </div>
-
-      <p className="border-t border-line pt-3 text-xs text-metal-400">
-        Customer-facing order page:{' '}
-        <Link to={`/track-order?order=${order.order_number}`} className="font-semibold text-brand-600 hover:underline">
-          {order.order_number}
-        </Link>
-      </p>
 
       {confirm.modal}
     </div>

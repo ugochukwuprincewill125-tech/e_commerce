@@ -2,13 +2,12 @@ import { useQuery } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ChevronDown, Heart, LayoutDashboard, LogOut, Menu, Package, Search, User, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '../../context/AuthContext'
 import { useChrome } from '../../context/ChromeContext'
 import { catalogService } from '../../services/productService'
 import { cn } from '../../utils/format'
-import { GUEST_LINKS, MEMBER_LINKS } from '../../utils/navConfig'
 import Logo from '../Logo/Logo'
 import SearchBar from '../SearchBar/SearchBar'
 
@@ -156,12 +155,22 @@ function SearchWithCategory({ onNavigate, className }) {
   )
 }
 
-export default function Navbar() {
-  const { user } = useAuth()
-  const { openMenu } = useChrome()
-  const { pathname } = useLocation()
+/**
+ * Primary storefront tabs. `end` keeps Home from staying active on every
+ * route; every other tab also matches its child routes (a product page keeps
+ * Shop active, a single brand keeps Brands active).
+ */
+const NAV_TABS = [
+  { to: '/', label: 'Home', end: true },
+  { to: '/shop', label: 'Shop' },
+  { to: '/categories', label: 'Categories' },
+  { to: '/brands', label: 'Brands' },
+  { to: '/about', label: 'About Us' },
+  { to: '/contact', label: 'Contact' },
+]
 
-  const navLinks = user ? MEMBER_LINKS : GUEST_LINKS
+export default function Navbar() {
+  const { openMenu } = useChrome()
 
   return (
     <>
@@ -174,7 +183,32 @@ export default function Navbar() {
 
           <Logo />
 
+          {/* Primary navigation. Desktop only — small screens reach the same
+              destinations through the hamburger drawer. */}
+          <nav aria-label="Primary" className="hidden self-stretch items-center lg:flex">
+            {NAV_TABS.map(({ to, label, end }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={end}
+                className={({ isActive }) =>
+                  cn(
+                    'flex h-full items-center border-b-2 px-3.5 text-sm font-medium transition-colors',
+                    isActive ? 'border-brand-600 text-ink-900' : 'border-transparent text-metal-600 hover:text-ink-900',
+                  )
+                }
+              >
+                {label}
+              </NavLink>
+            ))}
+          </nav>
+
           <div className="ml-auto flex items-center gap-1 sm:gap-3">
+            {/* Product search lives in the header on wide screens only — the
+                tab strip plus the field need the extra room. */}
+            <div className="hidden xl:block">
+              <SearchBar className="w-64" panelAlign="right" placeholder="Search phones, laptops, accessories" />
+            </div>
             <div className="hidden lg:block">
               <AccountBlock />
             </div>

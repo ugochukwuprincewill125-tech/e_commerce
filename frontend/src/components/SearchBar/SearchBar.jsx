@@ -15,8 +15,12 @@ import { cn, formatNaira } from '../../utils/format'
  *
  * `grouped` drops the right-hand radius and border so the field butts up
  * against an adjacent SEARCH button.
+ *
+ * `panelAlign` anchors the suggestions panel to the field's right edge. Use
+ * "right" when the field sits close to the viewport's right edge (the navbar),
+ * so the panel opens inwards instead of overflowing the screen.
  */
-export default function SearchBar({ className, autoFocus = false, onNavigate, scope = '', grouped = false, placeholder }) {
+export default function SearchBar({ className, autoFocus = false, onNavigate, scope = '', grouped = false, placeholder, panelAlign = 'left' }) {
   const navigate = useNavigate()
   const listId = useId()
   const [q, setQ] = useState('')
@@ -125,7 +129,8 @@ export default function SearchBar({ className, autoFocus = false, onNavigate, sc
             exit={{ opacity: 0, y: 4 }}
             transition={{ duration: 0.14 }}
             className={cn(
-              'absolute left-0 top-full z-50 mt-1.5 w-full overflow-hidden rounded-md border border-line bg-white text-ink-900 shadow-overlay',
+              'absolute top-full z-50 mt-1.5 w-full overflow-hidden rounded-md border border-line bg-white text-ink-900 shadow-overlay',
+              panelAlign === 'right' ? 'right-0' : 'left-0',
               !grouped && 'sm:min-w-[440px]',
             )}
           >

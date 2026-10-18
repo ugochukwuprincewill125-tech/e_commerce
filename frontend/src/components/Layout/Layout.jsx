@@ -28,7 +28,6 @@ const SHELL_ROUTES = [
   '/brands',
   '/categories',
   '/products',
-  '/track-order',
   '/checkout',
   '/payment',
   '/wishlist',

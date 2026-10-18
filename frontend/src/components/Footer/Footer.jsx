@@ -11,7 +11,6 @@ const COLUMNS = [
     links: [
       { to: '/contact', label: 'Help Centre' },
       { to: '/contact', label: 'Contact Us' },
-      { to: '/track-order', label: 'Track Order' },
       { to: '/returns', label: 'Returns & Refunds' },
       { to: '/shipping', label: 'Shipping Information' },
       { to: '/faqs', label: 'FAQs' },

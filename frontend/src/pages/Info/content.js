@@ -23,7 +23,7 @@ export const INFO = {
       },
       {
         heading: 'Tracking your order',
-        body: 'Every order has a tracking timeline — Order Placed, Payment Confirmed, Processing, Ready for Delivery, Shipped and Delivered. Follow it from your account or the Track Order page.',
+        body: 'Every order has a tracking timeline — Order Placed, Payment Confirmed, Processing, Ready for Delivery, Shipped and Delivered. Follow it from your account.',
       },
     ],
   },
@@ -57,7 +57,7 @@ export const INFO = {
       { q: 'Do you deliver outside Lagos?', a: 'Yes — we deliver nationwide. Your delivery fee is calculated at checkout based on your state.' },
       { q: 'How do I pay?', a: 'Online payments are processed securely by Paystack (card, bank transfer or USSD). Your order total is always calculated and verified by our server.' },
       { q: 'Can I pick up my order in store?', a: 'Yes. Choose “Store pickup” at checkout and select the location that suits you. Pickup is free.' },
-      { q: 'How can I track my order?', a: 'Sign in and open “My Orders”, or use the Track Order page with your order number and email address.' },
+      { q: 'How can I track my order?', a: 'Sign in and open “My Orders” to follow your order status.' },
       { q: 'Can I cancel an order?', a: 'Unpaid orders can be cancelled from your order page. For paid orders, please contact us as soon as possible.' },
       { q: 'Why can’t I add more of an item to my cart?', a: 'Our cart is connected to live stock levels. If you can’t increase the quantity, we don’t have more units available right now.' },
       { q: 'How do I contact you?', a: 'Email timelinegadget@gmail.com, send a message through our Contact page, or reach us on Instagram @timelinegadgets.' },

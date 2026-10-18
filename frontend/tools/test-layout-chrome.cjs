@@ -101,7 +101,7 @@ console.log('\nEvery sidebar destination keeps the shell')
 const shell = fs.readFileSync(path.join(SRC, 'components', 'Account', 'AccountShell.jsx'), 'utf8')
 check('AccountShell renders children bare for guests', /if \(!user\) return children/.test(shell))
 check('AccountShell renders the rail', /<AccountRail \/>/.test(shell))
-const wrapped = ['/shop', '/category/:categorySlug', '/brands', '/brands/:brandSlug', '/categories', '/products/:slug', '/cart', '/checkout', '/track-order', '/payment/callback']
+const wrapped = ['/shop', '/category/:categorySlug', '/brands', '/brands/:brandSlug', '/categories', '/products/:slug', '/cart', '/checkout', '/payment/callback']
 const appLines = app.split('\n')
 for (const r of wrapped) {
   const line = appLines.find((l) => l.includes('path="' + r + '"'))
@@ -114,12 +114,10 @@ const navFlat = nav.replace(/\s+/g, ' ')
 check('Home tab is declared', /to: ACCOUNT_HOME, label: 'Home'/.test(nav))
 check('Home tab is first in the account section', /export const ACCOUNT_NAV = \[\s*\{ to: ACCOUNT_HOME/.test(nav))
 check('Dashboard tab exists', /label: 'Dashboard'/.test(nav))
-check('Track Order tab exists', /label: 'Track Order'/.test(nav))
 check('Categories tab exists', /label: 'Categories'/.test(nav))
 check('Cart tab exists', /label: 'My Cart'/.test(nav))
 check('Shop section exists', /export const SHOP_NAV = \[/.test(nav))
 check('Home tab is before Dashboard', nav.indexOf("label: 'Home'") < nav.indexOf("label: 'Dashboard'"))
-check('Track Order precedes Profile in the account section', nav.indexOf("label: 'Track Order'") < nav.indexOf("label: 'Profile Settings'"))
 check('rail carries no email block', !/user\.email/.test(nav))
 check('AccountShell mobile header carries no email', !/user\.email/.test(fs.readFileSync(path.join(SRC, 'components', 'Account', 'AccountShell.jsx'), 'utf8')))
 
@@ -170,7 +168,6 @@ const ROUTES = [
   ['/account/profile', 'Profile'],
   ['/account/addresses', 'Addresses'],
   ['/wishlist', 'Wishlist (legacy alias)'],
-  ['/track-order', 'Track order'],
   ['/about', 'About'],
   ['/contact', 'Contact'],
   ['/shipping', 'Shipping info'],
@@ -202,7 +199,6 @@ const IN_SHELL = (r) =>
   r === '/brands/:brandSlug' ||
   r === '/category/:categorySlug' ||
   r === '/products/:slug' ||
-  r === '/track-order' ||
   r === '/checkout' ||
   r === '/payment/callback' ||
   r === '/wishlist' ||

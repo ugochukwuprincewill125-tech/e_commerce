@@ -1,216 +1,164 @@
 import { useQuery } from '@tanstack/react-query'
-import { AnimatePresence, motion } from 'framer-motion'
-import { ArrowRight, ChevronLeft, ChevronRight, MapPin, ShieldCheck, Truck } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { ArrowRight, LayoutGrid, MapPin, ShieldCheck, Truck } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import Button from '../../components/Button/Button'
-import heroVideo from '../../assets/landing_page_background.mp4'
 import { productService } from '../../services/productService'
 import { cn, formatNaira } from '../../utils/format'
 
-/**
- * Campaign slides. Content rotates over a shared video background, so the
- * heading colour is set explicitly on the h1 rather than inherited: the global
- * `h1 { color: ink-900 }` base rule in index.css applies to the element and
- * would otherwise render near-black text on the dark scrim.
- */
-const SLIDES = [
-  {
-    eyebrow: 'Work · Study · Create',
-    title: 'Laptops and computer systems',
-    body: 'Everyday productivity machines, workstations and complete desktop setups from established brands.',
-    cta: { to: '/category/laptops', label: 'Shop laptops' },
-  },
-  {
-    eyebrow: 'Power & charging',
-    title: 'Chargers, cables and power banks',
-    body: 'Reliable charging solutions for phones, laptops and other devices, with trade-in options in store.',
-    cta: { to: '/category/phone-accessories', label: 'Shop accessories' },
-  },
-  {
-    eyebrow: 'Audio & wearables',
-    title: 'Headphones, earbuds and smart devices',
-    body: 'Everyday audio, smart watches and connected devices from the brands we stock.',
-    cta: { to: '/shop', label: 'Browse all products' },
-  },
-]
-
+/** Purchase assurances shown under the hero copy. */
 const ASSURANCES = [
-  { icon: Truck, term: 'Nationwide delivery', desc: 'Lagos and all 36 states' },
-  { icon: ShieldCheck, term: 'Secure payments', desc: 'Processed via Paystack' },
-  { icon: MapPin, term: 'Store collection', desc: 'Two locations in Ikeja' },
+  { icon: MapPin, label: '2 stores in Computer Village' },
+  { icon: Truck, label: 'Nationwide delivery' },
+  { icon: ShieldCheck, label: 'Secure checkout' },
 ]
 
-const INTERVAL = 7000
+/**
+ * Where each live product card lands in the cluster. The centre card sits on
+ * top and square; the flanking cards tilt away and tuck in behind it.
+ */
+const CARD_SLOTS = [
+  'absolute left-0 top-24 w-[178px] -rotate-[10deg]',
+  'absolute left-1/2 top-8 z-10 w-[218px] -translate-x-1/2',
+  'absolute right-0 top-36 w-[188px] rotate-[10deg]',
+]
+
+function HeroCard({ product, className }) {
+  // Placeholder keeps the cluster's shape while stock loads instead of
+  // collapsing the hero.
+  if (!product) {
+    return (
+      <div className={cn('rounded-2xl border border-white/10 bg-ink-800/80 p-3', className)} aria-hidden>
+        <div className="aspect-square animate-pulse rounded-xl bg-white/10" />
+        <div className="space-y-2 px-1.5 pb-0.5 pt-3">
+          <div className="h-2.5 w-12 animate-pulse rounded bg-white/10" />
+          <div className="h-3 w-28 animate-pulse rounded bg-white/10" />
+          <div className="h-3 w-20 animate-pulse rounded bg-white/10" />
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <Link
+      to={`/products/${product.slug}`}
+      className={cn(
+        'group block rounded-2xl border border-white/10 bg-ink-800/80 p-3 shadow-overlay transition-transform duration-200 hover:-translate-y-1',
+        className,
+      )}
+    >
+      <span className="block aspect-square rounded-xl bg-gradient-to-br from-white via-white to-metal-200 p-5">
+        {product.image ? (
+          <img
+            src={product.image}
+            alt=""
+            loading="lazy"
+            className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
+          />
+        ) : (
+          <span className="block h-full w-full animate-pulse rounded bg-metal-100" />
+        )}
+      </span>
+      <span className="block px-1.5 pb-0.5 pt-3">
+        {product.brand?.name && (
+          <span className="block text-[10px] font-semibold uppercase tracking-wider text-metal-400">{product.brand.name}</span>
+        )}
+        <span className="block truncate text-[13px] font-semibold text-white">{product.name}</span>
+        <span className="mt-0.5 block text-[13px] font-bold text-brand-400">{formatNaira(product.current_price)}</span>
+      </span>
+    </Link>
+  )
+}
 
 /**
- * Jumia-style campaign slider: full-bleed solid plates with a heading, a single
- * call to action and a dot/arrow control. No gradients, no overlays.
+ * Landing hero. A single dark plate: campaign copy and purchase assurances on
+ * the left, live product cards floating on the right, both over a faint
+ * technical grid. There is no video and no slide rotation.
  */
 export default function Hero() {
-  const [index, setIndex] = useState(0)
-  const [paused, setPaused] = useState(false)
-
-  const { data } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['products', 'hero-recent'],
     queryFn: () => productService.list({ page_size: 3, ordering: '-created_at' }),
     staleTime: 300_000,
   })
+
   const picks = (data?.results || []).slice(0, 3)
-
-  useEffect(() => {
-    if (paused) return undefined
-    const t = setInterval(() => setIndex((i) => (i + 1) % SLIDES.length), INTERVAL)
-    return () => clearInterval(t)
-  }, [paused])
-
-  const slide = SLIDES[index]
+  // Placeholder cards while the query is in flight; the real rows once it
+  // settles. An empty catalogue hides the cluster rather than leaving three
+  // skeleton cards pulsing forever.
+  const cards = isLoading ? [null, null, null] : picks
+  const showCluster = isLoading || picks.length > 0
 
   return (
-    <section
-      className="bg-white"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-      aria-roledescription="carousel"
-      aria-label="Featured promotions"
-    >
-      <div className="relative overflow-hidden bg-ink-950 text-white">
-        {/* Campaign video background — this hero section only. Text legibility
-            is kept with a dark scrim so slides slide over live footage. */}
-        <video
-          className="absolute inset-0 h-full w-full object-cover"
-          src={heroVideo}
-          autoPlay
-          loop
-          muted
-          playsInline
-          aria-hidden
-        />
-        <div className="absolute inset-0 bg-ink-950/55" aria-hidden />
+    <section className="relative overflow-hidden bg-ink-950 text-white">
+      {/* Faint technical grid — depth without a photo. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          backgroundImage:
+            'linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px)',
+          backgroundSize: '44px 44px',
+        }}
+      />
+      {/* Brand glow behind the product cards. */}
+      <div aria-hidden className="pointer-events-none absolute -right-40 -top-32 h-[560px] w-[560px] rounded-full bg-brand-600/25 blur-[140px]" />
 
-        <div className="relative container grid min-h-[380px] items-center gap-10 py-12 lg:grid-cols-[1.1fr_0.9fr] lg:py-16">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.28, ease: 'easeOut' }}
-            >
-              <p className="eyebrow-plain text-brand-300">{slide.eyebrow}</p>
-              <h1 className="mt-4 max-w-2xl text-display-sm text-white sm:text-display">{slide.title}</h1>
-              <p className="mt-5 max-w-lg text-[15px] leading-relaxed text-white/70">{slide.body}</p>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Button to={slide.cta.to} variant="accent" size="lg" iconRight={ArrowRight}>
-                  {slide.cta.label}
-                </Button>
-                <Button to="/categories" variant="inverse" size="lg">
-                  All categories
-                </Button>
-              </div>
-            </motion.div>
-          </AnimatePresence>
+      <div className="relative container grid items-center gap-12 py-14 lg:grid-cols-[1.05fr_0.95fr] lg:py-20">
+        <div>
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-xs text-metal-300">
+            <span className="h-1.5 w-1.5 rounded-full bg-brand-400" aria-hidden />
+            Timeline Global Systems — Home of Quality Gadgets
+          </span>
 
-          {/* Live featured stock panel */}
-          <div className="overflow-hidden rounded-md bg-white">
-            <div className="flex items-center justify-between border-b border-line px-4 py-3">
-              <h2 className="text-[11px] font-semibold uppercase tracking-widest text-ink-900">Featured products</h2>
-              <Link to="/shop" className="text-xs font-semibold text-brand-700 hover:text-brand-800">
-                View all
-              </Link>
-            </div>
+          <h1 className="mt-6 max-w-xl text-display-sm text-white sm:text-display">
+            Technology That Fits Your <span className="text-brand-400">World.</span>
+          </h1>
 
-            {picks.length === 0 ? (
-              <ul className="divide-y divide-line">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <li key={i} className="flex items-center gap-3 px-4 py-3">
-                    <div className="h-12 w-12 flex-none animate-pulse rounded bg-metal-100" />
-                    <div className="flex-1 space-y-2">
-                      <div className="h-2.5 w-16 animate-pulse rounded bg-metal-100" />
-                      <div className="h-3 w-32 animate-pulse rounded bg-metal-100" />
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <ul className="divide-y divide-line">
-                {picks.map((p) => (
-                  <li key={p.id}>
-                    <Link to={`/products/${p.slug}`} className="group flex items-center gap-3 px-4 py-3 transition-colors hover:bg-metal-50">
-                      <div className="h-12 w-12 flex-none rounded border border-line p-1">
-                        {p.image && <img src={p.image} alt="" className="h-full w-full object-contain" />}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        {p.brand?.name && <p className="truncate text-[10px] font-semibold uppercase tracking-wider text-metal-400">{p.brand.name}</p>}
-                        <p className="truncate text-[13px] font-medium text-ink-900">{p.name}</p>
-                        <p className="text-[13px] font-bold text-ink-900">{formatNaira(p.current_price)}</p>
-                      </div>
-                      <ArrowRight className="h-4 w-4 flex-none text-metal-300 transition-colors group-hover:text-ink-900" strokeWidth={1.75} aria-hidden />
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
+          <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-metal-300">
+            Discover quality gadgets, accessories and technology solutions at competitive prices — from our stores in
+            Computer Village, Ikeja to your doorstep anywhere in Nigeria.
+          </p>
 
-            <div className="flex items-center gap-2 border-t border-line bg-metal-50 px-4 py-2.5 text-[11px] text-metal-600">
-              <MapPin className="h-3.5 w-3.5 flex-none text-ink-800" strokeWidth={1.75} aria-hidden />
-              Collect in store at Oremeji &amp; Otigba Streets
-            </div>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Button to="/shop" variant="accent" size="lg" iconRight={ArrowRight}>
+              Shop Now
+            </Button>
+            <Button to="/categories" variant="inverse" size="lg" icon={LayoutGrid}>
+              Explore Categories
+            </Button>
           </div>
-        </div>
 
-        {/* Slider controls */}
-        <div className="relative container flex items-center justify-between pb-5">
-          <div className="flex items-center gap-2" role="tablist" aria-label="Promotion slides">
-            {SLIDES.map((s, i) => (
-              <button
-                key={s.title}
-                type="button"
-                role="tab"
-                aria-selected={i === index}
-                aria-label={`Slide ${i + 1}: ${s.title}`}
-                onClick={() => setIndex(i)}
-                className={cn('h-1.5 rounded-full transition-all', i === index ? 'w-7 bg-white' : 'w-3 bg-white/35 hover:bg-white/60')}
-              />
+          <div className="mt-10 grid max-w-lg gap-6 border-t border-white/10 pt-6 sm:grid-cols-3">
+            {ASSURANCES.map(({ icon: Icon, label }) => (
+              <div key={label} className="flex flex-col gap-2">
+                <Icon className="h-[18px] w-[18px] text-brand-400" strokeWidth={1.75} aria-hidden />
+                <span className="text-[13px] font-medium text-metal-300">{label}</span>
+              </div>
             ))}
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setIndex((i) => (i - 1 + SLIDES.length) % SLIDES.length)}
-              aria-label="Previous slide"
-              className="tap-sm flex h-8 w-8 items-center justify-center rounded-full border border-white/25 text-white transition-colors hover:bg-white hover:text-ink-900"
-
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setIndex((i) => (i + 1) % SLIDES.length)}
-              aria-label="Next slide"
-              className="tap-sm flex h-8 w-8 items-center justify-center rounded-full border border-white/25 text-white transition-colors hover:bg-white hover:text-ink-900"
-
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
         </div>
-      </div>
 
-      {/* Purchase reassurance band */}
-      <div className="border-b border-line bg-white">
-        <div className="container grid gap-5 py-6 sm:grid-cols-3">
-          {ASSURANCES.map(({ icon: Icon, term, desc }) => (
-            <div key={term} className="flex items-start gap-3">
-              <Icon className="mt-0.5 h-4.5 w-4.5 flex-none text-brand-600" strokeWidth={1.75} aria-hidden />
-              <span>
-                <span className="block text-[13px] font-semibold text-ink-900">{term}</span>
-                <span className="mt-0.5 block text-xs text-metal-500">{desc}</span>
-              </span>
+        {/* Floating stock — the freshest catalogue rows. Hidden on small
+            screens, where the same products appear in the carousels directly
+            below. */}
+        {showCluster && (
+          <div className="relative hidden lg:block">
+            <div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-[430px] w-[430px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/[0.06]" />
+            <div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-[560px] w-[560px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/[0.04]" />
+
+            <div className="relative mx-auto h-[440px] w-full max-w-[540px]">
+              <div className="absolute right-2 top-0 z-20 rounded-xl border border-white/10 bg-ink-800/95 px-3.5 py-2.5 shadow-overlay backdrop-blur">
+                <p className="text-xs font-semibold text-white">Pickup available</p>
+                <p className="text-[11px] text-metal-400">Oremeji &amp; Otigba St.</p>
+              </div>
+
+              {CARD_SLOTS.map((slot, i) => (
+                <HeroCard key={cards[i]?.id ?? i} product={cards[i]} className={slot} />
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
+        )}
       </div>
     </section>
   )
