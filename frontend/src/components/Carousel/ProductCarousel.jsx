@@ -17,7 +17,7 @@ const BASIS = {
   5: 'basis-[48%] sm:basis-[31%] lg:basis-[calc((100%-2.25rem)/5)]',
 }
 
-export default function ProductCarousel({ title, subtitle, viewAllTo, viewAllLabel = 'View all', products = [], loading, columns = 5, requireAuth = false }) {
+export default function ProductCarousel({ title, subtitle, viewAllTo, viewAllLabel = 'View all', products = [], loading, columns = 5, requireAuth = false, emptyState = null }) {
   const trackRef = useRef(null)
   const [atStart, setAtStart] = useState(true)
   const [atEnd, setAtEnd] = useState(false)
@@ -93,7 +93,9 @@ export default function ProductCarousel({ title, subtitle, viewAllTo, viewAllLab
               <div key={i} className="h-72 animate-pulse rounded-md bg-metal-100" />
             ))}
           </div>
-        ) : products.length === 0 ? null : (
+        ) : products.length === 0 ? (
+          emptyState
+        ) : (
           <div ref={trackRef} className="scrollbar-none flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1">
             {products.map((p, i) => (
               <div key={p.id} className={`flex-none snap-start ${basis}`}>

@@ -1,6 +1,6 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQueries, useQuery } from '@tanstack/react-query'
 import { ArrowRight, Headphones, MapPin, Package, ShieldCheck, Store, Truck, Wallet } from 'lucide-react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 
 import Button from '../../components/Button/Button'
@@ -91,41 +91,121 @@ function PromoStrip() {
   )
 }
 
-const COLLECTIONS = [
-  { key: 'featured', title: 'Featured products', subtitle: 'Hand-picked by our team', to: '/shop?featured=true', params: { featured: true } },
-  { key: 'bestseller', title: 'Best sellers', subtitle: 'What customers buy most', to: '/shop?bestseller=true', params: { bestseller: true } },
-  { key: 'new_arrival', title: 'New arrivals', subtitle: 'Recently added stock', to: '/shop?new_arrival=true', params: { new_arrival: true } },
+/**
+ * One product row driven by filter buttons, instead of four stacked sections:
+ * the customer picks a collection and its products appear in the single
+ * carousel below. Featured products is the default and every collection keeps
+ * its button — an empty one shows a short note where its products would be.
+ *
+ * All four collections are fetched up front — the same requests the stacked
+ * rows used to make — so switching between them is instant.
+ */
+const HOME_COLLECTIONS = [
+  {
+    key: 'featured',
+    label: 'Featured products',
+    title: 'Featured products',
+    subtitle: 'Hand-picked by our team',
+    to: '/shop?featured=true',
+    params: { featured: true },
+    queryKey: ['products', 'home-row', 'featured'],
+  },
+  {
+    key: 'bestseller',
+    label: 'Best sellers',
+    title: 'Best sellers',
+    subtitle: 'What customers buy most',
+    to: '/shop?bestseller=true',
+    params: { bestseller: true },
+    queryKey: ['products', 'home-row', 'bestseller'],
+  },
+  {
+    key: 'new_arrival',
+    label: 'New arrivals',
+    title: 'New arrivals',
+    subtitle: 'Recently added stock',
+    to: '/shop?new_arrival=true',
+    params: { new_arrival: true },
+    queryKey: ['products', 'home-row', 'new_arrival'],
+  },
+  {
+    key: 'deals',
+    label: 'Deals & discounted products',
+    title: 'Deals & discounted products',
+    subtitle: 'Reduced prices while stocks last',
+    to: '/shop?on_sale=true',
+    params: { on_sale: true, in_stock: true, min_discount: 8, ordering: '-review_count' },
+    queryKey: ['products', 'deals'],
+  },
 ]
 
-function CollectionCarousels() {
+function EmptyCollectionNote() {
   return (
-    <>
-      {COLLECTIONS.map((c) => (
-        <CollectionRow key={c.key} {...c} />
-      ))}
-    </>
+    <div className="rounded-md border border-dashed border-line bg-metal-50 px-6 py-12 text-center">
+      <p className="text-[15px] font-semibold text-ink-900">Nothing here at the moment</p>
+      <p className="mt-1 text-[13px] text-metal-500">This collection is empty right now — check back soon for new stock.</p>
+      <Link
+        to="/shop"
+        className="mt-4 inline-flex items-center gap-1 text-[13px] font-semibold text-brand-700 transition-colors hover:text-brand-800"
+      >
+        Browse all products <ArrowRight className="h-4 w-4" aria-hidden />
+      </Link>
+    </div>
   )
 }
 
-function CollectionRow({ key: queryKey, title, subtitle, to, params }) {
-  const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['products', 'home-row', queryKey],
-    queryFn: () => productService.list({ ...params, page_size: 12 }),
+function CollectionShowcase() {
+  const [picked, setPicked] = useState('featured')
+  const results = useQueries({
+    queries: HOME_COLLECTIONS.map((c) => ({
+      queryKey: c.queryKey,
+      queryFn: () => productService.list({ ...c.params, page_size: 12 }),
+    })),
   })
-  const results = data?.results || []
-  if (isError) return <ErrorState title="Unable to load products" onRetry={refetch} className="container" />
-  if (!isLoading && !results.length) return null
-  return <ProductCarousel title={title} subtitle={subtitle} viewAllTo={to} products={results} loading={isLoading} columns={5} requireAuth />
-}
+  const entries = HOME_COLLECTIONS.map((c, i) => ({ ...c, query: results[i] }))
+  const active = entries.find((e) => e.key === picked) || entries[0]
+  const { data, isError, isLoading, refetch } = active.query
 
-function DealsRow() {
-  const { data, isLoading } = useQuery({
-    queryKey: ['products', 'deals'],
-    queryFn: () => productService.list({ on_sale: true, in_stock: true, min_discount: 8, page_size: 12, ordering: '-review_count' }),
-  })
-  const results = data?.results || []
-  if (!isLoading && !results.length) return null
-  return <ProductCarousel title="Deals & discounted products" subtitle="Reduced prices while stocks last" viewAllTo="/shop?on_sale=true" products={results} loading={isLoading} columns={5} requireAuth />
+  return (
+    <>
+      <div className="container pt-8 sm:pt-10">
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Filter product collections">
+          {entries.map((e) => (
+            <button
+              key={e.key}
+              type="button"
+              aria-pressed={e.key === active.key}
+              onClick={() => setPicked(e.key)}
+              className={cn(
+                'rounded-full border px-4 py-2 text-[13px] font-semibold transition',
+                e.key === active.key
+                  ? 'border-ink-900 bg-ink-900 text-white'
+                  : 'border-metal-200 bg-white text-ink-800 hover:border-ink-900',
+              )}
+            >
+              {e.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {isError ? (
+        <ErrorState title="Unable to load products" onRetry={refetch} className="container" />
+      ) : (
+        <ProductCarousel
+          key={active.key}
+          title={active.title}
+          subtitle={active.subtitle}
+          viewAllTo={active.to}
+          products={data?.results || []}
+          loading={isLoading}
+          columns={5}
+          requireAuth
+          emptyState={<EmptyCollectionNote />}
+        />
+      )}
+    </>
+  )
 }
 
 const VALUES = [
@@ -246,8 +326,7 @@ export default function Home() {
       <Hero />
       <PromoStrip />
       <div className="bg-white">
-        <CollectionCarousels />
-        <DealsRow />
+        <CollectionShowcase />
       </div>
       <WhyTimeline />
       <VisitUs />
