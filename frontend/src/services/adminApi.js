@@ -107,6 +107,8 @@ export const setOrderTracking = (id, payload) => api.patch(`/admin-api/orders/${
 /**
  * Staff-only receipt authenticity check. Verifies the code printed on a
  * receipt and returns the one order it belongs to — owner, items, payment.
+ * The first successful check is recorded, so repeat checks answer with
+ * `already_verified` plus the verifying admin's name and the date.
  */
 export const verifyAdminReceipt = (params) => api.get('/admin-api/receipts/verify/', { params }).then((r) => r.data)
 

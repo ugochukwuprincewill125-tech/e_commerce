@@ -108,6 +108,20 @@ class Order(TimeStampedModel):
     refund_reason = models.CharField(max_length=255, blank=True)
     refunded_at = models.DateTimeField(null=True, blank=True)
 
+    # Receipt checks. The first staff verification of a genuine, paid receipt
+    # is recorded here; every later check of the same receipt reports who
+    # verified it and when, so it cannot quietly do duty as proof twice. The
+    # verifier FK goes NULL if the account is ever deleted — the timestamp and
+    # the fact that it was verified survive.
+    receipt_verified_at = models.DateTimeField(null=True, blank=True)
+    receipt_verified_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="verified_receipts",
+    )
+
     class Meta:
         ordering = ("-created_at",)
         indexes = [

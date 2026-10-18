@@ -3,14 +3,36 @@
 The receipt-verify tool must never be reachable by customers, and a genuine
 check must identify the ONE order (owner + items) a receipt belongs to, so a
 receipt cannot be claimed by somebody else or reused for another purchase.
+The first successful check of a paid receipt is recorded — who verified it and
+when — and repeat checks must report that instead of passing it as fresh.
 """
 import pytest
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
+from rest_framework.test import APIClient
 
 from apps.orders.models import PaymentStatus
 from apps.orders.receipt_codes import verification_code
+from apps.users.models import User
+
+
+def staff_member(email, first_name, last_name):
+    return User.objects.create_user(
+        email=email,
+        first_name=first_name,
+        last_name=last_name,
+        password="StaffPass123!",
+        is_staff=True,
+    )
+
+
+def client_for(user):
+    from rest_framework_simplejwt.tokens import AccessToken
+
+    client = APIClient()
+    client.credentials(HTTP_AUTHORIZATION=f"Bearer {AccessToken.for_user(user)}")
+    return client
 
 
 @pytest.mark.django_db
@@ -48,6 +70,82 @@ class TestAdminReceiptVerify:
         assert item["product_name"] == paid_order.items.first().product_name
         assert item["quantity"] == 1
         assert item["unit_price"] == str(paid_order.items.first().unit_price)
+
+    def test_first_check_records_the_verifier(self, staff_client, staff_user, paid_order):
+        before = timezone.now()
+        resp = self._verify(staff_client, paid_order)
+
+        assert resp.status_code == status.HTTP_200_OK
+        assert resp.data["already_verified"] is False
+        assert resp.data["recorded"] is True
+        assert resp.data["verified_by"] == "Admin User"
+
+        paid_order.refresh_from_db()
+        assert paid_order.receipt_verified_by == staff_user
+        assert before <= paid_order.receipt_verified_at <= timezone.now()
+        assert resp.data["verified_at"] == paid_order.receipt_verified_at
+
+    def test_repeat_check_reports_the_first_verification(self, staff_client, paid_order):
+        self._verify(staff_client, paid_order)
+        paid_order.refresh_from_db()
+        first_at = paid_order.receipt_verified_at
+        first_by = paid_order.receipt_verified_by
+        assert first_at is not None
+
+        # A different staff member checks the same receipt later.
+        other = staff_member("second-checker@example.com", "Second", "Checker")
+        resp = self._verify(client_for(other), paid_order)
+
+        assert resp.status_code == status.HTTP_200_OK
+        assert resp.data["valid"] is True
+        assert resp.data["already_verified"] is True
+        assert resp.data["recorded"] is False
+        # The FIRST verification is reported — name and date.
+        assert resp.data["verified_by"] == "Admin User"
+        assert resp.data["verified_at"] == first_at
+
+        # Repeat checks never overwrite the original record.
+        paid_order.refresh_from_db()
+        assert paid_order.receipt_verified_at == first_at
+        assert paid_order.receipt_verified_by == first_by
+
+    def test_failed_checks_are_not_recorded(self, staff_client, paid_order):
+        resp = self._verify(staff_client, paid_order, code="AAAA-BBBB-CCCC")
+        assert resp.data["valid"] is False
+        paid_order.refresh_from_db()
+        assert paid_order.receipt_verified_at is None
+        assert paid_order.receipt_verified_by is None
+
+    def test_refunded_receipt_is_not_recorded_as_verified(self, staff_client, paid_order):
+        paid_order.payment_status = PaymentStatus.REFUNDED
+        paid_order.refund_amount = paid_order.total
+        paid_order.refund_reason = "Returned"
+        paid_order.refunded_at = timezone.now()
+        paid_order.save()
+
+        resp = self._verify(staff_client, paid_order)
+        assert resp.data["valid"] is True
+        assert resp.data["already_verified"] is False
+        assert resp.data["recorded"] is False
+        assert resp.data["verified_at"] is None
+        assert resp.data["verified_by"] is None
+        paid_order.refresh_from_db()
+        assert paid_order.receipt_verified_at is None
+
+    def test_deleting_the_verifier_keeps_the_verification(self, staff_client, staff_user, paid_order):
+        self._verify(staff_client, paid_order)
+
+        staff_user.delete()
+        paid_order.refresh_from_db()
+        # The timestamp survives; only the name is gone (FK set to NULL).
+        assert paid_order.receipt_verified_at is not None
+        assert paid_order.receipt_verified_by is None
+
+        # A later check still warns that it was verified — without a name.
+        checker = staff_member("later-checker@example.com", "Later", "Checker")
+        resp = self._verify(client_for(checker), paid_order)
+        assert resp.data["already_verified"] is True
+        assert resp.data["verified_by"] is None
 
     def test_wrong_code_fails(self, staff_client, paid_order):
         resp = self._verify(staff_client, paid_order, code="AAAA-BBBB-CCCC")
@@ -96,8 +194,6 @@ class TestAdminReceiptVerify:
 
     def test_old_verify_path_is_not_public(self, paid_order):
         """No sign-in, no check: the old path cannot be probed by anyone."""
-        from rest_framework.test import APIClient
-
         resp = APIClient().get(
             "/api/orders/verify-receipt/",
             {"order_number": paid_order.order_number, "code": verification_code(paid_order)},

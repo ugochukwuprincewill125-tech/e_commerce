@@ -749,6 +749,12 @@ class AdminReceiptVerifyView(APIView):
     receipt cannot stand in for a newer purchase. Staff compare the person in
     front of them, and what they claim to have bought, against these details
     before accepting the receipt as proof.
+
+    The first successful check of a paid receipt is ALSO recorded here — the
+    one deliberate write on this GET: who checked it and when. Every later
+    check keeps that first record and reports it back, so the same receipt
+    cannot quietly pass as fresh proof twice. Receipts that are not proof of
+    payment are never recorded.
     """
 
     permission_classes = [IsStaff]
@@ -781,9 +787,33 @@ class AdminReceiptVerifyView(APIView):
                 f"'{order.get_payment_status_display()}' — it is not proof that payment stands."
             )
 
+        # A genuine, paid receipt is "used up" by its first successful check:
+        # record who verified it and when, exactly once. The filtered UPDATE is
+        # a compare-and-set, so even two simultaneous checks record ONE
+        # verification — the other check reports the winner's record instead.
+        if order.is_paid:
+            recorded = (
+                Order.objects.filter(pk=order.pk, receipt_verified_at__isnull=True).update(
+                    receipt_verified_at=timezone.now(),
+                    receipt_verified_by=request.user,
+                )
+                == 1
+            )
+            order.refresh_from_db()
+        else:
+            recorded = False
+
+        verifier = order.receipt_verified_by
         return Response({
             "valid": True,
             "detail": detail,
+            # True only when the receipt was checked successfully before — this
+            # check did not do the recording.
+            "already_verified": order.receipt_verified_at is not None and not recorded,
+            # True when this very check is the one that recorded the verification.
+            "recorded": recorded,
+            "verified_at": order.receipt_verified_at,
+            "verified_by": (verifier.full_name or verifier.email) if verifier else None,
             "order": {
                 "order_number": order.order_number,
                 "created_at": order.created_at,

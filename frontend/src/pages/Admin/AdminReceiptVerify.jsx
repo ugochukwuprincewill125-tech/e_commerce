@@ -1,4 +1,4 @@
-import { BadgeCheck, ShieldAlert } from 'lucide-react'
+import { BadgeCheck, History, ShieldAlert } from 'lucide-react'
 import { useState } from 'react'
 
 import { AdminCard, AdminPage, PaymentPill, StatusPill } from '../../components/Admin/AdminUI'
@@ -14,6 +14,9 @@ import { formatDateTime, formatNaira } from '../../utils/format'
  * back to exactly one order, a genuine check also names the order's owner and
  * lists what it covered: staff can tell straight away when the person in
  * front of them — or the goods they are claiming — do not match the receipt.
+ *
+ * The first successful check is recorded (who and when); every later check of
+ * the same receipt says so, so one receipt never passes as fresh proof twice.
  */
 export default function AdminReceiptVerify() {
   const [orderNumber, setOrderNumber] = useState('')
@@ -46,7 +49,7 @@ export default function AdminReceiptVerify() {
   return (
     <AdminPage
       title="Verify a receipt"
-      description="Staff-only check: confirm a receipt was issued by the store, and see whose order it is and what it covered."
+      description="Staff-only check: confirm a receipt was issued by the store, and see whose order it is and what it covered. A successful check is recorded — repeat checks show who verified the receipt and when."
     >
       <AdminCard title="Receipt details">
         <form onSubmit={onSubmit} className="grid gap-4 p-5 sm:grid-cols-[1fr_1fr_auto] sm:items-end sm:p-6">
@@ -75,9 +78,10 @@ export default function AdminReceiptVerify() {
           </button>
         </form>
         <p className="border-t border-line px-5 py-3 text-xs leading-relaxed text-metal-500 sm:px-6">
-          Every receipt is unique to one order, one customer and the items it lists. If the person presenting it does
-          not match the details shown, or claims goods this receipt doesn&apos;t cover, do not accept it as proof of
-          purchase.
+          Every receipt is unique to one order, one customer and the items it lists. A successful check is recorded —
+          if the same receipt is checked again, it will show who verified it and when. If the person presenting it
+          does not match the details shown, or claims goods this receipt doesn&apos;t cover, do not accept it as proof
+          of purchase.
         </p>
       </AdminCard>
 
@@ -109,6 +113,29 @@ function VerifyResult({ result }) {
   const settled = order.is_paid
   return (
     <>
+      {result.already_verified && (
+        <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-5">
+          <span className="flex h-10 w-10 flex-none items-center justify-center rounded-lg bg-amber-100 text-amber-700">
+            <History className="h-5 w-5" />
+          </span>
+          <div>
+            <p className="font-bold text-ink-900">This receipt has already been verified</p>
+            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-metal-600">
+              It was verified by{' '}
+              <span className="font-semibold text-ink-900">{result.verified_by || 'a staff member'}</span>
+              {result.verified_at ? (
+                <>
+                  {' '}
+                  on <span className="font-semibold text-ink-900">{formatDateTime(result.verified_at)}</span>
+                </>
+              ) : null}
+              . If the customer is presenting it again, treat this as a repeat check — one receipt is proof for one
+              purchase only.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div
         className={`flex items-start gap-3 rounded-lg border p-5 ${
           settled ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'
@@ -126,6 +153,11 @@ function VerifyResult({ result }) {
             {settled ? 'Genuine receipt' : 'Genuine code — payment does not currently stand'}
           </p>
           <p className="mt-1 max-w-2xl text-sm leading-relaxed text-metal-600">{result.detail}</p>
+          {result.recorded && (
+            <p className="mt-2 text-xs font-medium text-emerald-700">
+              Recorded as verified — any future check of this receipt will show who verified it and when.
+            </p>
+          )}
         </div>
       </div>
 
