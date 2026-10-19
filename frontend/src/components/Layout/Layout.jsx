@@ -4,6 +4,7 @@ import { ChromeProvider, useChrome } from '../../context/ChromeContext'
 import { useAuth } from '../../context/AuthContext'
 import { ACCOUNT_NAV, SHOP_NAV } from '../Account/AccountNav'
 import CartDrawer from '../CartDrawer/CartDrawer'
+import FloatingAIChat from '../AIChat/FloatingAIChat'
 import Footer from '../Footer/Footer'
 import MobileMenu from '../Navbar/MobileMenu'
 import Navbar from '../Navbar/Navbar'
@@ -65,6 +66,7 @@ function Chrome({ children, bare, showFooter, showNavbar }) {
 
       {showFooter && <Footer />}
 
+      {user && !bare && <FloatingAIChat />}
       <CartDrawer />
       <MobileMenu open={menuOpen} onClose={closeMenu} sections={menuSections(user)} />
       <SearchOverlay open={searchOpen} onClose={closeSearch} />

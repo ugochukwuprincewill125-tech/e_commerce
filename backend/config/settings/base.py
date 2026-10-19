@@ -64,6 +64,7 @@ LOCAL_APPS = [
     "apps.payments",
     "apps.reviews",
     "apps.admin_api",
+    "apps.ai_chat",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -191,6 +192,7 @@ REST_FRAMEWORK = {
         "auth": os.getenv("THROTTLE_AUTH", "10/min"),
         "contact": os.getenv("THROTTLE_CONTACT", "5/hour"),
         "payments": os.getenv("THROTTLE_PAYMENTS", "30/min"),
+        "ai_chat": os.getenv("THROTTLE_AI_CHAT", "30/min"),
     },
     "EXCEPTION_HANDLER": "apps.core.exceptions.api_exception_handler",
 }
@@ -260,6 +262,24 @@ PAYSTACK_BASE_URL = os.getenv("PAYSTACK_BASE_URL", "https://api.paystack.co")
 # Test mode lets you complete the checkout flow locally without Paystack keys.
 # It is forced OFF when DEBUG is False (see prod.py).
 PAYMENT_TEST_MODE = env_bool("PAYMENT_TEST_MODE", not PAYSTACK_SECRET_KEY)
+
+# ---------------------------------------------------------------------------
+# AI chat — the customer Shopping Assistant. One provider key is enough;
+# the proxy tries GROQ first, then XAI. Keys never leave the server.
+# ---------------------------------------------------------------------------
+# GROQ
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_API_URL = os.getenv("GROQ_API_URL", "https://api.groq.com/openai/v1").rstrip("/")
+GROQ_MODEL = os.getenv("GROQ_MODEL", os.getenv("AI_MODEL", "openai/gpt-oss-120b"))
+
+# XAI (Grok) — optional fallback provider
+XAI_API_KEY = os.getenv("XAI_API_KEY", "")
+XAI_API_URL = os.getenv("XAI_API_URL", "https://api.x.ai/v1").rstrip("/")
+XAI_MODEL = os.getenv("XAI_MODEL", "grok-3-mini")
+
+# Support contact surfaced by the Shopping Assistant; keep in step with
+# frontend/src/components/WhatsApp/FloatingWhatsApp.jsx
+SUPPORT_WHATSAPP = os.getenv("SUPPORT_WHATSAPP", "2347062895442")
 
 LOGGING = {
     "version": 1,

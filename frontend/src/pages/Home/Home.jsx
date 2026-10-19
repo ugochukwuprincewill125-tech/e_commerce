@@ -10,6 +10,7 @@ import InstagramIcon from '../../components/Icons/InstagramIcon'
 import Reveal from '../../components/Motion/Reveal'
 import Seo from '../../components/Seo/Seo'
 import useStoreInfo from '../../hooks/useStoreInfo'
+import FloatingWhatsApp from '../../components/WhatsApp/FloatingWhatsApp'
 import { useAuth } from '../../context/AuthContext'
 import { useCart } from '../../context/CartContext'
 import { CART_RESUME_MARKER, CART_RESUME_PARAM, takePendingCartItem } from '../../utils/navigation'
@@ -322,29 +323,31 @@ export default function Home() {
 
   return (
     <>
-      <Seo />
-      <Hero />
-      <PromoStrip />
-      <div className="bg-white">
-        <CollectionShowcase />
-      </div>
-      <WhyTimeline />
-      <VisitUs />
-      <section className="bg-white py-10">
-        <div className="container">
-          <Reveal className="flex flex-col items-center gap-3 rounded-md border border-line bg-metal-50 px-6 py-8 text-center">
-            <InstagramIcon className="h-5 w-5 text-brand-600" />
-            <h2 className="text-lg font-semibold">Follow Timeline Gadgets</h2>
-            <p className="max-w-lg text-sm text-metal-500">
-              New arrivals, restocks and in-store offers are posted to our Instagram account.
-            </p>
-            <Button href="https://www.instagram.com/timelinegadgets/" target="_blank" rel="noopener noreferrer" variant="outline" icon={InstagramIcon}>
-              @timelinegadgets
-            </Button>
-          </Reveal>
-        </div>
-      </section>
-    </>
+       <Seo />
+       <Hero />
+       <PromoStrip />
+       <div className="bg-white">
+         <CollectionShowcase />
+       </div>
+       <WhyTimeline />
+       <VisitUs />
+       <section className="bg-white py-10">
+         <div className="container">
+           <Reveal className="flex flex-col items-center gap-3 rounded-md border border-line bg-metal-50 px-6 py-8 text-center">
+             <InstagramIcon className="h-5 w-5 text-brand-600" />
+             <h2 className="text-lg font-semibold">Follow Timeline Gadgets</h2>
+             <p className="max-w-lg text-sm text-metal-500">
+               New arrivals, restocks and in-store offers are posted to our Instagram account.
+             </p>
+             <Button href="https://www.instagram.com/timelinegadgets/" target="_blank" rel="noopener noreferrer" variant="outline" icon={InstagramIcon}>
+               @timelinegadgets
+             </Button>
+           </Reveal>
+         </div>
+       </section>
+
+       <FloatingWhatsApp />
+     </>
   )
 }
 
