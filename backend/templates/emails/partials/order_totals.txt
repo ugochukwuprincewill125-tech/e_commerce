@@ -1,0 +1,4 @@
+Subtotal: {{ subtotal }}
+{% if has_discount %}Discount{% if coupon_code %} ({{ coupon_code }}){% endif %}: -{{ discount }}
+{% endif %}{% if is_pickup %}Pickup: Free{% else %}Delivery: {{ shipping_fee }}{% endif %}
+Total: {{ total }}

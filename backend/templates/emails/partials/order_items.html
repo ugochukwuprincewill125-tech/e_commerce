@@ -1,0 +1,16 @@
+{% if items %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:18px 0 0;border-top:1px solid #E4E7EC;">
+  {% for item in items %}
+  <tr>
+    <td style="padding:13px 0;border-bottom:1px solid #E4E7EC;vertical-align:top;">
+      <div style="font-weight:700;color:#0A0F1C;font-size:14px;">{{ item.name }}</div>
+      {% if item.variant %}<div style="color:#6B7587;font-size:12px;margin-top:2px;">{{ item.variant }}</div>{% endif %}
+      <div style="color:#6B7587;font-size:12px;margin-top:3px;">{{ item.quantity }} × {{ item.unit_price }}</div>
+    </td>
+    <td style="padding:13px 0;border-bottom:1px solid #E4E7EC;text-align:right;vertical-align:top;font-weight:700;color:#0A0F1C;font-size:14px;white-space:nowrap;">
+      {{ item.line_total }}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% endif %}

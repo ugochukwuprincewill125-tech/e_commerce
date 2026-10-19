@@ -1,0 +1,13 @@
+{% extends "emails/base_email.txt" %}
+{% block content %}Hi {{ customer_name }},
+
+Order {{ order_number }} has been cancelled.
+{% if cancel_reason %}
+Reason: {{ cancel_reason }}
+{% endif %}{% if payment_status_key == "paid" %}
+Our records show a payment was received for this order. Our team will contact you to arrange a refund if one is due.
+{% endif %}
+If you did not expect this cancellation, or need help placing a new order, contact us at {{ store_email }}.
+
+Continue shopping: {{ site_url }}
+{% endblock %}

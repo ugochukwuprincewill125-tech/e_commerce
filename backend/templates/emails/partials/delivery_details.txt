@@ -1,0 +1,3 @@
+{% if is_pickup %}Pickup: {{ pickup_location|default:"Main office"|capfirst }}
+{% elif delivery_address %}Delivery address: {{ delivery_address }}
+{% endif %}

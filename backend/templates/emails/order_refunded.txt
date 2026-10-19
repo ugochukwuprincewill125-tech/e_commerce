@@ -1,0 +1,16 @@
+{% extends "emails/base_email.txt" %}
+{% block content %}Hi {{ customer_name }},
+
+{% if refund_is_full %}We have processed a full refund for order {{ order_number }}.{% else %}We have processed a refund for order {{ order_number }}.{% endif %}
+
+Refund amount: {{ refund_amount }}
+{% if refund_reference %}Refund reference: {{ refund_reference }}
+{% endif %}{% if refunded_at %}Processed: {{ refunded_at }}
+{% endif %}{% if refund_reason %}Reason: {{ refund_reason }}
+{% endif %}
+Refunds usually return to the original payment method within 5–10 business days, depending on your bank. If it has not arrived after that, contact us at {{ store_email }} with your order number.
+{% if refund_note %}
+{{ refund_note }}
+{% endif %}
+View your order: {{ order_url }}
+{% endblock %}

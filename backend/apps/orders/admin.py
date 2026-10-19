@@ -1,6 +1,9 @@
 from django.contrib import admin, messages
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.html import format_html
+
+from apps.notifications.events import send_order_refunded, send_order_status_email, send_payment_confirmation
 
 from .models import Order, OrderItem, OrderStatus, OrderStatusHistory, PaymentStatus
 from .services import cancel_order, mark_order_paid
@@ -129,6 +132,8 @@ class OrderAdmin(admin.ModelAdmin):
     def save_model(self, request, obj, form, change):
         status_changed = change and "status" in form.changed_data
         payment_changed = change and "payment_status" in form.changed_data
+        previous_status = form.initial.get("status")
+        previous_payment = form.initial.get("payment_status")
 
         if status_changed and obj.status == OrderStatus.CANCELLED:
             # Save other edits first, then cancel through the service so stock is returned.
@@ -141,14 +146,10 @@ class OrderAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
         if payment_changed and obj.payment_status == PaymentStatus.PAID and not obj.paid_at:
-            from django.utils import timezone
-
             obj.paid_at = timezone.now()
             obj.save(update_fields=["paid_at"])
 
         if payment_changed:
-            from django.utils import timezone
-
             touched = []
             if obj.payment_status == PaymentStatus.PAID and not obj.paid_at:
                 obj.paid_at = timezone.now()
@@ -164,13 +165,34 @@ class OrderAdmin(admin.ModelAdmin):
 
         if status_changed:
             obj.add_history(obj.status, f"Updated by {request.user.email}.")
+            send_order_status_email(obj, previous_status)
+
+        if payment_changed and obj.payment_status == PaymentStatus.PAID and previous_payment != PaymentStatus.PAID:
+            send_payment_confirmation(obj, obj.payment_reference or f"MANUAL-{obj.order_number}")
+
+        if payment_changed and obj.payment_status == PaymentStatus.REFUNDED and previous_payment != PaymentStatus.REFUNDED:
+            send_order_refunded(
+                obj,
+                amount=obj.refund_amount or obj.total,
+                reference=obj.payment_reference,
+                is_partial=bool(obj.refund_amount and obj.refund_amount < obj.total),
+            )
 
     def _bulk_status(self, request, queryset, status):
         count = 0
         for order in queryset.exclude(status__in=[status, OrderStatus.CANCELLED]):
+            previous_status = order.status
             order.status = status
-            order.save(update_fields=["status", "updated_at"])
+            touched = ["status", "updated_at"]
+            if status == OrderStatus.SHIPPED and not order.shipped_at:
+                order.shipped_at = timezone.now()
+                touched.append("shipped_at")
+            if status in (OrderStatus.DELIVERED, OrderStatus.PICKED_UP) and not order.delivered_at:
+                order.delivered_at = timezone.now()
+                touched.append("delivered_at")
+            order.save(update_fields=touched)
             order.add_history(status, f"Updated by {request.user.email}.")
+            send_order_status_email(order, previous_status)
             count += 1
         self.message_user(request, f"{count} order(s) marked as {OrderStatus(status).label}.", messages.SUCCESS)
 

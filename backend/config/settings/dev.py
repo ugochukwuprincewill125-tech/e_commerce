@@ -1,8 +1,16 @@
 """Development settings."""
+import os
+
 from .base import *  # noqa: F401,F403
 from .base import env_bool
 
 DEBUG = env_bool("DEBUG", True)
+
+# Development is deliberately "safe by default": transactional email is put in
+# test mode unless the developer explicitly opts out. With no test recipient,
+# messages are printed to the terminal rather than sent to real customers.
+if "EMAIL_TEST_MODE" not in os.environ:
+    EMAIL_TEST_MODE = True  # noqa: F405
 
 if not SECRET_KEY:  # noqa: F405
     # Development-only fallback so the project runs out of the box.

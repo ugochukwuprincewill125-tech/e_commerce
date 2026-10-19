@@ -1,0 +1,26 @@
+{% extends "emails/base_email.html" %}
+{% block content %}
+<h1 style="margin:0 0 14px;color:#0A0F1C;font-size:26px;line-height:1.25;letter-spacing:-0.02em;">We've received your order</h1>
+<p style="margin:0 0 14px;">Hi {{ customer_name }},</p>
+<p style="margin:0 0 14px;">
+  Thank you for shopping with {{ store_name }}. Order <strong>{{ order_number }}</strong> was placed on {{ order_date }}.
+</p>
+{% if payment_status_key == "paid" %}
+<div style="margin:18px 0;padding:14px 16px;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:6px;font-size:13px;line-height:1.6;color:#065F46;">
+  <strong>Payment confirmed.</strong> We are preparing your order.
+</div>
+{% else %}
+<div style="margin:18px 0;padding:14px 16px;background:#FEF3C7;border:1px solid #FDE68A;border-radius:6px;font-size:13px;line-height:1.6;color:#92400E;">
+  <strong>Awaiting payment.</strong> Your items are reserved, but we will start processing once payment is confirmed. You can complete payment from your order page.
+</div>
+{% endif %}
+{% include "emails/partials/order_items.html" %}
+{% include "emails/partials/order_totals.html" %}
+{% include "emails/partials/delivery_details.html" %}
+<p style="margin:26px 0;text-align:center;">
+  <a class="button" href="{{ order_url }}" style="display:inline-block;padding:13px 24px;background:#C8102E;color:#ffffff !important;text-decoration:none !important;font-weight:700;border-radius:6px;">View your order</a>
+</p>
+<p class="muted" style="margin:0;font-size:12px;line-height:1.7;">
+  We will email you again when your payment is confirmed and when your order ships. Questions? Reply to this email or contact {{ store_email }}.
+</p>
+{% endblock %}

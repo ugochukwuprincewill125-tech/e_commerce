@@ -1,0 +1,35 @@
+{% extends "emails/base_email.html" %}
+{% block content %}
+<h1 style="margin:0 0 14px;color:#0A0F1C;font-size:26px;line-height:1.25;letter-spacing:-0.02em;">
+  {% if is_pickup %}Your order is ready for pickup{% else %}Your order is ready for delivery{% endif %}
+</h1>
+<p style="margin:0 0 14px;">Hi {{ customer_name }},</p>
+{% if is_pickup %}
+<p style="margin:0 0 14px;">
+  Order <strong>{{ order_number }}</strong> is ready to collect from our {{ pickup_location_label|default:"store" }}.
+</p>
+<div style="margin:18px 0;padding:16px;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:6px;font-size:13px;line-height:1.8;color:#065F46;">
+  <strong>Pickup details</strong><br>
+  <strong>Location:</strong> {{ pickup_location_label|default:"Our store" }}<br>
+  {% if pickup_address_lines %}{{ pickup_address_lines|join:", " }}<br>{% endif %}
+  {% for slot in store.business_hours %}{{ slot.days }}: {{ slot.hours }}{% if not forloop.last %}<br>{% endif %}{% endfor %}
+</div>
+<p style="margin:0 0 14px;">
+  Please bring your order number{% if payment_status_key == "paid" %} and the receipt code from your payment confirmation email{% endif %}. If someone is collecting on your behalf, they should bring these too.
+</p>
+{% else %}
+<p style="margin:0 0 14px;">
+  Order <strong>{{ order_number }}</strong> is packed and waiting for our delivery partner. We will email you with tracking details as soon as it is on its way.
+</p>
+{% include "emails/partials/delivery_details.html" %}
+{% endif %}
+<p style="margin:26px 0;text-align:center;">
+  <a class="button" href="{{ order_url }}" style="display:inline-block;padding:13px 24px;background:#C8102E;color:#ffffff !important;text-decoration:none !important;font-weight:700;border-radius:6px;">View your order</a>
+</p>
+{% if payment_status_key == "paid" %}
+<p class="muted" style="margin:0 0 10px;font-size:12px;line-height:1.7;text-align:center;">
+  Your receipt is available from <a href="{{ receipt_url }}" style="color:#A50D26;">your account</a>.
+</p>
+{% endif %}
+<p class="muted" style="margin:0;font-size:12px;line-height:1.7;">Questions about your order? Contact {{ store_email }}.</p>
+{% endblock %}

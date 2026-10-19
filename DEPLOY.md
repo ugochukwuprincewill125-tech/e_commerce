@@ -72,8 +72,9 @@ Notes:
 - Migrations are **not** run at deploy time — run them from your machine (§5).
 - Uploads no longer hit Vercel's ~4.5MB request cap: Cloudinary stores the
   files, so normal product photos have no practical limit.
-- With no SMTP settings, email goes to the console — verification mails appear
-  in the Render **Logs** tab. Add `EMAIL_*` when you want real email.
+- With no `BREVO_API_KEY`, email falls back to Django's backend — messages
+  appear in the Render **Logs** tab instead of being delivered. Set the Brevo
+  variables when you want real email; see `EMAIL_SETUP.md`.
 
 ## 3. Frontend → Vercel
 
@@ -170,8 +171,10 @@ expect in the admin):
 | `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` | Cloudinary console → API Keys | Required in production |
 | `PAYSTACK_SECRET_KEY` / `PAYSTACK_PUBLIC_KEY` | `sk_test_…` / `pk_test_…` | Add when ready (§6) |
 | `ALLOW_MISSING_PAYSTACK` | `True` | Keeps deploys working until Paystack keys exist; delete afterwards |
-| `MAINTENANCE_TOKEN` | any long random string | Enables the expired-unpaid-order upkeep. Set the same string as a GitHub repo secret (Actions use it hourly) — see `.github/workflows/maintenance.yml` |
-| `EMAIL_BACKEND`, `EMAIL_HOST`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS` | your SMTP provider | Until set, emails print to the Render logs |
+| `MAINTENANCE_TOKEN` | any long random string | Enables the expired-unpaid-order upkeep and pending-email retries. Set the same string as a GitHub repo secret (Actions use it hourly) — see `.github/workflows/maintenance.yml` |
+| `BREVO_API_KEY` | `xkeysib-…` API key | Transactional email. Until set, emails fall back to the Django backend and print to the Render logs |
+| `BREVO_SENDER_EMAIL` / `BREVO_REPLY_TO_EMAIL` | the Brevo-verified sender | Must be verified in Brevo; the blueprint pre-fills the current Gmail sender. See `EMAIL_SETUP.md` |
+| `EMAIL_BACKEND`, `EMAIL_HOST`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS` | optional SMTP fallback | Only used when no Brevo key is set |
 
 **Not needed on Render:** `DEBUG` (prod hard-codes it off), `PAYMENT_TEST_MODE`
 (forced off in prod), `DB_CONN_MAX_AGE` (defaults to 60 — correct for an
@@ -186,7 +189,7 @@ Optional tuning (all have sane defaults): `THROTTLE_ANON`, `THROTTLE_USER`,
 
 - [ ] `https://<service>.onrender.com/api/health/` → `{"status": "ok"}`
 - [ ] Storefront loads; product images come from Cloudinary
-- [ ] Register / sign in (check Render logs for the verification email)
+- [ ] Register / sign in (welcome email; check Render logs if Brevo is not set yet)
 - [ ] Cart → checkout → order placed; visible in the admin
 - [ ] Admin: edit a product and upload an image
 - [ ] Paystack set up (§6) before taking real orders

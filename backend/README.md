@@ -74,7 +74,8 @@ Copy `.env.example` → `.env`. Key variables:
 | `CLOUDINARY_*` | Cloudinary media storage (required in prod, optional in dev) |
 | `FRONTEND_URL` / `CORS_ALLOWED_ORIGINS` | React app origin |
 | `PAYSTACK_SECRET_KEY` / `PAYSTACK_PUBLIC_KEY` | Payments; without them, checkout runs in clearly-labelled test mode |
-| `EMAIL_*` | SMTP for verification/reset emails (console backend by default) |
+| `BREVO_*` | Transactional email (Brevo API); `EMAIL_*` is the SMTP/console fallback used until `BREVO_API_KEY` is set. See `../EMAIL_SETUP.md` |
+| `EMAIL_TEST_MODE` / `EMAIL_TEST_RECIPIENT` | Redirect/suppress customer email while testing (on by default in dev, forced off in prod) |
 
 ## Customer API (mounted at `/api/`)
 

@@ -54,6 +54,7 @@ THIRD_PARTY_APPS = [
 LOCAL_APPS = [
     "apps.core",
     "apps.users",
+    "apps.notifications",
     "apps.categories",
     "apps.brands",
     "apps.products",
@@ -228,6 +229,11 @@ ADMIN_URL = os.getenv("DJANGO_ADMIN_URL", "django-control/")
 # ---------------------------------------------------------------------------
 # Email
 # ---------------------------------------------------------------------------
+# Django's email backend is the fallback whenever Brevo is not configured (and
+# the capture-only provider in test mode). In development the default console
+# backend prints messages to the terminal; in production it can still be SMTP
+# if you prefer. Brevo is used whenever BREVO_API_KEY is set; a transient Brevo
+# failure is retried from the outbox rather than silently switching providers.
 EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
 EMAIL_HOST = os.getenv("EMAIL_HOST", "")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
@@ -235,6 +241,33 @@ EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "Timeline Gadgets <timelinegadget@gmail.com>")
+
+# ---------------------------------------------------------------------------
+# Transactional email — Brevo HTTP API (server-side only)
+# ---------------------------------------------------------------------------
+# The sender is a plain environment value on purpose: while you do not own a
+# domain, use an address you can verify in Brevo (for example your Gmail
+# address). After you buy and authenticate a domain in Brevo, change only these
+# values — no code changes are needed.
+BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")
+BREVO_API_URL = os.getenv("BREVO_API_URL", "https://api.brevo.com/v3").rstrip("/")
+BREVO_SENDER_NAME = os.getenv("BREVO_SENDER_NAME", "Timeline Gadgets")
+BREVO_SENDER_EMAIL = os.getenv("BREVO_SENDER_EMAIL", "timelinegadget@gmail.com")
+BREVO_REPLY_TO_EMAIL = os.getenv("BREVO_REPLY_TO_EMAIL", BREVO_SENDER_EMAIL)
+BREVO_API_TIMEOUT = int(os.getenv("BREVO_API_TIMEOUT", "15"))
+
+# Test mode is ON by default in development (see dev.py) and forced OFF in
+# production. When on, every message is redirected to EMAIL_TEST_RECIPIENT. If
+# no test recipient is configured, the message is printed to the console
+# instead of being sent — never delivered to a real customer.
+EMAIL_TEST_MODE = env_bool("EMAIL_TEST_MODE", DEBUG)
+EMAIL_TEST_RECIPIENT = os.getenv("EMAIL_TEST_RECIPIENT", "").strip()
+
+# Delivery retry policy. A failed API call is retried immediately a couple of
+# times, then left due for the scheduled retry command / maintenance endpoint.
+EMAIL_MAX_ATTEMPTS = max(1, int(os.getenv("EMAIL_MAX_ATTEMPTS", "5")))
+EMAIL_IMMEDIATE_ATTEMPTS = max(1, int(os.getenv("EMAIL_IMMEDIATE_ATTEMPTS", "2")))
+EMAIL_RETRY_AFTER_MINUTES = max(1, int(os.getenv("EMAIL_RETRY_AFTER_MINUTES", "10")))
 
 # ---------------------------------------------------------------------------
 # Store configuration

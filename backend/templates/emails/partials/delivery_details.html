@@ -1,0 +1,11 @@
+{% if is_pickup %}
+<div style="margin-top:16px;padding:14px 16px;background:#F6F7F9;border:1px solid #E4E7EC;border-radius:6px;font-size:13px;line-height:1.6;">
+  <strong style="color:#0A0F1C;">Store pickup</strong><br>
+  <span style="color:#6B7587;">{{ pickup_location|default:"Main office"|capfirst }} — we will email you when it is ready.</span>
+</div>
+{% elif delivery_address %}
+<div style="margin-top:16px;padding:14px 16px;background:#F6F7F9;border:1px solid #E4E7EC;border-radius:6px;font-size:13px;line-height:1.6;">
+  <strong style="color:#0A0F1C;">Delivery address</strong><br>
+  <span style="color:#6B7587;">{{ delivery_address }}</span>
+</div>
+{% endif %}

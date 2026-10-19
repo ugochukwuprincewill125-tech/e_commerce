@@ -1,0 +1,9 @@
+{% block content %}{% endblock %}
+
+--
+{{ store_legal_name }}
+{{ store_tagline }}
+{% if store_email %}Questions? {{ store_email }}{% endif %}
+{% if site_url %}{{ site_url }}{% endif %}
+{% if test_mode %}TEST MODE: intended for {{ intended_recipient }}.{% endif %}
+You received this email because you have an account with us or placed an order.

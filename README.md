@@ -43,7 +43,7 @@ timeline-global-systems/
 │   ├── requirements.txt
 │   ├── .env.example
 │   ├── config/
-│   │   ├── settings/ (base.py, dev.py, prod.py)
+│   │   ├── settings/ (base.py, dev.py, prod.py, test.py)
 │   │   ├── urls.py  wsgi.py  asgi.py
 │   ├── apps/
 │   │   ├── core/        store info, contact form, pagination, errors, seed_data, image generator, admin dashboard
@@ -56,8 +56,10 @@ timeline-global-systems/
 │   │   ├── orders/      Order, OrderItem, status history, tracking, stock reservation
 │   │   ├── payments/    Paystack client, verify, webhook
 │   │   ├── reviews/     verified-purchase reviews, rating aggregation
-│   │   └── promotions/  Coupons
+│   │   ├── promotions/  Coupons
+│   │   └── notifications/ transactional-email outbox (Brevo + Django fallback)
 │   ├── templates/admin/index.html   (sales + low-stock panel on the admin home page)
+│   ├── templates/emails/            (responsive HTML + plain-text email templates)
 │   └── media/  (products/, brands/, categories/, users/ are created automatically)
 └── frontend/
     ├── index.html  vite.config.js  tailwind.config.js  .env.example
@@ -129,7 +131,7 @@ Generate a secret key with:
 python -c "from django.core.management.utils import get_random_secret_key as g; print(g())"
 ```
 
-In development, emails (verification, password reset) are **printed to the terminal** running `runserver`. Copy the link from there.
+In development, `EMAIL_TEST_MODE` defaults on: transactional emails (welcome/verification, password reset, order, payment, shipping, refund) are **printed to the terminal** running `runserver` unless you set `EMAIL_TEST_RECIPIENT`, in which case they are redirected to that inbox. Copy the link from the terminal. See [EMAIL_SETUP.md](EMAIL_SETUP.md) for the full setup and testing guide.
 
 ---
 
@@ -166,7 +168,10 @@ Production build: `npm run build`, which outputs to `frontend/dist/`.
 | `PAYSTACK_SECRET_KEY` | Paystack **secret** key. Server only, never in React. |
 | `PAYSTACK_PUBLIC_KEY` | Paystack public key (exposed via `/api/payments/config/`) |
 | `PAYMENT_TEST_MODE` | Simulated payments when no secret key is set (**dev only**; forced off in production) |
-| `EMAIL_BACKEND`, `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS`, `DEFAULT_FROM_EMAIL` | SMTP for verification and password-reset emails |
+| `BREVO_API_KEY`, `BREVO_SENDER_NAME`, `BREVO_SENDER_EMAIL`, `BREVO_REPLY_TO_EMAIL` | Brevo transactional email. The API key is server-only; the sender must be verified in Brevo. |
+| `EMAIL_TEST_MODE`, `EMAIL_TEST_RECIPIENT` | Redirect/suppress customer email while testing (default on in dev, forced off in prod) |
+| `EMAIL_MAX_ATTEMPTS`, `EMAIL_IMMEDIATE_ATTEMPTS`, `EMAIL_RETRY_AFTER_MINUTES` | Durable outbox delivery/retry policy |
+| `EMAIL_BACKEND`, `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS`, `DEFAULT_FROM_EMAIL` | SMTP/console fallback used until `BREVO_API_KEY` is set |
 | `LOW_STOCK_THRESHOLD` | Stock level at or below which products show **Low Stock** (default 5) |
 | `SHIPPING_FEE_LAGOS`, `SHIPPING_FEE_SOUTH_WEST`, `SHIPPING_FEE_DEFAULT` | Delivery fees in Naira |
 | `FREE_SHIPPING_THRESHOLD` | Order subtotal (₦) above which delivery is free |
@@ -262,6 +267,10 @@ python manage.py reconcile_payments --dry-run      # list what would be checked
 
 **Test mode:** with no secret key and `DEBUG=True`, checkout completes with a clearly labelled *simulated* payment, so you can test the full flow locally. Test mode is always disabled in production settings.
 
+### Transactional email
+
+Every customer email goes through the durable outbox in `apps/notifications`: it is stored before delivery with a unique idempotency key (so repeated webhooks/events cannot send twice), sent through **Brevo** when `BREVO_API_KEY` is set, and retried safely after a provider hiccup. Payment confirmations are only generated after server-side verification and double as the customer's receipt (with a verifiable receipt code). Registration sends a welcome email plus a verification link; every customer-visible order status change (processing, ready for delivery/pickup, shipped, delivered/picked up) sends its own email, and delivery/pickup completion thanks the customer and links each purchased item for a review. Emails can be inspected/retried in the admin under **Transactional email**, and the scheduled workflow sweeps pending messages hourly. Setup, testing and the future-domain checklist live in [EMAIL_SETUP.md](EMAIL_SETUP.md).
+
 Unpaid orders hold reserved stock. Release stale ones on a schedule (for example hourly with cron):
 
 ```bash
@@ -278,7 +287,7 @@ All endpoints are under `/api/`. Authentication uses `Authorization: Bearer <acc
 ### Auth: `/api/auth/`
 | Method | Endpoint | Notes |
 |---|---|---|
-| POST | `register/` | `{first_name, last_name, email, phone?, password, confirm_password}` → user + tokens, sends verification email |
+| POST | `register/` | `{first_name, last_name, email, phone?, password, confirm_password}` → user + tokens, sends welcome + verification emails |
 | POST | `login/` | `{email, password}` → `{access, refresh, user}` |
 | POST | `refresh/` | `{refresh}` → new access and rotated refresh |
 | POST | `logout/` | `{refresh}` → blacklists the refresh token |
@@ -404,7 +413,8 @@ The contact page shows a lightweight map placeholder that opens Google Maps. To 
 - [ ] Review or replace the seeded coupons (`WELCOME10`, `TIMELINE5K`)
 - [ ] Review the Shipping / Returns / FAQ copy in `frontend/src/pages/Info/content.js`
 - [ ] Add store phone numbers and confirm business hours in `backend/apps/core/store.py`
-- [ ] Set real Paystack keys and the webhook URL; set SMTP email settings
+- [ ] Set real Paystack keys and the webhook URL
+- [ ] Set `BREVO_API_KEY`; verify the sender — and authenticate the domain when ready (see [EMAIL_SETUP.md](EMAIL_SETUP.md))
 - [ ] `DJANGO_SETTINGS_MODULE=config.settings.prod`, `DEBUG=False`, HTTPS enabled
 
 ---

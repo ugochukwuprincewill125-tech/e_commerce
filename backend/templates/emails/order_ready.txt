@@ -1,0 +1,16 @@
+{% extends "emails/base_email.txt" %}
+{% block content %}Hi {{ customer_name }},
+
+{% if is_pickup %}Order {{ order_number }} is ready to collect from our {{ pickup_location_label|default:"store" }}.
+{% if pickup_address_lines %}Location: {{ pickup_address_lines|join:", " }}
+{% endif %}Opening hours:
+{% for slot in store.business_hours %}  {{ slot.days }}: {{ slot.hours }}
+{% endfor %}
+Please bring your order number{% if payment_status_key == "paid" %} and the receipt code from your payment confirmation email{% endif %}. If someone is collecting on your behalf, they should bring these too.
+{% else %}Order {{ order_number }} is packed and waiting for our delivery partner. We will email you with tracking details as soon as it is on its way.
+{% include "emails/partials/delivery_details.txt" %}{% endif %}
+View your order: {{ order_url }}
+{% if payment_status_key == "paid" %}Receipt: {{ receipt_url }}
+{% endif %}
+Questions about your order? Contact {{ store_email }}.
+{% endblock %}

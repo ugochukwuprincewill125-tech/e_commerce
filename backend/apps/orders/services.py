@@ -10,6 +10,11 @@ from rest_framework.exceptions import ValidationError
 
 from apps.cart.models import CartItem
 from apps.cart.pricing import calculate_totals
+from apps.notifications.events import (
+    send_order_cancelled,
+    send_order_confirmation,
+    send_payment_confirmation,
+)
 from apps.products.models import Product, ProductVariant
 from apps.promotions.models import Coupon
 from apps.users.models import Address
@@ -127,6 +132,10 @@ def create_order_from_cart(user, cart, data):
                 address=data["address"], city=data["city"], state=data["state"],
                 country=data.get("country") or "Nigeria", postal_code=data.get("postal_code", ""),
             )
+
+    # The outbox row is part of this transaction, so a rolled-back checkout
+    # never produces an order-confirmation email.
+    send_order_confirmation(order)
     return order
 
 
@@ -156,6 +165,7 @@ def cancel_order(order, note="Cancelled by customer."):
     order.save(update_fields=["status", "payment_status", "updated_at"])
     order.add_history(OrderStatus.CANCELLED, note)
     restore_stock(order)
+    send_order_cancelled(order, reason=note)
     return order
 
 
@@ -179,6 +189,9 @@ def mark_order_paid(order, reference, note="Payment confirmed via Paystack."):
     order.save(update_fields=fields)
     if order.coupon_id:
         Coupon.objects.filter(pk=order.coupon_id).update(times_used=F("times_used") + 1)
+    # Reached only after server-side verification (Paystack callback/webhook)
+    # or a deliberate staff confirmation — never from browser-reported success.
+    send_payment_confirmation(order, reference)
     return order, True
 
 

@@ -26,6 +26,7 @@ from apps.brands.models import Brand
 from apps.categories.models import Category
 from apps.core import uploads
 from apps.core.models import ContactMessage
+from apps.notifications.events import send_order_refunded, send_order_status_email
 from apps.orders.models import DeliveryMethod, Order, OrderItem, OrderStatus, PaymentStatus, status_flow
 from apps.orders.receipt_codes import code_matches
 from apps.orders.services import cancel_order, mark_order_paid
@@ -714,6 +715,7 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
     @transaction.atomic
     def status(self, request, pk=None):
         order = self.get_object()
+        previous_status = order.status
         serializer = s.OrderStatusUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         new_status = serializer.validated_data["status"]
@@ -760,6 +762,11 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
                 touched.append("delivered_at")
             order.save(update_fields=touched)
             order.add_history(new_status, note or f"Status set to {order.get_status_display()} by staff.")
+            # Every customer-visible milestone notifies the customer (processing,
+            # ready for delivery/pickup, shipped, delivered, picked up). The
+            # event layer ignores transitions that are already covered
+            # elsewhere (e.g. payment confirmation).
+            send_order_status_email(order, previous_status)
         order = self.queryset.get(pk=order.pk)
         return Response(s.AdminOrderDetailSerializer(order, context={"request": request}).data)
 
@@ -768,6 +775,7 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
     def tracking(self, request, pk=None):
         """Record the courier reference for a parcel, and optionally mark it shipped."""
         order = self.get_object()
+        previous_status = order.status
         if order.delivery_method == DeliveryMethod.PICKUP:
             return Response(
                 {"detail": "Store pickup orders are not shipped — advance them with the pickup statuses instead."},
@@ -794,6 +802,8 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
             order.add_history(OrderStatus.SHIPPED, "Parcel handed to the courier.")
 
         order.save()
+        if mark_shipped:
+            send_order_status_email(order, previous_status)
         order = self.queryset.get(pk=order.pk)
         return Response(s.AdminOrderDetailSerializer(order, context={"request": request}).data)
 
@@ -814,6 +824,9 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
 
         if new_payment == PaymentStatus.PAID and order.payment_status == PaymentStatus.PAID:
             return Response({"detail": "Order is already marked as paid."})
+
+        if new_payment == PaymentStatus.REFUNDED and order.payment_status == PaymentStatus.REFUNDED:
+            return Response({"detail": "Order is already marked as refunded."})
 
         if new_payment == PaymentStatus.PAID:
             order, _ = mark_order_paid(
@@ -837,6 +850,14 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
             )
             order.add_history(order.status, note or default_note)
             order.save(update_fields=fields)
+            if new_payment == PaymentStatus.REFUNDED:
+                send_order_refunded(
+                    order,
+                    amount=order.refund_amount or order.total,
+                    reference=order.payment_reference,
+                    is_partial=bool(order.refund_amount and order.refund_amount < order.total),
+                    note=note or default_note,
+                )
         order = self.queryset.get(pk=order.pk)
         return Response(s.AdminOrderDetailSerializer(order, context={"request": request}).data)
 

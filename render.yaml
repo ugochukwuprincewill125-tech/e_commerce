@@ -38,3 +38,13 @@ services:
         sync: false
       - key: PAYSTACK_PUBLIC_KEY
         sync: false
+      # Transactional email (EMAIL_SETUP.md). Leave BREVO_API_KEY empty to keep
+      # the SMTP/console fallback until the Brevo account is ready.
+      - key: BREVO_API_KEY
+        sync: false
+      - key: BREVO_SENDER_NAME
+        value: Timeline Gadgets
+      - key: BREVO_SENDER_EMAIL
+        value: timelinegadget@gmail.com
+      - key: BREVO_REPLY_TO_EMAIL
+        value: timelinegadget@gmail.com

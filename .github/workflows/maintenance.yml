@@ -1,5 +1,6 @@
-# Scheduled upkeep: releases stock held by unpaid orders, then reconciles
-# recent payments against Paystack.
+# Scheduled upkeep: releases stock held by unpaid orders, reconciles recent
+# payments against Paystack, then retries any transactional email that a
+# Brevo/network hiccup left pending.
 #
 # Render's free tier has no cron jobs, so this workflow does the upkeep from
 # GitHub Actions instead: it calls the token-guarded maintenance endpoints.
@@ -58,3 +59,18 @@ jobs:
           # missed webhooks reach the books here.
           curl -sS -f -X POST -H "X-Maintenance-Token: $MAINTENANCE_TOKEN" \
             --max-time 130 "$RECONCILE_URL"
+
+      - name: Retry pending transactional emails
+        env:
+          MAINTENANCE_TOKEN: ${{ secrets.MAINTENANCE_TOKEN }}
+          EMAILS_URL: https://timelineglobal.onrender.com/api/emails/maintenance/retry/
+        run: |
+          if [ -z "$MAINTENANCE_TOKEN" ]; then
+            echo "MAINTENANCE_TOKEN is not configured — skipping (the endpoint is disabled)."
+            exit 0
+          fi
+          # A Brevo hiccup (429/5xx) leaves the message queued; this sweep
+          # delivers anything whose retry is due. Nothing is sent twice — the
+          # outbox idempotency key guards that.
+          curl -sS -f -X POST -H "X-Maintenance-Token: $MAINTENANCE_TOKEN" \
+            --max-time 130 "$EMAILS_URL"

@@ -1,0 +1,35 @@
+{% extends "emails/base_email.html" %}
+{% block content %}
+<h1 style="margin:0 0 14px;color:#0A0F1C;font-size:26px;line-height:1.25;letter-spacing:-0.02em;">
+  {% if is_pickup %}Your order has been picked up{% else %}Your order has been delivered{% endif %}
+</h1>
+<p style="margin:0 0 14px;">Hi {{ customer_name }},</p>
+<p style="margin:0 0 14px;">
+  {% if is_pickup %}
+  Order <strong>{{ order_number }}</strong> has been collected from our store. Thanks for shopping at {{ store_name }}!
+  {% else %}
+  Order <strong>{{ order_number }}</strong> has been delivered. We hope everything arrived safely — thanks for shopping at {{ store_name }}!
+  {% endif %}
+</p>
+{% if delivered_at %}
+<div style="margin:18px 0;padding:14px 16px;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:6px;font-size:13px;line-height:1.6;color:#065F46;">
+  Completed on {{ delivered_at }}.
+</div>
+{% endif %}
+<div style="margin:18px 0;padding:16px;background:#F6F7F9;border:1px solid #E4E7EC;border-radius:6px;font-size:13px;line-height:1.7;color:#24314D;">
+  <strong>How did we do?</strong><br>
+  <span class="muted" style="color:#6B7587;">Your review helps other shoppers buy with confidence — and helps us serve you better.</span>
+  {% if items %}
+  <ul style="margin:10px 0 0;padding-left:18px;">
+    {% for item in items %}
+    {% if item.review_url %}<li style="margin:4px 0;"><a href="{{ item.review_url }}" style="color:#A50D26;">Review {{ item.name }}</a></li>{% endif %}
+    {% endfor %}
+  </ul>
+  {% endif %}
+</div>
+<p style="margin:0 0 14px;">If something is not right with your order, contact us as soon as possible at {{ store_email }} and we will help.</p>
+<p style="margin:26px 0;text-align:center;">
+  <a class="button" href="{{ order_url }}" style="display:inline-block;padding:13px 24px;background:#C8102E;color:#ffffff !important;text-decoration:none !important;font-weight:700;border-radius:6px;">View your order</a>
+</p>
+<p class="muted" style="margin:0;font-size:12px;line-height:1.7;">Thank you for choosing {{ store_name }}.</p>
+{% endblock %}

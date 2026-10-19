@@ -6,7 +6,7 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-from .emails import send_password_reset_email, send_verification_email
+from .emails import send_password_reset_email, send_verification_email, send_welcome_email
 from .models import Address
 from .serializers import (
     AddressSerializer,
@@ -38,10 +38,11 @@ class RegisterView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+        send_welcome_email(user)
         send_verification_email(user)
         return Response(
             {
-                "detail": "Account created. We've sent a verification link to your email.",
+                "detail": "Account created. We've sent you a welcome email and a verification link.",
                 "user": UserSerializer(user, context={"request": request}).data,
                 **tokens_for(user),
             },

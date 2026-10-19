@@ -26,7 +26,8 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
-from apps.orders.models import PaymentStatus
+from apps.notifications.events import send_order_refunded
+from apps.orders.models import Order, PaymentStatus
 from apps.orders.services import mark_order_paid
 
 from . import paystack
@@ -139,7 +140,10 @@ def record_gateway_refund(payment, data):
     ``id`` is on the order) is recognised so it is never counted twice. The
     order only flips to ``refunded`` once the whole paid amount has come back.
     """
-    order = payment.order
+    # Read the order fresh (and lock it) instead of trusting a possibly stale
+    # ``payment.order`` cache: a caller that just marked the order paid in the
+    # same transaction must not be un-paid by this refund reconciliation.
+    order = Order.objects.select_for_update().get(pk=payment.order_id)
     refund_id = str(data.get("id") or "")
     amount_kobo = data.get("amount")
     already_counted = bool(refund_id) and order.refund_reference == refund_id
@@ -159,6 +163,15 @@ def record_gateway_refund(payment, data):
     order.save(update_fields=["payment_status", "refund_amount", "refund_reference", "refunded_at", "updated_at"])
     if accumulated:
         order.add_history(order.status, f"Paystack processed a refund of ₦{refund_naira} for this order.")
+        # One email per refund id; Paystack's redelivery of the same webhook is
+        # swallowed by the outbox idempotency key.
+        send_order_refunded(
+            order,
+            amount=refund_naira,
+            reference=refund_id or order.refund_reference,
+            is_partial=(order.refund_amount or Decimal("0.00")) < payment.amount,
+            note=f"Paystack processed a refund of ₦{refund_naira} for this order.",
+        )
 
 
 def verify_payment_with_provider(payment):

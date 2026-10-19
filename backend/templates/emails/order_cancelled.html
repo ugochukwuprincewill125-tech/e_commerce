@@ -1,0 +1,20 @@
+{% extends "emails/base_email.html" %}
+{% block content %}
+<h1 style="margin:0 0 14px;color:#0A0F1C;font-size:26px;line-height:1.25;letter-spacing:-0.02em;">Order cancelled</h1>
+<p style="margin:0 0 14px;">Hi {{ customer_name }},</p>
+<p style="margin:0 0 14px;">Order <strong>{{ order_number }}</strong> has been cancelled.</p>
+{% if cancel_reason %}
+<div style="margin:18px 0;padding:14px 16px;background:#F6F7F9;border:1px solid #E4E7EC;border-radius:6px;font-size:13px;line-height:1.6;color:#24314D;">
+  <strong>Reason:</strong> {{ cancel_reason }}
+</div>
+{% endif %}
+{% if payment_status_key == "paid" %}
+<div style="margin:18px 0;padding:14px 16px;background:#FEF3C7;border:1px solid #FDE68A;border-radius:6px;font-size:13px;line-height:1.6;color:#92400E;">
+  Our records show a payment was received for this order. Our team will contact you to arrange a refund if one is due.
+</div>
+{% endif %}
+<p style="margin:0 0 14px;">If you did not expect this cancellation, or need help placing a new order, contact us at {{ store_email }}.</p>
+<p style="margin:26px 0;text-align:center;">
+  <a class="button" href="{{ site_url }}" style="display:inline-block;padding:13px 24px;background:#C8102E;color:#ffffff !important;text-decoration:none !important;font-weight:700;border-radius:6px;">Continue shopping</a>
+</p>
+{% endblock %}

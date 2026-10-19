@@ -1,0 +1,16 @@
+{% extends "emails/base_email.txt" %}
+{% block content %}Hi {{ customer_name }},
+
+{% if is_pickup %}Order {{ order_number }} has been collected from our store.{% else %}Order {{ order_number }} has been delivered.{% endif %} Thanks for shopping at {{ store_name }}!
+{% if delivered_at %}
+Completed on {{ delivered_at }}.
+{% endif %}
+How did we do? Your review helps other shoppers buy with confidence — and helps us serve you better.
+{% for item in items %}{% if item.review_url %}Review {{ item.name }}: {{ item.review_url }}
+{% endif %}{% endfor %}
+If something is not right with your order, contact us as soon as possible at {{ store_email }} and we will help.
+
+View your order: {{ order_url }}
+
+Thank you for choosing {{ store_name }}.
+{% endblock %}

@@ -25,6 +25,7 @@ api_patterns = [
     path("coupons/", include("apps.promotions.urls")),
     path("admin-api/", include("apps.admin_api.urls")),
     path("ai/", include("apps.ai_chat.urls")),
+    path("emails/", include("apps.notifications.urls")),
 ]
 
 urlpatterns = [

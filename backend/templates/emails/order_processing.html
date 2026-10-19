@@ -1,0 +1,22 @@
+{% extends "emails/base_email.html" %}
+{% block content %}
+<h1 style="margin:0 0 14px;color:#0A0F1C;font-size:26px;line-height:1.25;letter-spacing:-0.02em;">We are preparing your order</h1>
+<p style="margin:0 0 14px;">Hi {{ customer_name }},</p>
+<p style="margin:0 0 14px;">
+  Good news — order <strong>{{ order_number }}</strong> is now being prepared by our team.
+</p>
+<div style="margin:18px 0;padding:16px;background:#F6F7F9;border:1px solid #E4E7EC;border-radius:6px;font-size:13px;line-height:1.8;color:#24314D;">
+  <strong>What happens next</strong><br>
+  {% if is_pickup %}
+  We will email you the moment your order is ready to collect.
+  {% else %}
+  We will email you when it is packed and handed to our delivery partner.
+  {% endif %}
+</div>
+{% include "emails/partials/order_items.html" %}
+{% include "emails/partials/delivery_details.html" %}
+<p style="margin:26px 0;text-align:center;">
+  <a class="button" href="{{ order_url }}" style="display:inline-block;padding:13px 24px;background:#C8102E;color:#ffffff !important;text-decoration:none !important;font-weight:700;border-radius:6px;">View your order</a>
+</p>
+<p class="muted" style="margin:0;font-size:12px;line-height:1.7;">Questions about your order? Contact {{ store_email }}.</p>
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends "emails/base_email.txt" %}
+{% block content %}Hi {{ customer_name }},
+
+Good news — order {{ order_number }} has been handed to our delivery partner.
+
+{% if carrier %}Carrier: {{ carrier }}
+{% endif %}{% if tracking_number %}Tracking number: {{ tracking_number }}
+{% endif %}{% if shipped_at %}Shipped: {{ shipped_at }}
+{% endif %}{% if not carrier and not tracking_number %}Our delivery partner will contact you using the phone number on your order.
+{% endif %}
+{% include "emails/partials/delivery_details.txt" %}
+Track your order: {{ order_url }}
+
+Tracking information can take a little while to update. Questions? Contact {{ store_email }}.
+{% endblock %}

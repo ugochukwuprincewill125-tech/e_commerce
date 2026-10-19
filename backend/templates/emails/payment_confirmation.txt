@@ -1,0 +1,19 @@
+{% extends "emails/base_email.txt" %}
+{% block content %}Hi {{ customer_name }},
+
+We have confirmed your payment for order {{ order_number }}. Thank you — your order is now being prepared.
+
+Amount paid: {{ total }}
+{% if paid_at %}Confirmed: {{ paid_at }}
+{% endif %}{% if payment_reference %}Payment reference: {{ payment_reference }}
+{% endif %}{% if receipt_code %}Receipt code: {{ receipt_code }}
+{% endif %}{% if order_status == "cancelled" %}
+This payment arrived after the order was cancelled. Our team will contact you to arrange a refund — you do not need to do anything.
+{% endif %}
+{% include "emails/partials/order_items.txt" %}
+{% include "emails/partials/order_totals.txt" %}
+View your order: {{ order_url }}
+Receipt: {{ receipt_url }}
+
+This email is your receipt — keep it for your records.{% if receipt_code %} Quote your receipt code if you need support or collect in store.{% endif %}
+{% endblock %}

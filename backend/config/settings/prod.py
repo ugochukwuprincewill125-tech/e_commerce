@@ -21,6 +21,10 @@ if not SECRET_KEY or SECRET_KEY.startswith("dev-only"):  # noqa: F405
 
 # Never allow simulated payments in production.
 PAYMENT_TEST_MODE = False
+
+# Never let a production deploy redirect or suppress customer email by
+# accident. Real delivery is controlled by BREVO_API_KEY / SMTP settings.
+EMAIL_TEST_MODE = False
 # Early deploys may go ahead without Paystack by setting
 # ALLOW_MISSING_PAYSTACK=True; checkout then reports "payment not configured"
 # and orders stay unpaid. Once PAYSTACK_SECRET_KEY is set the flag is ignored.

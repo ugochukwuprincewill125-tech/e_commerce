@@ -1,0 +1,11 @@
+{% extends "emails/base_email.txt" %}
+{% block content %}Hi {{ first_name }},
+
+Welcome to {{ store_name }} — {{ store_tagline }}.
+
+Thanks for creating an account with {{ store_legal_name }}. Please confirm your email address by opening this link:
+
+{{ verify_url }}
+
+If you did not create this account, you can safely ignore this email.
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends "emails/base_email.txt" %}
+{% block content %}Hi {{ customer_name }},
+
+Good news — order {{ order_number }} is now being prepared by our team.
+{% if is_pickup %}We will email you the moment your order is ready to collect.{% else %}We will email you when it is packed and handed to our delivery partner.{% endif %}
+Items:
+{% include "emails/partials/order_items.txt" %}
+{% include "emails/partials/delivery_details.txt" %}
+View your order: {{ order_url }}
+
+Questions about your order? Contact {{ store_email }}.
+{% endblock %}

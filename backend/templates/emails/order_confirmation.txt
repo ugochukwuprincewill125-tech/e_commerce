@@ -1,0 +1,16 @@
+{% extends "emails/base_email.txt" %}
+{% block content %}Hi {{ customer_name }},
+
+Thank you for shopping with {{ store_name }}. We received order {{ order_number }} on {{ order_date }}.
+
+{% if payment_status_key == "paid" %}Payment confirmed. We are preparing your order.
+{% else %}Awaiting payment. Your items are reserved, but we will start processing once payment is confirmed. You can complete payment from your order page.
+{% endif %}
+Items:
+{% include "emails/partials/order_items.txt" %}
+{% include "emails/partials/order_totals.txt" %}
+{% include "emails/partials/delivery_details.txt" %}
+View your order: {{ order_url }}
+
+We will email you again when your payment is confirmed and when your order ships. Questions? Contact {{ store_email }}.
+{% endblock %}
