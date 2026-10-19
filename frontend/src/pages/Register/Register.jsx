@@ -67,7 +67,16 @@ export default function Register() {
             error={errors.email?.message}
             {...register('email', { required: 'Email is required', pattern: { value: /^\S+@\S+\.\S+$/, message: 'Enter a valid email' } })}
           />
-          <Field label="Phone (optional)" type="tel" autoComplete="tel" error={errors.phone?.message} {...register('phone')} />
+          <Field
+            label="Phone"
+            type="tel"
+            autoComplete="tel"
+            error={errors.phone?.message}
+            {...register('phone', {
+              required: 'Phone number is required',
+              pattern: { value: /^\+?[0-9\s\-()]{7,20}$/, message: 'Enter a valid phone number' },
+            })}
+          />
           <Field
             label="Password"
             type="password"
@@ -81,7 +90,7 @@ export default function Register() {
             type="password"
             autoComplete="new-password"
             error={errors.confirm_password?.message}
-            {...register('confirm_password', { validate: (v) => v === watch('password') || 'Passwords do not match' })}
+            {...register('confirm_password', { required: 'Confirm your password', validate: (v) => v === watch('password') || 'Passwords do not match' })}
           />
           <Button type="submit" size="lg" className="w-full" loading={isSubmitting}>
             Create account

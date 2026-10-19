@@ -65,6 +65,13 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, style={"input_type": "password"})
     confirm_password = serializers.CharField(write_only=True, style={"input_type": "password"})
+    # The model allows a blank phone so staff-created accounts and older rows
+    # stay valid, but self-registration must collect one — every field on the
+    # form is required. Declaring it here overrides the model's ``blank=True``.
+    phone = serializers.RegexField(
+        r"^\+?[0-9\s\-()]{7,20}$",
+        error_messages={"invalid": "Enter a valid phone number."},
+    )
 
     class Meta:
         model = User

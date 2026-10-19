@@ -15,9 +15,9 @@ export default function FloatingWhatsApp() {
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Chat on WhatsApp"
-        className="flex h-14 w-14 items-center justify-center shadow-lg shadow-black/20 transition-transform duration-200 hover:scale-105 hover:shadow-xl"
+        className="flex h-16 w-16 items-center justify-center transition-transform duration-200 hover:scale-105 sm:h-20 sm:w-20"
       >
-        <img src={whatsappLogo} alt="WhatsApp" className="h-10 w-10 object-contain" />
+        <img src={whatsappLogo} alt="WhatsApp" className="h-16 w-16 object-contain drop-shadow-lg drop-shadow-black/25 sm:h-20 sm:w-20" />
       </a>
     </div>
   )
