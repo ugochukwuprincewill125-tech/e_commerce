@@ -94,15 +94,19 @@ VARIANT_FIELDS = {
 }
 
 
-def _attach_uploaded_images(product, keys):
+def _attach_uploaded_images(product, entries):
     """Attach images uploaded via the sign+PUT flow through `uploaded_images`.
-    Each key is verified against the signer's key space AND existence in the
-    bucket before a ProductImage row is created."""
-    if not keys:
+    Entries may be plain keys or {"key": "…", "variant": <id>} objects — the
+    latter links the new photo to a specific variant so the storefront shows it
+    when the customer picks that option. Each key is verified against the
+    signer's key space AND existence in the bucket before a row is created."""
+    if not entries:
         return
     start = (product.images.aggregate(m=Max("display_order"))["m"] or 0) + 1
     rows = []
-    for index, key in enumerate(keys):
+    for index, entry in enumerate(entries):
+        payload = entry if isinstance(entry, dict) else {"key": entry}
+        key = payload.get("key", "")
         if not uploads.key_is_wellformed(key):
             raise ValidationError(f"Upload key {key!r} was not issued by this API.")
         if not uploads.object_exists(key):
@@ -112,20 +116,45 @@ def _attach_uploaded_images(product, keys):
         name = uploads.key_to_field_name(key)
         stem = name.rsplit("/", 1)[-1].rsplit(".", 1)[0]
         safe_stem = stem.split("-", 1)[-1] or stem
-        rows.append(ProductImage(product=product, image=name,
-                                  alt_text=safe_stem.replace("-", " ")[:200],
-                                  display_order=start + index))
+        variant = None
+        variant_ref = payload.get("variant")
+        if variant_ref not in (None, "", "null"):
+            variant = ProductVariant.objects.filter(product=product, pk=variant_ref).first()
+            if not variant:
+                raise ValidationError(
+                    f"Variation {variant_ref!r} does not belong to this product."
+                )
+        rows.append(ProductImage(
+            product=product, image=name, variant=variant,
+            alt_text=safe_stem.replace("-", " ")[:200],
+            display_order=start + index,
+        ))
     ProductImage.objects.bulk_create(rows)
+
+
+def _generate_variant_sku(product):
+    """A unique SKU for a variation the admin added without typing one —
+    derived from the product SKU so stock labels stay human-readable."""
+    base = (product.sku or f"P{product.pk}")[:54]
+    n = 1
+    while ProductVariant.objects.filter(sku=f"{base}-V{n}").exists():
+        n += 1
+    return f"{base}-V{n}"
 
 
 def _save_product_children(product, images=None, variants=None, uploaded_images=None):
     """Apply image/variant writes after the product row is saved.
 
-    images:   [{"id": 4, "alt_text": "…", "display_order": 1}, …] — metadata
-              updates for existing rows (file uploads are handled separately).
+    images:   [{"id": 4, "alt_text": "…", "display_order": 1, "variant": 7,
+               "variant": None}, …] — metadata updates for existing rows
+              (`variant` links the photo to an option; absent = leave as-is).
+              File uploads are handled separately.
     variants: the FULL desired variant list; existing rows missing from it are
               deactivated rather than deleted so past orders stay intact.
+    Returns the saved variants in payload order, so `image_variants` indexes
+    from the create/update call can be resolved to ids.
     """
+    saved_variants = []
     if variants is not None:
         desired = []
         for payload in variants:
@@ -140,20 +169,40 @@ def _save_product_children(product, images=None, variants=None, uploaded_images=
                 variant.is_active = True
                 variant.save()
             else:
+                if not payload.get("sku"):
+                    payload["sku"] = _generate_variant_sku(product)
                 variant = ProductVariant.objects.create(product=product, **payload)
             desired.append(variant.pk)
+            saved_variants.append(variant)
         product.variants.exclude(pk__in=desired).update(is_active=False)
 
     if images:
         for payload in images:
             image_id = payload.get("id")
-            if image_id:
-                ProductImage.objects.filter(product=product, pk=image_id).update(
-                    alt_text=payload.get("alt_text", ""),
-                    display_order=payload.get("display_order", 0),
+            if not image_id:
+                raise ValidationError(
+                    "Only existing images can be updated here; upload new ones"
+                    " via images[] or uploaded_images."
                 )
-            else:
-                raise ValidationError("Only existing images can be updated here; upload new ones via images[] or uploaded_images.")
+            updates = {
+                "alt_text": payload.get("alt_text", ""),
+                "display_order": payload.get("display_order", 0),
+            }
+            variant_ref = payload.get("variant", "__absent__")
+            if variant_ref != "__absent__":
+                if variant_ref in (None, "", "null"):
+                    updates["variant"] = None  # unlink: becomes a general photo
+                else:
+                    linked = ProductVariant.objects.filter(
+                        product=product, pk=variant_ref
+                    ).first()
+                    if not linked:
+                        raise ValidationError(
+                            f"Variation {variant_ref!r} does not belong to this product."
+                        )
+                    updates["variant"] = linked
+            ProductImage.objects.filter(product=product, pk=image_id).update(**updates)
+    return saved_variants
 
 
 MAX_PRODUCT_IMAGE_BYTES = 4 * 1024 * 1024  # 4MB per product image
@@ -205,7 +254,7 @@ class AdminProductViewSet(viewsets.ModelViewSet):
             raise ValidationError(f"{key} must be a JSON array.")
         return value
 
-    def _handle_uploads(self, product):
+    def _handle_uploads(self, product, variant_ids_by_index=None):
         """Create ProductImage rows from the multipart `images` file field.
         Accepts both `images` and `images[]` field names (axios vs jQuery style).
 
@@ -235,8 +284,16 @@ class AdminProductViewSet(viewsets.ModelViewSet):
                 raise ValidationError(f"{file.name}: {exc}")
             name = uploads.key_to_field_name(key)
             default_storage.save(name, ContentFile(file.read()))
+            variant = None
+            if variant_ids_by_index:
+                try:
+                    variant = variant_ids_by_index[i] or None
+                except IndexError:
+                    raise ValidationError(
+                        "image_variants must be aligned with images[] — one entry per file."
+                    )
             rows.append(ProductImage(
-                product=product, image=name,
+                product=product, image=name, variant=variant,
                 alt_text=alt_texts[i] if i < len(alt_texts) else "",
                 display_order=start + i,
             ))
@@ -247,8 +304,17 @@ class AdminProductViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         product = serializer.save()
-        self._handle_uploads(product)
-        _save_product_children(product, variants=self._parse_json_list("variants"))
+        variants = self._parse_json_list("variants")
+        saved_variants = _save_product_children(product, variants=variants)
+        image_variants = self._parse_json_list("image_variants")  # per images[] file: variant index or null
+        self._handle_uploads(
+            product,
+            variant_ids_by_index=(
+                [(saved_variants[i] if i is not None and 0 <= i < len(saved_variants) else None)
+                 for i in image_variants]
+                if image_variants else None
+            ),
+        )
         _attach_uploaded_images(product, self._parse_json_list("uploaded_images"))
         product = self.queryset.get(pk=product.pk)  # fresh copy, relations not stale
         return Response(
@@ -263,11 +329,19 @@ class AdminProductViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         product = serializer.save()
-        self._handle_uploads(product)
-        _save_product_children(
+        saved_variants = _save_product_children(
             product,
             images=self._parse_json_list("images"),
             variants=self._parse_json_list("variants"),
+        )
+        image_variants = self._parse_json_list("image_variants")  # per images[] file: variant index or null
+        self._handle_uploads(
+            product,
+            variant_ids_by_index=(
+                [(saved_variants[i] if i is not None and 0 <= i < len(saved_variants) else None)
+                 for i in image_variants]
+                if image_variants else None
+            ),
         )
         _attach_uploaded_images(product, self._parse_json_list("uploaded_images"))
         product = self.queryset.get(pk=product.pk)  # fresh product, relations not stale
@@ -481,21 +555,53 @@ class LocalUploadPutView(APIView):
 
 
 class AdminProductImageViewSet(viewsets.ModelViewSet):
-    """Upload, replace, reorder and delete a product's images."""
+    """Upload, replace, reorder and delete a product's images.
+
+    `variant` (id or null) links a photo to one variation so the storefront
+    shows it when that option is selected; null makes it a general photo."""
 
     permission_classes = [IsStaff]
     serializer_class = s.AdminProductImageSerializer
     pagination_class = None
 
     def get_queryset(self):
-        return ProductImage.objects.filter(product_id=self.kwargs["product_pk"]).order_by("display_order", "id")
+        return ProductImage.objects.filter(
+            product_id=self.kwargs["product_pk"]
+        ).order_by("display_order", "id")
+
+    def _resolve_variant(self, product, image):
+        """Validate request.data['variant'] (id or null) against the product."""
+        if "variant" not in self.request.data:
+            return "__absent__"
+        variant_ref = self.request.data.get("variant")
+        if variant_ref in (None, "", "null"):
+            return None
+        try:
+            variant_ref = int(variant_ref)
+        except (TypeError, ValueError):
+            raise ValidationError("variant must be a variation id or null.")
+        variant = ProductVariant.objects.filter(pk=variant_ref).first()
+        if not variant or variant.product_id != product.pk:
+            raise ValidationError("That variation does not belong to this product.")
+        return variant
 
     def perform_create(self, serializer):
         product = Product.objects.filter(pk=self.kwargs["product_pk"]).first()
         if not product:
             raise ValidationError("Product not found.")
+        variant = self._resolve_variant(product, None)
         start = (product.images.aggregate(m=Max("display_order"))["m"] or 0) + 1
-        serializer.save(product=product, display_order=self.request.data.get("display_order", start))
+        defaults = {"display_order": self.request.data.get("display_order", start)}
+        if variant != "__absent__":
+            defaults["variant"] = variant
+        serializer.save(product=product, **defaults)
+
+    def perform_update(self, serializer):
+        variant = self._resolve_variant(serializer.instance.product, serializer.instance)
+        if variant != "__absent__":
+            serializer.save(variant=variant)
+        else:
+            serializer.save()
 
     @action(detail=False, methods=["post"])
     def reorder(self, request, product_pk=None):

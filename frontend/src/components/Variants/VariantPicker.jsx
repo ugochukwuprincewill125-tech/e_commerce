@@ -3,11 +3,12 @@ import { cn, formatNaira } from '../../utils/format'
 /** Renders product options (storage, colour, RAM…) as selectable pills. */
 export default function VariantPicker({ variants, value, onChange }) {
   if (!variants?.length) return null
-  const type = variants[0].variant_type_display
+  // A product may mix option kinds (e.g. Colour + Size); show every kind.
+  const types = [...new Set(variants.map((v) => v.variant_type_display))].join(' / ')
   return (
     <fieldset>
       <legend className="mb-2.5 text-sm font-semibold text-ink-900">
-        {type}: <span className="font-normal text-metal-500">{value?.value || 'Select an option'}</span>
+        {types}: <span className="font-normal text-metal-500">{value?.value || 'Select an option'}</span>
       </legend>
       <div className="flex flex-wrap gap-2">
         {variants.map((v) => {

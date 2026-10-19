@@ -8,9 +8,18 @@ from .models import Product, ProductImage, ProductVariant
 
 
 class ProductImageSerializer(serializers.ModelSerializer):
+    variant = serializers.SerializerMethodField()
+    variant_value = serializers.SerializerMethodField()
+
     class Meta:
         model = ProductImage
-        fields = ("id", "image", "alt_text", "display_order")
+        fields = ("id", "image", "alt_text", "display_order", "variant", "variant_value")
+
+    def get_variant(self, obj):
+        return obj.variant_id
+
+    def get_variant_value(self, obj):
+        return obj.variant.value if obj.variant_id else None
 
 
 class ProductVariantSerializer(serializers.ModelSerializer):

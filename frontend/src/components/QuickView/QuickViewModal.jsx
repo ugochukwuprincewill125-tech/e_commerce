@@ -43,7 +43,18 @@ export default function QuickViewModal({ slug, preview, onClose, requireAuth = f
   const soldOut = product ? product.availability === 'out_of_stock' : false
   const price = variant ? Number(variant.price) : Number(p?.current_price || 0)
   const maxQty = Math.max(1, Math.min(variant ? variant.stock_quantity : product?.stock_quantity || 1, 10))
-  const images = product?.images?.length ? product.images.map((i) => i.image) : [p?.image].filter(Boolean)
+  // Photos attached to the selected variation are shown first (mirrors the
+  // full product page gallery): pick "Red" and the red shot leads.
+  let imageRows = product?.images?.length ? product.images : [{ image: p?.image }].filter((i) => i.image)
+  if (variant) {
+    const matched = imageRows.filter((img) => img.variant === variant.id)
+    if (matched.length) imageRows = [...matched, ...imageRows.filter((i) => i.variant !== variant.id)]
+  }
+  const images = imageRows.map((i) => i.image)
+
+  useEffect(() => {
+    setActive(0)
+  }, [variant?.id])
 
   const handleAdd = () => {
     if (requireAuth && !user) {

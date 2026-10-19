@@ -1,18 +1,27 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { ChevronLeft, ChevronRight, ZoomIn } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { ProductBadges } from '../../components/ProductCard/ProductCard'
 import Modal from '../../components/Modal/Modal'
 import { cn } from '../../utils/format'
 
-/** Product gallery with thumbnails, hover zoom (desktop), swipe (mobile) and a fullscreen viewer. */
-export default function Gallery({ product }) {
-  const images = product.images?.length ? product.images : [{ id: 0, image: product.image, alt_text: product.name }].filter((i) => i.image)
+/** Product gallery with thumbnails, hover zoom (desktop), swipe (mobile) and a fullscreen viewer.
+ *  `variant` is the selected option: photos attached to it are shown first, so
+ *  picking “Red” surfaces the red powerbank shot (general photos follow). */
+export default function Gallery({ product, variant = null }) {
+  const all = product.images?.length ? product.images : [{ id: 0, image: product.image, alt_text: product.name }].filter((i) => i.image)
+  const matched = variant ? all.filter((img) => img.variant === variant.id) : []
+  const images = matched.length ? [...matched, ...all.filter((img) => img.variant !== variant.id)] : all
   const [index, setIndex] = useState(0)
   const [zoom, setZoom] = useState(null)
   const [lightbox, setLightbox] = useState(false)
-  const current = images[index]
+
+  // Switching option resets the viewport to that option's first photo.
+  useEffect(() => {
+    setIndex(0)
+  }, [variant?.id])
+  const current = images[Math.min(index, images.length - 1)];
 
   const move = (dir) => setIndex((i) => (i + dir + images.length) % images.length)
 

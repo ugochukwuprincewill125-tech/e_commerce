@@ -145,8 +145,19 @@ class Product(TimeStampedModel):
 
 
 class ProductImage(models.Model):
+    """A product photo. Attach it to one variant (a colour, a size…) to show
+    that photo when the customer picks the matching option; leave variant
+    blank for a general photo shown on every option."""
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="images")
     image = models.ImageField(upload_to="products/")
+    variant = models.ForeignKey(
+        "products.ProductVariant",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="variant_images",
+        help_text="Optional: the photo shows this specific variant (e.g. the red powerbank).",
+    )
     alt_text = models.CharField(max_length=200, blank=True)
     display_order = models.PositiveIntegerField(default=0)
 
@@ -164,6 +175,7 @@ class ProductImage(models.Model):
 
 class VariantType(models.TextChoices):
     COLOR = "color", "Colour"
+    SIZE = "size", "Size"
     STORAGE = "storage", "Storage"
     RAM = "ram", "RAM"
     CAPACITY = "capacity", "Capacity"

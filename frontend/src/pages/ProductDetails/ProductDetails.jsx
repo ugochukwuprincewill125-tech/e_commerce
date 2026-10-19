@@ -208,7 +208,7 @@ export default function ProductDetails() {
         <Breadcrumbs items={crumbs} />
 
         <div className="mt-6 grid gap-8 lg:grid-cols-2 lg:gap-14">
-          <Gallery product={product} />
+          <Gallery product={product} variant={variant} />
 
           <div>
             {product.brand && (
