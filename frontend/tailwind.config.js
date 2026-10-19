@@ -45,17 +45,21 @@ export default {
           soft: '#EFF1F4',
           strong: '#CFD5DE',
         },
+        // Deep crimson. Chosen over a bright signal-red so it reads premium
+        // on white surfaces while still carrying enough weight for primary
+        // actions. `brand-600` is the anchor (5.9:1 against white); every
+        // other step is a tint or shade of it.
         brand: {
-          50: '#EEF3FF',
-          100: '#DAE5FF',
-          200: '#B8CCFF',
-          300: '#8AAAFF',
-          400: '#5A84FF',
-          500: '#2F6BFF',
-          600: '#1D55E0',
-          700: '#1743B3',
-          800: '#15398F',
-          900: '#142F6F',
+          50: '#FDF2F4',
+          100: '#FCE3E7',
+          200: '#F9C9D1',
+          300: '#F2A3B0',
+          400: '#E96E82',
+          500: '#D93A54',
+          600: '#C8102E',
+          700: '#A50D26',
+          800: '#880B20',
+          900: '#710A1C',
         },
         success: '#0E9F6E',
         warning: '#D97706',
