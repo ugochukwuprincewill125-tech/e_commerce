@@ -13,7 +13,7 @@ import useConfirmAction from '../../hooks/useConfirmAction'
 import { useAuth } from '../../context/AuthContext'
 import { formatNaira } from '../../utils/format'
 import {
-  approveAdminReview, deleteAdminReview, fetchAdminCustomer, fetchAdminCustomers,
+  approveAdminReview, deleteAdminMessage, deleteAdminReview, fetchAdminCustomer, fetchAdminCustomers,
   fetchAdminMessages, fetchAdminReviews, resolveAdminMessage, setCustomerActive,
   setCustomerStaff, updateAdminCustomer,
 } from '../../services/adminApi'
@@ -470,6 +470,7 @@ export function AdminReviews() {
 export function AdminMessages() {
   const [params, setParams] = useSearchParams()
   const [page, setPage] = useState(1)
+  const [confirmDelete, setConfirmDelete] = useState(null)
 
   const filter = params.get('is_resolved') ?? 'false'
 
@@ -489,6 +490,12 @@ export function AdminMessages() {
   const resolveMut = useAdminMutation({
     fn: ({ id, value }) => resolveAdminMessage(id, value),
     invalidate: [['admin-messages'], ['admin-stats']],
+  })
+  const deleteMut = useAdminMutation({
+    fn: deleteAdminMessage,
+    success: 'Message deleted.',
+    invalidate: [['admin-messages'], ['admin-stats']],
+    onDone: () => setConfirmDelete(null),
   })
 
   const rows = data?.results || []
@@ -531,13 +538,25 @@ export function AdminMessages() {
                     </p>
                     <p className="mt-2 whitespace-pre-line text-sm text-metal-600">{m.message}</p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => resolveMut.mutate({ id: m.id, value: !m.is_resolved })}
-                    className="btn-outline flex-none px-3 py-1 text-xs"
-                  >
-                    {m.is_resolved ? 'Reopen' : 'Resolve'}
-                  </button>
+                  <div className="flex flex-none gap-2">
+                    <button
+                      type="button"
+                      onClick={() => resolveMut.mutate({ id: m.id, value: !m.is_resolved })}
+                      className="btn-outline px-3 py-1 text-xs"
+                    >
+                      {m.is_resolved ? 'Reopen' : 'Resolve'}
+                    </button>
+                    {m.is_resolved && (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDelete(m)}
+                        className="rounded p-1.5 text-danger transition hover:bg-red-50"
+                        aria-label="Delete message"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </AdminCard>
             ))}
@@ -545,6 +564,16 @@ export function AdminMessages() {
           <TableFooter page={page} pageSize={20} count={rows.length} total={data?.count} onChange={setPage} />
         </>
       )}
+
+      <ConfirmDialog
+        open={Boolean(confirmDelete)}
+        title="Delete message"
+        confirmLabel="Delete"
+        busy={deleteMut.isPending}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={() => deleteMut.mutate(confirmDelete.id)}
+        body={confirmDelete ? 'This permanently removes the message from the inbox.' : ''}
+      />
     </AdminPage>
   )
 }

@@ -194,7 +194,7 @@ Full CRUD (`ModelViewSet`) at `/api/admin-api/categories/`, `/brands/`,
 | Endpoint | Description |
 |---|---|
 | `GET /api/admin-api/reviews/` · `PATCH …/<id>/approve/` · `DELETE …/<id>/` | Review moderation |
-| `GET /api/admin-api/messages/` · `POST …/<id>/resolve/` | Contact messages |
+| `GET /api/admin-api/messages/` · `POST …/<id>/resolve/` · `DELETE …/<id>/` | Contact messages (delete works on resolved messages only) |
 
 ## Deployment checklist
 

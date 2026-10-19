@@ -126,6 +126,8 @@ export const approveAdminReview = (id, is_approved) => api.patch(`/admin-api/rev
 export const deleteAdminReview = (id) => api.delete(`/admin-api/reviews/${id}/`).then((r) => r.data)
 export const fetchAdminMessages = (params) => api.get('/admin-api/messages/', { params }).then((r) => r.data)
 export const resolveAdminMessage = (id, is_resolved) => api.post(`/admin-api/messages/${id}/resolve/`, { is_resolved }).then((r) => r.data)
+/** Removes a handled enquiry from the inbox — resolved messages only. */
+export const deleteAdminMessage = (id) => api.delete(`/admin-api/messages/${id}/`).then((r) => r.data)
 
 /* --------------------------------- coupons -------------------------------- */
 export const fetchAdminCoupons = () => api.get('/admin-api/coupons/').then((r) => r.data)

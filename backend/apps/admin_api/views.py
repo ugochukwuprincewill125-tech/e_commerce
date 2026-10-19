@@ -970,10 +970,20 @@ class AdminReviewViewSet(
         return Response(self.get_serializer(review).data)
 
 
-class AdminMessageViewSet(viewsets.ReadOnlyModelViewSet):
+class AdminMessageViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
+):
     """
-    GET  /api/admin/messages/   ?is_resolved=&ordering=
-    POST /api/admin/messages/<id>/resolve/  {is_resolved}
+    GET    /api/admin/messages/   ?is_resolved=&ordering=
+    POST   /api/admin/messages/<id>/resolve/  {is_resolved}
+    DELETE /api/admin/messages/<id>/   (resolved messages only)
+
+    Deleting is purposefully one-way and restricted to resolved messages:
+    staff clear handled enquiries out of the inbox, but nothing unhandled
+    can disappear — the check lives here, not only in the button.
     """
     permission_classes = [IsStaff]
     serializer_class = s.AdminMessageSerializer
@@ -989,6 +999,16 @@ class AdminMessageViewSet(viewsets.ReadOnlyModelViewSet):
         message.is_resolved = bool(request.data.get("is_resolved", not message.is_resolved))
         message.save(update_fields=["is_resolved"])
         return Response(self.get_serializer(message).data)
+
+    def destroy(self, request, *args, **kwargs):
+        message = self.get_object()
+        if not message.is_resolved:
+            return Response(
+                {"detail": "Only resolved messages can be deleted — resolve it first."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        message.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 # ---------------------------------------------------------------------------
