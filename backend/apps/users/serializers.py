@@ -13,7 +13,12 @@ from rest_framework import serializers
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-from .models import Address
+from .models import (
+    DUPLICATE_EMAIL_ERROR,
+    Address,
+    DuplicateEmailError,
+    canonical_email,
+)
 from .tokens import email_verification_token
 
 User = get_user_model()
@@ -47,9 +52,12 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
         extra_kwargs = {"email": {"validators": []}}
 
     def validate_email(self, value):
-        value = value.lower()
-        if User.objects.exclude(pk=self.instance.pk).filter(email__iexact=value).exists():
-            raise serializers.ValidationError("An account with this email already exists.")
+        value = canonical_email(value)
+        queryset = User.objects.filter(email__iexact=value)
+        if self.instance is not None:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if queryset.exists():
+            raise serializers.ValidationError(DUPLICATE_EMAIL_ERROR)
         return value
 
     def validate_profile_image(self, value):
@@ -62,7 +70,12 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
             instance.profile_image.delete(save=False)
             instance.profile_image = None
         email_changed = "email" in validated_data and validated_data["email"] != instance.email
-        instance = super().update(instance, validated_data)
+        try:
+            instance = super().update(instance, validated_data)
+        except IntegrityError:
+            # Another account claimed the address between validation and the
+            # write. The database refused it, so report it the same way.
+            raise serializers.ValidationError({"email": DUPLICATE_EMAIL_ERROR}) from None
         if email_changed:
             instance.email_verified = False
             instance.save(update_fields=["email_verified"])
@@ -89,11 +102,9 @@ class RegisterSerializer(serializers.ModelSerializer):
         extra_kwargs = {"email": {"validators": []}}
 
     def validate_email(self, value):
-        value = value.lower()
+        value = canonical_email(value)
         if User.objects.filter(email__iexact=value).exists():
-            raise serializers.ValidationError(
-                "An account with this email already exists. Please use a different email address."
-            )
+            raise serializers.ValidationError(DUPLICATE_EMAIL_ERROR)
         return value
 
     def validate(self, attrs):
@@ -105,20 +116,22 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         try:
-            return User.objects.create_user(**validated_data)
-        except IntegrityError:
+            # The savepoint keeps a failed insert from poisoning an enclosing
+            # transaction, so the friendly error below is the only thing the
+            # customer ever sees.
+            with transaction.atomic():
+                return User.objects.create_user(**validated_data)
+        except (IntegrityError, DuplicateEmailError):
             # A second request slipped past validate_email before the first
             # commit landed. Surface the same friendly message rather than a 500.
-            raise serializers.ValidationError(
-                {"email": "An account with this email already exists. Please use a different email address."}
-            )
+            raise serializers.ValidationError({"email": DUPLICATE_EMAIL_ERROR}) from None
 
 
 class LoginSerializer(TokenObtainPairSerializer):
     """Email + password login that also returns the user profile."""
 
     def validate(self, attrs):
-        attrs[self.username_field] = attrs.get(self.username_field, "").lower()
+        attrs[self.username_field] = canonical_email(attrs.get(self.username_field, ""))
         data = super().validate(attrs)
         if not self.user.email_verified and not self.user.is_staff:
             raise AuthenticationFailed(
@@ -278,7 +291,7 @@ class GoogleAuthSerializer(serializers.Serializer):
                     from .emails import send_welcome_email
 
                     send_welcome_email(user)
-        except IntegrityError:
+        except (IntegrityError, DuplicateEmailError):
             # Two simultaneous first sign-ins for the same Google account (or
             # an email that was claimed between our lookup and the insert).
             raise serializers.ValidationError(

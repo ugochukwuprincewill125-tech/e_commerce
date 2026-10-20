@@ -173,10 +173,16 @@ class Order(TimeStampedModel):
 
     @property
     def can_delete(self):
-        # Customers can only delete an order that is still "placed" and was
-        # never paid for. Delivered, processing, shipped, cancelled, or
-        # placed-but-paid orders are all locked — contact support.
-        return self.status == OrderStatus.PLACED and not self.is_paid
+        # Customers can only delete an order that is still "placed" AND whose
+        # payment was never made. The order has to be exactly as it was
+        # submitted — nothing paid, nothing shipped, nothing delivered, nothing
+        # cancelled and nothing refunded — so a customer can clear out an
+        # abandoned checkout without being able to erase any real transaction.
+        # Anything else is locked: contact support.
+        return self.status == OrderStatus.PLACED and self.payment_status in (
+            PaymentStatus.PENDING,
+            PaymentStatus.FAILED,
+        )
 
     def formatted_address(self):
         a = self.shipping_address or {}
