@@ -69,6 +69,10 @@ services:
 # idempotent: it only picks up messages that are pending or retryable.
 # The cron job needs the same secrets as the web service (the same values
 # have to be entered when the blueprint is created).
+# NOTE: Render cron jobs need a paid instance. On the free plan the hourly
+# GitHub Actions job (.github/workflows/maintenance.yml) does the same sweep
+# through POST /api/emails/maintenance/retry/ — it only needs MAINTENANCE_TOKEN
+# to be set on Render and as a repository secret.
 cronJobs:
   - type: cron
     name: retry-failed-emails
