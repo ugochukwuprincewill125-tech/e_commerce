@@ -34,7 +34,7 @@ export default function MobileMenu({ open, onClose, sections = [] }) {
   return (
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-[70] lg:hidden">
+        <div className="fixed inset-0 z-[210] lg:hidden">
           <motion.div className="absolute inset-0 bg-ink-950/55" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} />
           <motion.aside
             initial={{ x: '-100%' }}

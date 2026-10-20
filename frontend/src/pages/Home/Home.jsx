@@ -11,6 +11,7 @@ import Reveal from '../../components/Motion/Reveal'
 import Seo from '../../components/Seo/Seo'
 import useStoreInfo from '../../hooks/useStoreInfo'
 import FloatingWhatsApp from '../../components/WhatsApp/FloatingWhatsApp'
+import { useChrome } from '../../context/ChromeContext'
 import { useAuth } from '../../context/AuthContext'
 import { useCart } from '../../context/CartContext'
 import { CART_RESUME_MARKER, CART_RESUME_PARAM, takePendingCartItem } from '../../utils/navigation'
@@ -300,6 +301,7 @@ export default function Home() {
   // Add-to-cart sign-in gate: a guest who clicked "Add to cart" before
   // signing in completes that add here, once they return authenticated.
   const { user, initialising } = useAuth()
+  const { menuOpen } = useChrome()
   const { addItem } = useCart()
   const location = useLocation()
 
@@ -346,7 +348,7 @@ export default function Home() {
          </div>
        </section>
 
-       <FloatingWhatsApp />
+        {!menuOpen && <FloatingWhatsApp />}
      </>
   )
 }

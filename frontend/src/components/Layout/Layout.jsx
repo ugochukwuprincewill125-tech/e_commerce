@@ -66,7 +66,7 @@ function Chrome({ children, bare, showFooter, showNavbar }) {
 
       {showFooter && <Footer />}
 
-      {user && !bare && <FloatingAIChat />}
+      {user && !bare && !menuOpen && <FloatingAIChat />}
       <CartDrawer />
       <MobileMenu open={menuOpen} onClose={closeMenu} sections={menuSections(user)} />
       <SearchOverlay open={searchOpen} onClose={closeSearch} />

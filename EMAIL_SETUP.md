@@ -6,9 +6,9 @@ before delivery with a unique idempotency key, so a repeated webhook or event
 can never email a customer twice, a provider failure is retryable, and
 development can inspect exactly what would have been sent.
 
-This guide gets you from zero to working email **today, with no custom domain**,
-and shows what changes when the real domain is ready (only Brevo domain
-authentication + env vars — no code).
+This guide gets you from zero to working email. A Gmail sender can deliver
+while testing, but the production store should authenticate its own domain
+(section 6) for reliable inbox placement.
 
 ---
 
@@ -48,7 +48,7 @@ success.
 |---|---|---|---|
 | `BREVO_API_KEY` | Brevo API key (`xkeysib-…`). Server only. | empty | set it on Render |
 | `BREVO_SENDER_NAME` | Display name on every email | `Timeline Gadgets` | same |
-| `BREVO_SENDER_EMAIL` | Verified sender address | `timelinegadget@gmail.com` | same until the domain is authenticated |
+| `BREVO_SENDER_EMAIL` | Verified sender address | `timelinegadgets4@gmail.com` | use an address on the authenticated domain |
 | `BREVO_REPLY_TO_EMAIL` | Reply-To address | same as sender | same |
 | `BREVO_API_URL` | Brevo API base URL | `https://api.brevo.com/v3` | leave |
 | `BREVO_API_TIMEOUT` | Request timeout (seconds) | `15` | leave |
@@ -57,10 +57,12 @@ success.
 | `EMAIL_MAX_ATTEMPTS` | Outbox attempt ceiling | `5` | leave |
 | `EMAIL_IMMEDIATE_ATTEMPTS` | Immediate retries inside the request | `2` | leave |
 | `EMAIL_RETRY_AFTER_MINUTES` | Delay before the scheduled retry sweep | `10` | leave |
+| `EMAIL_REQUIRE_REAL_PROVIDER` | Refuse to record console-only output as a successful send | `False` | forced `True` |
 
-If `BREVO_API_KEY` is empty, delivery falls back to Django's email backend
-(`EMAIL_BACKEND`/`EMAIL_*` — console in local development), so the store keeps
-working before Brevo is configured.
+If `BREVO_API_KEY` is empty, development can fall back to Django's email
+backend (`EMAIL_BACKEND`/`EMAIL_*`). Production sets
+`EMAIL_REQUIRE_REAL_PROVIDER=True`, so a missing Brevo key and a console
+backend produce a visible failed outbox row instead of a false "Sent" status.
 
 > **Safety:** `config/settings/prod.py` forces `EMAIL_TEST_MODE = False`.
 > In development it defaults to `True`, so a developer can never email real
@@ -75,7 +77,7 @@ working before Brevo is configured.
 1. Create a free account at <https://app.brevo.com> (300 emails/day free).
 2. **Verify the sender address** — no domain needed:
    *Brevo → Senders, Domains & Dedicated IPs → Senders → Add a sender.*
-   Use `timelinegadget@gmail.com` (the default) or another address you own.
+   Use `timelinegadgets4@gmail.com` (the default) or another address you own.
    Brevo emails a confirmation code; click it.
    *This single-sender method works until you own a domain: Brevo allows free
    Gmail addresses as senders, but deliverability is best once the domain is
@@ -86,7 +88,7 @@ working before Brevo is configured.
 
    ```env
    BREVO_API_KEY=xkeysib-...
-   BREVO_SENDER_EMAIL=timelinegadget@gmail.com
+   BREVO_SENDER_EMAIL=timelinegadgets4@gmail.com
    # While testing, point test mode at your own inbox so Brevo really sends.
    # Leave empty to capture messages in the terminal instead.
    EMAIL_TEST_RECIPIENT=you@example.com
@@ -104,6 +106,10 @@ working before Brevo is configured.
 
 ```powershell
 cd backend
+
+# Check the provider, sender-domain authentication and recent outbox health.
+# This also prints the DNS records Brevo still needs for the store domain.
+.\venv\Scripts\python.exe manage.py email_health
 
 # Send one diagnostic email through the exact production path.
 # With EMAIL_TEST_RECIPIENT=you@example.com this actually goes through Brevo
@@ -156,37 +162,80 @@ Brevo or send real mail.
 
 * `EMAIL_TEST_MODE` is forced off in `config/settings/prod.py`; with
   `BREVO_API_KEY` set, mail goes to customers.
-* The scheduled workflow (`.github/workflows/maintenance.yml`) calls
-  `POST /api/emails/maintenance/retry/` hourly next to the payment/order upkeep
-  to sweep anything a Brevo hiccup left pending. It needs `MAINTENANCE_TOKEN`
-  set on Render **and** as a GitHub repo secret (same token as the other
-  maintenance endpoints).
+* `GET /api/health/` reports the email state next to the liveness status:
+  which provider would be used, whether test mode is on, the sender and its
+  domain, and how many messages failed. It never exposes a key, an address or
+  a message body.
+* `python manage.py check` warns (`notifications.W001`–`W003`) when no real
+  provider is configured or the sender is a free-mailbox address. The Render
+  build runs it, so a misconfigured deploy says so in the build log.
+* Failed transactional email is retried by a Render cron job
+  (`retry_failed_emails`, every 10 minutes) and by the scheduled workflow
+  (`.github/workflows/maintenance.yml`) that calls
+  `POST /api/emails/maintenance/retry/` hourly next to the payment/order
+  upkeep. The endpoint needs `MAINTENANCE_TOKEN` set on Render **and** as a
+  GitHub repo secret (same token as the other maintenance endpoints).
 * Brevo free tier: 300 emails/day, 100/day before account activation. If the
   store outgrows it, the only change is the Brevo plan.
 
 ---
 
-## 6. Moving to the real domain (later)
+## 6. Authenticating `timelinegadgets.com`
 
-No code changes — only Brevo configuration and one env var:
+The domain is already added in Brevo, but it is **not authenticated** until its
+DNS records exist. Until then the store keeps sending from a Gmail address,
+and this is exactly why customers receive nothing:
 
-1. Buy the domain and add it in **Brevo → Senders, Domains & Dedicated IPs →
-   Domains → Add a domain**.
-2. Add the DNS records Brevo shows (SPF/DKIM; DMARC is recommended) at your DNS
-   provider and click **Authenticate**. This usually takes minutes to a few
-   hours.
-3. Set the new sender on Render and in `backend/.env`:
+* Brevo rewrites a free-mailbox sender to a shared `…@brevosend.com` address,
+  so the customer sees a stranger's address in the From field;
+* the rewritten message does not pass SPF/DKIM for the domain in the From
+  header — a delivered probe showed `spf=false, dkim=false` at the receiving
+  server — and Gmail only accepts mail that authenticates for the From domain,
+  so it drops the message instead of delivering it;
+* the outbox still says **Sent**, because the provider accepted the message
+  for delivery. "Sent" means "handed to the provider", not "in the inbox".
+
+Authenticating the store's own domain fixes all three at once: Brevo signs
+with the domain's DKIM key, SPF and DMARC align, and the From address is a
+real, branded one.
+
+1. Add these DNS records at the DNS provider that hosts `timelinegadgets.com`
+   (currently Vercel DNS). `python manage.py email_health` prints the same
+   list with the live values:
+
+   | Type | Host | Value |
+   |---|---|---|
+   | CNAME | `brevo1._domainkey` | `b1.timelinegadgets-com.dkim.brevo.com` |
+   | CNAME | `brevo2._domainkey` | `b2.timelinegadgets-com.dkim.brevo.com` |
+   | TXT | `@` | `brevo-code:e98268df11a6859f05c1c0be32983cc3` |
+   | TXT | `_dmarc` | `v=DMARC1; p=none; rua=mailto:rua@dmarc.brevo.com` |
+   | TXT | `@` | `v=spf1 include:spf.brevo.com ~all` |
+
+   If the provider refuses two TXT records at `@`, merge the SPF value and the
+   `brevo-code` value into one record separated by a space.
+2. In **Brevo → Senders, Domains & Dedicated IPs → Domains**, click
+   **Authenticate** for `timelinegadgets.com`. DNS can take a few minutes to a
+   few hours to propagate; rerun `email_health` until `Authenticated: yes`.
+3. Change the sender on Render and in `backend/.env` to an address at the
+   authenticated domain, keeping a monitored Reply-To:
 
    ```env
-   BREVO_SENDER_EMAIL=orders@timelinegadgets.com
-   BREVO_REPLY_TO_EMAIL=support@timelinegadgets.com
+   BREVO_SENDER_EMAIL=no-reply@timelinegadgets.com
+   BREVO_REPLY_TO_EMAIL=timelinegadgets4@gmail.com
    BREVO_SENDER_NAME=Timeline Gadgets
    ```
 
-4. Send a test (`manage.py send_test_email`) and retire the old sender in Brevo.
+   An authenticated domain needs no separate sender verification — any address
+   on it can be used. `render.yaml` already ships these values.
+4. Redeploy, run `manage.py send_test_email you@example.com`, then check
+   **Brevo → Transactional → Logs** for the `delivered` event. Activate the new
+   sender in Brevo if the UI asks you to verify it.
 
 The whole codebase reads the sender from settings, so templates, links and
-delivery need no edit.
+delivery need no edit. Until step 3 is done, the application warns about it:
+`manage.py check` reports `notifications.W003`, the server log repeats the
+reason on every send, and `GET /api/health/` shows
+`"sender_is_free_mailbox": true` with a `warning` next to it.
 
 ---
 
@@ -197,6 +246,7 @@ delivery need no edit.
 | `Brevo rejected email … status=401` | Wrong/revoked API key. Regenerate it in Brevo and update `BREVO_API_KEY`. |
 | `status=400 … "sender … is not valid"` | `BREVO_SENDER_EMAIL` is not verified in Brevo. Verify it in *Senders* (or use the address that is). |
 | Messages stay **Pending** | Brevo unreachable or rate-limited (429/5xx). They are retried automatically by the scheduled sweep; check the row's `last_error`. |
-| Nothing arrives but the admin shows **Sent** | Check the recipient's spam folder, then verify SPF/DKIM by authenticating the domain (section 6). Gmail senders have limited reputation. |
+| Nothing arrives but the admin shows **Sent** | The provider accepted the message, but the receiving mailbox never got it. Check the From address of the delivered message: a `…@brevosend.com` sender means the domain is not authenticated, so SPF/DKIM do not align and Gmail drops the message. Fix it with section 6. `manage.py email_health` and `GET /api/health/` both report the sender state. |
+| The customer sees a stranger's address in the From field | Same cause as above: Brevo rewrites an unauthenticated sender to its shared `brevosend.com` domain. Authenticate `timelinegadgets.com` and set `BREVO_SENDER_EMAIL` to it. |
 | A test-mode message was expected in a real inbox | `EMAIL_TEST_RECIPIENT` is empty — the message was captured in the console. Set the address and resend from the admin. |
 | Duplicate-safe behaviour | The outbox key prevents duplicates; a message is never sent twice for the same order/reference/refund id, even across webhook redeliveries. |

@@ -138,8 +138,9 @@ export default function Register() {
           <Button type="submit" size="lg" className="w-full" loading={isSubmitting || googleBusy}>
             Create account
           </Button>
-          <p className="text-center text-xs text-metal-400">
-            We’ll email you a link to verify your address. You can sign in once it is confirmed.
+          <p className="text-center text-xs leading-relaxed text-metal-400">
+            We'll email you a link to verify your address. You can sign in once it is confirmed.
+            If it does not arrive, check your spam or promotions folder.
           </p>
         </form>
 

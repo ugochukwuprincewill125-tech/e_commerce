@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.notifications.events import send_contact_notification
+from apps.notifications.services import email_status
 
 from .serializers import ContactMessageSerializer
 from .store import COMPANY, NIGERIAN_STATES, shipping_settings
@@ -46,7 +47,15 @@ class ContactView(generics.CreateAPIView):
 
 
 class HealthView(APIView):
+    """Liveness plus the transactional-email status.
+
+    The email block makes it possible to check a deployment from outside the
+    server: it shows which provider would deliver a message, whether test
+    mode is still on and how many messages are failing. It never exposes an
+    address, an API key or a message body.
+    """
+
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
-        return Response({"status": "ok"})
+        return Response({"status": "ok", "email": email_status()})

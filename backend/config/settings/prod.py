@@ -25,6 +25,14 @@ PAYMENT_TEST_MODE = False
 # Never let a production deploy redirect or suppress customer email by
 # accident. Real delivery is controlled by BREVO_API_KEY / SMTP settings.
 EMAIL_TEST_MODE = False
+
+# A capture-only backend (console/locmem) must never be reported as a
+# successful delivery in production: it would mark an undelivered message as
+# "sent" and hide a broken deployment. Without Brevo or a real SMTP server
+# the outbox records the message as FAILED with the reason, so it is visible
+# in the admin and can be retried once the provider is fixed.
+EMAIL_REQUIRE_REAL_PROVIDER = True
+
 # Early deploys may go ahead without Paystack by setting
 # ALLOW_MISSING_PAYSTACK=True; checkout then reports "payment not configured"
 # and orders stay unpaid. Once PAYSTACK_SECRET_KEY is set the flag is ignored.

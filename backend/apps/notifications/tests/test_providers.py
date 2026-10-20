@@ -2,7 +2,12 @@
 import pytest
 import requests
 
-from apps.notifications.providers import EmailSendError, brevo_is_configured, send_message
+from apps.notifications.providers import (
+    EmailSendError,
+    brevo_is_configured,
+    choose_provider,
+    send_message,
+)
 
 
 class FakeResponse:
@@ -70,6 +75,20 @@ class TestBrevoPayload:
         with pytest.raises(EmailSendError) as exc:
             send_message(**_message())
         assert exc.value.retryable is False
+
+    def test_production_never_falls_back_to_console(self, settings):
+        settings.BREVO_API_KEY = ""
+        settings.BREVO_SENDER_EMAIL = "sender@example.com"
+        settings.EMAIL_REQUIRE_REAL_PROVIDER = True
+        settings.EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
+        provider = choose_provider(test_mode=False, effective_recipient="customer@example.com")
+        assert provider == "unconfigured"
+
+        with pytest.raises(EmailSendError) as exc:
+            send_message(**_message(provider=provider))
+        assert exc.value.retryable is False
+        assert "No production email provider" in str(exc.value)
 
 
 class TestBrevoErrors:

@@ -15,6 +15,27 @@ from django.core.mail import EmailMultiAlternatives, get_connection
 
 logger = logging.getLogger(__name__)
 
+# Free-mail providers cannot pass SPF/DKIM alignment for a third-party relay:
+# the message is signed for the sending platform, not for the From domain.
+# Gmail (and Yahoo/Microsoft) require at least one aligned check and silently
+# drop what fails, so a sender on one of these domains must be authenticated
+# in Brevo with its own domain before it can reach an inbox.
+CONSUMER_MAILBOX_DOMAINS = {
+    "gmail.com",
+    "googlemail.com",
+    "yahoo.com",
+    "ymail.com",
+    "hotmail.com",
+    "outlook.com",
+    "live.com",
+    "aol.com",
+    "icloud.com",
+    "me.com",
+    "protonmail.com",
+    "gmx.com",
+    "mail.com",
+}
+
 
 class EmailSendError(Exception):
     """A provider rejected or could not accept a message."""
@@ -33,6 +54,43 @@ def sender_identity():
     return settings.BREVO_SENDER_NAME or "Timeline Gadgets", settings.BREVO_SENDER_EMAIL
 
 
+def sender_domain():
+    """The domain part of the configured From address (``""`` when unset)."""
+    address = (settings.BREVO_SENDER_EMAIL or "").strip().lower()
+    return address.rsplit("@", 1)[1] if "@" in address else ""
+
+
+def sender_is_consumer_mailbox():
+    """True when the From address is a free-mail provider.
+
+    Such senders are rewritten by the provider to a shared ``brevosend.com``
+    address and fail SPF/DKIM alignment, so Gmail rejects the message
+    instead of delivering it.
+    """
+    return sender_domain() in CONSUMER_MAILBOX_DOMAINS
+
+
+def deliverability_warning():
+    """A human-readable warning about the current sender, or ``""``."""
+    domain = sender_domain()
+    if not domain:
+        return "No sender address is configured (BREVO_SENDER_EMAIL is empty)."
+    if sender_is_consumer_mailbox():
+        return (
+            f"The sender {settings.BREVO_SENDER_EMAIL} is a free-mailbox address. "
+            "Gmail requires SPF or DKIM to be aligned with the From domain, so these "
+            "messages are rejected instead of delivered. Authenticate your own "
+            "domain in Brevo (add the DKIM/SPF/DMARC DNS records) and point "
+            "BREVO_SENDER_EMAIL at it."
+        )
+    return ""
+
+
+def _django_backend_is_capture_only():
+    backend = (settings.EMAIL_BACKEND or "").lower()
+    return "console" in backend or "locmem" in backend
+
+
 def choose_provider(*, test_mode, effective_recipient):
     """Return the provider name without sending anything."""
     if test_mode and not effective_recipient:
@@ -40,6 +98,9 @@ def choose_provider(*, test_mode, effective_recipient):
         return "console"
     if brevo_is_configured():
         return "brevo"
+    if settings.EMAIL_REQUIRE_REAL_PROVIDER and _django_backend_is_capture_only():
+        # Never report a console capture as a successful production delivery.
+        return "unconfigured"
     return "django"
 
 
@@ -68,6 +129,12 @@ def send_message(*, provider, to_email, to_name, subject, html_body, text_body, 
             using="django.core.mail.backends.console.EmailBackend",
         )
         return "console", ""
+    if provider == "unconfigured":
+        raise EmailSendError(
+            "No production email provider is configured. Set BREVO_API_KEY "
+            "or a real django.core.mail SMTP backend.",
+            retryable=False,
+        )
     _send_with_django(to_email=to_email, subject=subject, html_body=html_body, text_body=text_body)
     return "django", ""
 
@@ -76,6 +143,10 @@ def _send_with_brevo(*, to_email, to_name, subject, html_body, text_body, templa
     name, email = sender_identity()
     if not email:
         raise EmailSendError("Brevo sender email is not configured.", retryable=False)
+
+    warning = deliverability_warning()
+    if warning:
+        logger.warning("Brevo delivery risk: %s", warning)
 
     payload = {
         "sender": {"name": name, "email": email},

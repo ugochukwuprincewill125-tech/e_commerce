@@ -23,6 +23,7 @@ BREVO_REPLY_TO_EMAIL = "test@example.com"  # noqa: F405
 EMAIL_TEST_MODE = False  # noqa: F405
 EMAIL_TEST_RECIPIENT = ""  # noqa: F405
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"  # noqa: F405
+EMAIL_REQUIRE_REAL_PROVIDER = False  # noqa: F405
 EMAIL_MAX_ATTEMPTS = 3  # noqa: F405
 EMAIL_IMMEDIATE_ATTEMPTS = 1  # noqa: F405
 EMAIL_RETRY_AFTER_MINUTES = 1  # noqa: F405

@@ -6,3 +6,7 @@ class NotificationsConfig(AppConfig):
     name = "apps.notifications"
     label = "notifications"
     verbose_name = "Transactional email"
+
+    def ready(self):
+        # Registers the deployment checks for the email configuration.
+        from . import checks  # noqa: F401

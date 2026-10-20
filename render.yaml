@@ -5,11 +5,11 @@
 # Full walkthrough: DEPLOY.md.
 services:
   - type: web
-    name: timeline-backend
+    name: timelineglobal
     runtime: python
     plan: free
     rootDir: backend
-    buildCommand: pip install -r requirements.txt && python manage.py migrate && python manage.py collectstatic --noinput
+    buildCommand: pip install -r requirements.txt && python manage.py check && python manage.py migrate && python manage.py collectstatic --noinput
     startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120
     healthCheckPath: /api/health/
     autoDeploy: true
@@ -23,11 +23,11 @@ services:
       - key: DATABASE_URL
         sync: false
       - key: ALLOWED_HOSTS
-        value: ".onrender.com"
+        value: ".onrender.com,timelinegadgets.com,www.timelinegadgets.com"
       - key: FRONTEND_URL
-        value: https://YOUR-PROJECT.vercel.app
+        value: https://timelinegadgets.com
       - key: CORS_ALLOWED_ORIGINS
-        value: https://YOUR-PROJECT.vercel.app
+        value: https://timelinegadgets.com,https://www.timelinegadgets.com
       # Contact-form notifications are emailed here as well as stored in the
       # admin Messages tab. The setting has a code default, repeated here so it
       # is visible in the Render dashboard.
@@ -53,7 +53,58 @@ services:
         sync: false
       - key: BREVO_SENDER_NAME
         value: Timeline Gadgets
+      # The From address. It must sit on a domain that is authenticated in
+      # Brevo (DKIM + SPF + DMARC DNS records) — Gmail rejects mail sent from a
+      # free-mailbox address instead of delivering it. See EMAIL_SETUP.md.
       - key: BREVO_SENDER_EMAIL
-        value: timelinegadget@gmail.com
+        value: no-reply@timelinegadgets.com
+      # Replies go to a mailbox that is actually watched.
       - key: BREVO_REPLY_TO_EMAIL
-        value: timelinegadget@gmail.com
+        value: timelinegadgets4@gmail.com
+      # Token for POST /api/emails/maintenance/retry/ (and the cron job below).
+      - key: MAINTENANCE_TOKEN
+        generateValue: true
+
+# Failed transactional emails are retried on a schedule. The command is
+# idempotent: it only picks up messages that are pending or retryable.
+# The cron job needs the same secrets as the web service (the same values
+# have to be entered when the blueprint is created).
+cronJobs:
+  - type: cron
+    name: retry-failed-emails
+    schedule: "*/10 * * * *"
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: python manage.py retry_failed_emails
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.8"
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings.prod
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: ALLOWED_HOSTS
+        value: ".onrender.com,timelinegadgets.com,www.timelinegadgets.com"
+      - key: FRONTEND_URL
+        value: https://timelinegadgets.com
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://timelinegadgets.com,https://www.timelinegadgets.com
+      - key: BREVO_API_KEY
+        sync: false
+      - key: BREVO_SENDER_NAME
+        value: Timeline Gadgets
+      - key: BREVO_SENDER_EMAIL
+        value: no-reply@timelinegadgets.com
+      - key: BREVO_REPLY_TO_EMAIL
+        value: timelinegadgets4@gmail.com
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: PAYSTACK_SECRET_KEY
+        sync: false

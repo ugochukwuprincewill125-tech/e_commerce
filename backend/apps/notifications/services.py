@@ -35,6 +35,55 @@ def mask_email(value):
     return f"{local}@{domain}"
 
 
+def email_status():
+    """A secret-free snapshot of the transactional-email pipeline.
+
+    The public health endpoint uses it so a deployment can be checked from
+    the outside: which provider would be used, whether test mode is on, and
+    how many messages are still failing. No address, key or message body is
+    included.
+    """
+    from .providers import (
+        choose_provider,
+        deliverability_warning,
+        sender_domain,
+        sender_is_consumer_mailbox,
+    )
+
+    provider = choose_provider(
+        test_mode=bool(settings.EMAIL_TEST_MODE),
+        effective_recipient=(settings.EMAIL_TEST_RECIPIENT or "").strip(),
+    )
+    snapshot = {
+        "provider": provider,
+        "configured": provider in ("brevo", "django"),
+        "test_mode": bool(settings.EMAIL_TEST_MODE),
+        "sender": settings.BREVO_SENDER_EMAIL,
+        "sender_domain": sender_domain(),
+        "sender_is_free_mailbox": sender_is_consumer_mailbox(),
+        "warning": deliverability_warning(),
+        "sent_last_24h": None,
+        "failed": None,
+        "pending": None,
+    }
+    try:
+        now = timezone.now()
+        snapshot["sent_last_24h"] = TransactionalEmail.objects.filter(
+            status=TransactionalEmail.Status.SENT,
+            sent_at__gte=now - timedelta(days=1),
+        ).count()
+        snapshot["failed"] = TransactionalEmail.objects.filter(
+            status=TransactionalEmail.Status.FAILED
+        ).count()
+        snapshot["pending"] = TransactionalEmail.objects.filter(
+            status__in=(TransactionalEmail.Status.PENDING, TransactionalEmail.Status.SENDING)
+        ).count()
+    except Exception:
+        # The health endpoint has to answer even when the database is down.
+        logger.warning("Could not read the email outbox for the status summary.", exc_info=True)
+    return snapshot
+
+
 def _resolve_recipient(to_email):
     test_mode = bool(settings.EMAIL_TEST_MODE)
     if not test_mode:
