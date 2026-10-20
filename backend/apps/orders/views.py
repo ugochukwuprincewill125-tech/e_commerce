@@ -11,7 +11,7 @@ from apps.cart.services import get_cart
 from apps.payments.services import reconcile_order_payments
 from apps.products.models import ProductImage
 
-from .models import Order, OrderItem, OrderStatus, PaymentStatus
+from .models import Order, OrderItem
 from .serializers import (
     CreateOrderSerializer,
     OrderDetailSerializer,
@@ -40,7 +40,7 @@ class OrderViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Crea
          GET  /api/orders/<order_number>/          order details + tracking timeline
          POST /api/orders/<order_number>/cancel/   cancel an unpaid order (stock is released)
          POST /api/orders/<order_number>/refresh-payment/  re-check open Paystack attempts on demand
-         DELETE /api/orders/<order_number>/         delete one of the customer's own orders — only cancelled or delivered ones
+         DELETE /api/orders/<order_number>/         delete one of the customer's own orders — only placed-but-unpaid ones
          GET  /api/orders/<order_number>/receipt/    receipt data for a paid order
     """
 
@@ -81,14 +81,8 @@ class OrderViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Crea
     def destroy(self, request, *args, **kwargs):
         order = self.get_object()
         if not order.can_delete:
-            if order.status == OrderStatus.CANCELLED and order.payment_status == PaymentStatus.PAID:
-                return Response(
-                    {"detail": "This order received a payment after it was cancelled. Contact support so "
-                               "the payment can be refunded before the order is deleted."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
             return Response(
-                {"detail": "Only cancelled or delivered orders can be deleted."},
+                {"detail": "Only orders that have been placed but not yet paid can be deleted."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         delete_order(order)

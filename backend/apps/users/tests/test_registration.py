@@ -13,6 +13,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework import status
+from rest_framework.exceptions import ValidationError
 
 User = get_user_model()
 
@@ -85,3 +86,49 @@ class TestRegistrationRequiredFields:
         resp = api_client.post(register_url, {**VALID, "phone": phone, "email": email}, format="json")
         assert resp.status_code == status.HTTP_201_CREATED, resp.data
         assert User.objects.get(email=email).phone == phone
+
+
+@pytest.mark.django_db
+class TestDuplicateEmail:
+    @pytest.fixture
+    def existing_user(self):
+        return User.objects.create_user(
+            email=VALID["email"],
+            first_name=VALID["first_name"],
+            last_name=VALID["last_name"],
+            password=VALID["password"],
+            phone=VALID["phone"],
+        )
+
+    def test_exact_duplicate_email_is_rejected(self, api_client, register_url, existing_user):
+        resp = api_client.post(register_url, VALID, format="json")
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+        assert "email" in field_errors(resp), resp.data
+        assert User.objects.filter(email__iexact=VALID["email"]).count() == 1
+
+    def test_case_insensitive_duplicate_email_is_rejected(self, api_client, register_url, existing_user):
+        payload = {**VALID, "email": VALID["email"].upper()}
+        resp = api_client.post(register_url, payload, format="json")
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+        assert "email" in field_errors(resp), resp.data
+
+    def test_duplicate_email_error_mentions_using_a_different_email(self, api_client, register_url, existing_user):
+        resp = api_client.post(register_url, VALID, format="json")
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+        errors = field_errors(resp)
+        message = " ".join(errors["email"])
+        assert "different email" in message.lower()
+
+    def test_create_user_raises_validation_error_on_integrity_error(self, existing_user):
+        from apps.users.serializers import RegisterSerializer
+
+        serializer = RegisterSerializer()
+        validated = {
+            "email": existing_user.email,
+            "first_name": "Ada",
+            "last_name": "Okafor",
+            "phone": "08031234567",
+            "password": "StrongPass123!",
+        }
+        with pytest.raises(ValidationError, match="already exists"):
+            serializer.create(validated)

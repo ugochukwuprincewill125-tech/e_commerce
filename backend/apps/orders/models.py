@@ -173,14 +173,10 @@ class Order(TimeStampedModel):
 
     @property
     def can_delete(self):
-        # Customers may only tidy up their history: a cancelled order (its
-        # stock gets released) or a delivered one (fully completed). Anything
-        # still in flight must be cancelled first, never silently deleted.
-        # A cancelled order whose payment landed late (refund pending) keeps
-        # its records until staff resolve the money — see the destroy view.
-        if self.status == OrderStatus.DELIVERED:
-            return True
-        return self.status == OrderStatus.CANCELLED and self.payment_status != PaymentStatus.PAID
+        # Customers can only delete an order that is still "placed" and was
+        # never paid for. Delivered, processing, shipped, cancelled, or
+        # placed-but-paid orders are all locked — contact support.
+        return self.status == OrderStatus.PLACED and not self.is_paid
 
     def formatted_address(self):
         a = self.shipping_address or {}

@@ -91,7 +91,9 @@ class RegisterSerializer(serializers.ModelSerializer):
     def validate_email(self, value):
         value = value.lower()
         if User.objects.filter(email__iexact=value).exists():
-            raise serializers.ValidationError("An account with this email already exists.")
+            raise serializers.ValidationError(
+                "An account with this email already exists. Please use a different email address."
+            )
         return value
 
     def validate(self, attrs):
@@ -102,7 +104,14 @@ class RegisterSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-        return User.objects.create_user(**validated_data)
+        try:
+            return User.objects.create_user(**validated_data)
+        except IntegrityError:
+            # A second request slipped past validate_email before the first
+            # commit landed. Surface the same friendly message rather than a 500.
+            raise serializers.ValidationError(
+                {"email": "An account with this email already exists. Please use a different email address."}
+            )
 
 
 class LoginSerializer(TokenObtainPairSerializer):

@@ -199,15 +199,12 @@ def mark_order_paid(order, reference, note="Payment confirmed via Paystack."):
 def delete_order(order):
     """Permanently remove one of the customer's own orders.
 
-    Only cancelled or delivered orders qualify (the caller checks `can_delete`).
-    A cancelled order may still be holding reserved stock, so it is released
-    first; a delivered order's stock has already left the store — nothing to
-    return. Deleting a delivered order also deletes its payment rows and
-    receipt data, which is exactly the tidy-up the customer asked for.
+    Only placed-but-unpaid orders qualify (the caller checks `can_delete`).
+    Such an order is still holding reserved stock, so it is released first
+    before the rows are removed.
     """
     order = Order.objects.select_for_update().get(pk=order.pk)
-    if order.status == OrderStatus.CANCELLED:
-        restore_stock(order)
+    restore_stock(order)
     order.delete()
 
 
