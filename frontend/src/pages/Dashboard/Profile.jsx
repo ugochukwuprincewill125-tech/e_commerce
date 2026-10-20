@@ -52,7 +52,7 @@ function ProfileForm() {
         if (rememberedEmail.get()) rememberedEmail.set(updated.email)
         toast.success(
           'Email updated',
-          'Check your inbox to verify the new address, then sign in again.',
+          'Check your inbox to verify the new address, then sign in again. If you don’t see it, check your spam folder.',
         )
         // Changing the email un-verifies the account. The old token is no
         // longer accepted, so navigate first and then clear the local session

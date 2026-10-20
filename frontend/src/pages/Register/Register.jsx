@@ -35,7 +35,7 @@ export default function Register() {
     setError('')
     try {
       const data = await signUp(values)
-      toast.success('Account created — check your inbox', data.detail)
+      toast.success('Account created — check your inbox', `${data.detail} If you don't see it, check your spam folder.`)
       const query = new URLSearchParams({ email: values.email })
       if (next && next !== ACCOUNT_HOME) query.set('next', next)
       navigate(`/verify-email?${query.toString()}`, { replace: true })

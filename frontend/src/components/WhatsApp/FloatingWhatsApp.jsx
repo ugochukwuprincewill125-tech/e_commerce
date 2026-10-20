@@ -1,6 +1,6 @@
 import whatsappLogo from '../../assets/whatsapp-logo.png'
 
-const WHATSAPP_NUMBER = '2347062895442'
+const WHATSAPP_NUMBER = '2349130068332'
 const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}`
 
 /**

@@ -176,7 +176,7 @@ export default function Navbar() {
     <>
       {/* Main header */}
       <header className="sticky top-0 z-50 border-b border-line bg-white">
-        <div className="container flex h-16 items-center gap-4 lg:h-[68px] lg:gap-6">
+        <div className="container flex h-16 items-center justify-between gap-4 lg:h-[68px] lg:gap-6 lg:justify-start">
           <button type="button" onClick={openMenu} className="-ml-2 flex h-11 w-11 flex-none items-center justify-center rounded text-ink-900 transition-colors hover:bg-metal-100 lg:hidden" aria-label="Open menu">
             <Menu className="h-5 w-5" strokeWidth={1.75} />
           </button>
@@ -203,7 +203,7 @@ export default function Navbar() {
             ))}
           </nav>
 
-          <div className="ml-auto flex items-center gap-1 sm:gap-3">
+          <div className="flex items-center gap-1 sm:gap-3 lg:ml-auto">
             {/* Product search lives in the header on wide screens only — the
                 tab strip plus the field need the extra room. */}
             <div className="hidden xl:block">
@@ -212,6 +212,9 @@ export default function Navbar() {
             <div className="hidden lg:block">
               <AccountBlock />
             </div>
+            {/* Invisible spacer mirrors the hamburger width so the logo
+                sits centered on mobile. Visible only below `lg`. */}
+            <div className="h-11 w-11 lg:hidden" aria-hidden="true" />
           </div>
         </div>
       </header>
