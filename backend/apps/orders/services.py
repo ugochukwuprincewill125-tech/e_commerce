@@ -11,6 +11,7 @@ from rest_framework.exceptions import ValidationError
 from apps.cart.models import CartItem
 from apps.cart.pricing import calculate_totals
 from apps.notifications.events import (
+    send_new_order_notification,
     send_order_cancelled,
     send_order_confirmation,
     send_payment_confirmation,
@@ -136,6 +137,8 @@ def create_order_from_cart(user, cart, data):
     # The outbox row is part of this transaction, so a rolled-back checkout
     # never produces an order-confirmation email.
     send_order_confirmation(order)
+    # ...and the team gets their own copy, so a new order is never missed.
+    send_new_order_notification(order)
     return order
 
 

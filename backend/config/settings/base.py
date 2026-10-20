@@ -289,6 +289,17 @@ CONTACT_NOTIFICATION_EMAIL = os.getenv(
 ).strip()
 
 # ---------------------------------------------------------------------------
+# Order inbox
+# ---------------------------------------------------------------------------
+# A copy of every new order is emailed here so the team hears about a checkout
+# the moment it happens, without watching the admin dashboard. The customer
+# still gets their own confirmation — this is the second copy, for the store.
+# Set it to an empty value to turn the copy off.
+ORDER_NOTIFICATION_EMAIL = os.getenv(
+    "ORDER_NOTIFICATION_EMAIL", "timelinegadgets4@gmail.com"
+).strip()
+
+# ---------------------------------------------------------------------------
 # Google Sign-In
 # ---------------------------------------------------------------------------
 # The same OAuth web client ID is used by the React app

@@ -229,6 +229,37 @@ def send_order_confirmation(order):
     )
 
 
+def send_new_order_notification(order):
+    """Copy a new order to the team's inbox so staff hear about it right away.
+
+    The customer already receives their own confirmation. This second copy
+    carries the fulfilment details the store needs — who ordered, what, how
+    much and where it goes — so a checkout is never missed.
+    """
+    recipient = (settings.ORDER_NOTIFICATION_EMAIL or "").strip()
+    if not recipient:
+        logger.info(
+            "No ORDER_NOTIFICATION_EMAIL configured; order %s was not copied to the team inbox.",
+            order.order_number,
+        )
+        return None
+    return enqueue_email(
+        template="order_placed_admin",
+        to_email=recipient,
+        to_name="Timeline Gadgets",
+        context={
+            **_order_context(order),
+            "email": order.email,
+            "admin_order_url": f"{settings.FRONTEND_URL}/admin/orders",
+            "customer_phone": order.phone or "Not provided",
+            "preheader": f"New order {order.order_number} from {order.customer_name}.",
+        },
+        idempotency_key=f"order-placed-admin:{order.pk}",
+        event="order.placed_admin",
+        metadata={"order_id": order.pk, "order_number": order.order_number},
+    )
+
+
 def send_payment_confirmation(order, reference):
     context = {
         **_order_context(order),

@@ -1,5 +1,6 @@
 """End-to-end checks: business events produce exactly one correct email."""
 import pytest
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
@@ -86,7 +87,8 @@ class TestOrderEmails:
         assert record.idempotency_key == f"order-confirmation:{order.pk}"
         assert order.order_number in record.subject
         assert "Test Widget" in record.html_body
-        assert len(mailoutbox) == 1
+        # The customer copy and the store copy.
+        assert len(mailoutbox) == 2
 
     def test_payment_confirmation_is_sent_once_per_reference(self, order, mailoutbox, django_capture_on_commit_callbacks):
         with django_capture_on_commit_callbacks(execute=True):
@@ -123,6 +125,69 @@ class TestOrderEmails:
         assert _emails("order_cancelled").count() == 1
         assert "Customer changed their mind." in _emails("order_cancelled").get().html_body
         assert len(mailoutbox) == 1
+
+
+class TestStoreInboxNotifications:
+    """The store keeps its own copy of every new order."""
+
+    def test_a_new_order_is_copied_to_the_store_inbox(self, customer, product, mailoutbox, django_capture_on_commit_callbacks):
+        with django_capture_on_commit_callbacks(execute=True):
+            order = _make_order(customer, product)
+
+        record = _emails("order_placed_admin").get()
+        assert record.idempotency_key == f"order-placed-admin:{order.pk}"
+        assert record.recipient_email == settings.ORDER_NOTIFICATION_EMAIL
+        assert order.order_number in record.subject
+        # The customer gets their own copy as well.
+        assert len(mailoutbox) == 2
+
+    def test_the_store_copy_carries_the_fulfilment_details(self, customer, product, django_capture_on_commit_callbacks):
+        with django_capture_on_commit_callbacks(execute=True):
+            order = _make_order(customer, product)
+
+        record = _emails("order_placed_admin").get()
+        assert order.order_number in record.html_body
+        assert "Test Widget" in record.html_body
+        assert "customer@example.com" in record.html_body
+        assert "08000000000" in record.html_body
+        assert "Main Office" in record.html_body
+        assert "Oremeji Street" in record.html_body
+        assert "/admin/orders" in record.html_body
+        # A plain-text copy is always produced too.
+        assert order.order_number in record.text_body
+        assert "Test Widget" in record.text_body
+
+    def test_the_store_copy_is_sent_once_per_order(self, customer, product, django_capture_on_commit_callbacks):
+        from apps.notifications.events import send_new_order_notification
+
+        with django_capture_on_commit_callbacks(execute=True):
+            order = _make_order(customer, product)
+            send_new_order_notification(order)
+            send_new_order_notification(order)
+
+        assert _emails("order_placed_admin").count() == 1
+
+    def test_no_store_copy_when_the_address_is_not_configured(self, customer, product, settings, django_capture_on_commit_callbacks):
+        settings.ORDER_NOTIFICATION_EMAIL = ""
+
+        with django_capture_on_commit_callbacks(execute=True):
+            _make_order(customer, product)
+
+        assert _emails("order_placed_admin").count() == 0
+        # The customer still receives their own confirmation.
+        assert _emails("order_confirmation").count() == 1
+
+    def test_a_rolled_back_checkout_sends_nothing(self, customer, product, django_capture_on_commit_callbacks):
+        from django.db import transaction
+
+        with django_capture_on_commit_callbacks(execute=True):
+            with pytest.raises(Exception):
+                with transaction.atomic():
+                    _make_order(customer, product)
+                    raise RuntimeError("checkout blew up")
+
+        assert _emails("order_placed_admin").count() == 0
+        assert _emails("order_confirmation").count() == 0
 
 
 class TestRefundEmails:

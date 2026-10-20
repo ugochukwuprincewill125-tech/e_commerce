@@ -38,6 +38,11 @@ TEMPLATE_SPECS = {
         "text": "emails/payment_confirmation.txt",
         "subject": "Payment confirmed for order {{ order_number }}",
     },
+    "order_placed_admin": {
+        "html": "emails/order_placed_admin.html",
+        "text": "emails/order_placed_admin.txt",
+        "subject": "New order {{ order_number }} — {{ total }}",
+    },
     "order_processing": {
         "html": "emails/order_processing.html",
         "text": "emails/order_processing.txt",

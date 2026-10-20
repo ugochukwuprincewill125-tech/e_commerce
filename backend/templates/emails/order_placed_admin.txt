@@ -1,0 +1,21 @@
+{% extends "emails/base_email.txt" %}
+{% block content %}New order received
+
+A customer just placed an order on {{ store_name }}. The details are below so the team can start preparing it right away.
+
+Order: {{ order_number }}
+Placed: {{ order_date }}
+Customer: {{ customer_name }} <{{ email }}>
+Phone: {{ customer_phone }}
+Payment: {{ payment_status }}{% if payment_reference %} ({{ payment_reference }}){% endif %}
+Fulfilment: {% if is_pickup %}Store pickup — {{ pickup_location_label }}{% if pickup_address_lines %} ({{ pickup_address_lines|join:", " }}){% endif %}{% else %}Delivery — {{ delivery_address }}{% endif %}
+{% if customer_note %}Note from the customer: {{ customer_note }}
+{% endif %}
+Items:
+{% include "emails/partials/order_items.txt" %}
+{% include "emails/partials/order_totals.txt" %}
+Open the order in the admin dashboard:
+{{ admin_order_url }}
+
+This message was sent because somebody placed an order on the storefront. To stop receiving it, set ORDER_NOTIFICATION_EMAIL to an empty value on the server.
+{% endblock %}
