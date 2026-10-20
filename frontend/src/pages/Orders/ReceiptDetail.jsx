@@ -70,7 +70,7 @@ export default function ReceiptDetail() {
   return (
     <div className="mx-auto max-w-2xl">
       <div className="mb-6 flex items-center justify-between">
-        <Link to="/account/receipts" className="text-[13px] font-semibold text-metal-500 hover:text-ink-900">
+        <Link to="/account/receipts" className="text-[13px] font-semibold text-metal-500 hover:text-brand-700">
           &larr; All receipts
         </Link>
         <div className="flex gap-2">
@@ -78,7 +78,7 @@ export default function ReceiptDetail() {
             onClick={handleDownload}
             type="button"
             disabled={downloading}
-            className="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-[13px] font-medium text-ink-800 hover:border-ink-900 hover:text-ink-900 disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-[13px] font-medium text-ink-800 hover:border-brand-600 hover:text-brand-700 disabled:opacity-60"
           >
             <Download className="h-4 w-4" strokeWidth={1.75} />
             {downloading ? 'Preparing…' : 'Download PDF'}
@@ -86,7 +86,7 @@ export default function ReceiptDetail() {
           <button
             onClick={handlePrint}
             type="button"
-            className="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-[13px] font-medium text-ink-800 hover:border-ink-900 hover:text-ink-900"
+            className="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-[13px] font-medium text-ink-800 hover:border-brand-600 hover:text-brand-700"
           >
             <Printer className="h-4 w-4" strokeWidth={1.75} />
             Print

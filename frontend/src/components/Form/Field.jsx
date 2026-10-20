@@ -36,7 +36,7 @@ export const Field = forwardRef(function Field({ label, error, hint, className, 
           <button
             type="button"
             onClick={() => setShow((s) => !s)}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1.5 text-metal-400 transition-colors hover:text-ink-900"
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1.5 text-metal-400 transition-colors hover:text-brand-700"
             aria-label={show ? 'Hide password' : 'Show password'}
           >
             {show ? <EyeOff className="h-4 w-4" strokeWidth={1.75} /> : <Eye className="h-4 w-4" strokeWidth={1.75} />}

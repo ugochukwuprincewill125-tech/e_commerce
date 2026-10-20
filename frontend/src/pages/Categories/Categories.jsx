@@ -61,7 +61,7 @@ export default function Categories() {
                         <ul className="mt-2 space-y-1.5 border-l border-line pl-6">
                           {root.children.map((ch) => (
                             <li key={ch.slug}>
-                              <Link to={`/category/${ch.slug}`} className="text-sm text-metal-500 hover:text-ink-900">
+                              <Link to={`/category/${ch.slug}`} className="text-sm text-metal-500 hover:text-brand-700">
                                 {ch.name}
                               </Link>
                             </li>

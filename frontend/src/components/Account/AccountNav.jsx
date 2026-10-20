@@ -86,12 +86,10 @@ export default function AccountNav() {
       'flex items-center gap-2.5 rounded border-l-2 text-[13px] font-medium transition-colors',
       rail ? 'px-3.5 py-2.5' : 'px-3 py-2',
       active
-        ? rail
-          ? 'border-brand-400 bg-white/10 text-white'
-          : 'border-ink-900 bg-ink-900 text-white'
+        ? 'border-brand-400 bg-brand-600 text-white'
         : rail
           ? 'border-transparent text-metal-400 hover:bg-white/5 hover:text-white'
-          : 'border-line bg-white text-metal-600 hover:border-ink-900 hover:text-ink-900',
+          : 'border-line bg-white text-metal-600 hover:border-brand-300 hover:text-brand-700',
     )
 
   return (
@@ -149,7 +147,7 @@ export function AccountRail() {
         <div className="mt-6 border-t border-white/10 pt-4">
           <Link
             to="/shop"
-            className="flex items-center gap-2 rounded border border-white/20 px-3 py-2 text-[13px] font-medium text-white transition-colors hover:border-white hover:bg-white hover:text-ink-900"
+            className="flex items-center gap-2 rounded border border-white/20 px-3 py-2 text-[13px] font-medium text-white transition-colors hover:border-brand-400 hover:bg-brand-600"
           >
             <ArrowLeft className="h-4 w-4 flex-none" strokeWidth={1.75} />
             Back to store

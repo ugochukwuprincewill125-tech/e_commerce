@@ -199,7 +199,7 @@ export default function Checkout() {
         <div className="container py-5">
           <div className="flex items-center justify-between gap-4">
             <h1 className="text-[22px] font-semibold tracking-tight text-ink-900">Checkout</h1>
-            <Link to="/cart" className="flex items-center gap-1.5 text-[13px] font-semibold text-metal-500 transition-colors hover:text-ink-900">
+            <Link to="/cart" className="flex items-center gap-1.5 text-[13px] font-semibold text-metal-500 transition-colors hover:text-brand-700">
               <ArrowLeft className="h-4 w-4" strokeWidth={1.75} /> Back to cart
             </Link>
           </div>
@@ -257,7 +257,7 @@ export default function Checkout() {
                           type="button"
                           onClick={() => setPrefs({ delivery_method: value })}
                           aria-pressed={deliveryMethod === value}
-                          className={cn('flex items-start gap-3 rounded-md border p-3.5 text-left transition-colors', deliveryMethod === value ? 'border-brand-600 bg-brand-50' : 'border-line bg-white hover:border-ink-900')}
+                          className={cn('flex items-start gap-3 rounded-md border p-3.5 text-left transition-colors', deliveryMethod === value ? 'border-brand-600 bg-brand-50' : 'border-line bg-white hover:border-brand-600')}
                         >
                           <Icon className="mt-0.5 h-4 w-4 flex-none text-brand-600" strokeWidth={1.75} />
                           <span>
@@ -286,7 +286,7 @@ export default function Checkout() {
                                     type="button"
                                     onClick={() => applyAddress(a)}
                                     aria-pressed={values.address === a.address}
-                                    className={cn('rounded border p-2.5 text-left text-xs transition-colors hover:border-ink-900', values.address === a.address ? 'border-brand-600 bg-brand-50' : 'border-line bg-white')}
+                                    className={cn('rounded border p-2.5 text-left text-xs transition-colors hover:border-brand-600', values.address === a.address ? 'border-brand-600 bg-brand-50' : 'border-line bg-white')}
                                   >
                                     <span className="flex items-center gap-1.5 font-semibold text-ink-900">
                                       <MapPin className="h-3.5 w-3.5 flex-none text-brand-600" strokeWidth={1.75} /> {a.label || `${a.first_name} ${a.last_name}`}
@@ -333,7 +333,7 @@ export default function Checkout() {
                         <legend className="label">Choose pickup location</legend>
                         <div className="grid gap-3 sm:grid-cols-2">
                           {company.locations.map((loc) => (
-                            <label key={loc.id} className={cn('cursor-pointer rounded-md border p-3.5 text-[13px] transition-colors', pickupLocation === loc.id ? 'border-brand-600 bg-brand-50' : 'border-line bg-white hover:border-ink-900')}>
+                            <label key={loc.id} className={cn('cursor-pointer rounded-md border p-3.5 text-[13px] transition-colors', pickupLocation === loc.id ? 'border-brand-600 bg-brand-50' : 'border-line bg-white hover:border-brand-600')}>
                               <input type="radio" value={loc.id} className="sr-only" {...register('pickup_location')} />
                               <span className="block text-[13px] font-semibold text-ink-900">{loc.label}</span>
                               <span className="mt-1 block text-xs leading-relaxed text-metal-500">{loc.lines.join(' ')}</span>

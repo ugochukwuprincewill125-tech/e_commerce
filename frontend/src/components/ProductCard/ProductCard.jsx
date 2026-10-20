@@ -79,7 +79,7 @@ function ProductCard({ product, onQuickView, priority = false, requireAuth = fal
                 e.preventDefault()
                 onQuickView(product)
               }}
-              className="flex w-full items-center justify-center gap-1.5 rounded border border-line-strong bg-white py-1.5 text-[11px] font-semibold text-ink-900 transition-colors hover:border-ink-900 hover:bg-ink-900 hover:text-white"
+              className="flex w-full items-center justify-center gap-1.5 rounded border border-line-strong bg-white py-1.5 text-[11px] font-semibold text-ink-900 transition-colors hover:border-brand-600 hover:bg-brand-600 hover:text-white"
             >
               <Eye className="h-3.5 w-3.5" aria-hidden /> Quick view
             </button>

@@ -111,7 +111,7 @@ export default function SearchBar({ className, autoFocus = false, onNavigate, sc
             <LoaderCircle className="absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-metal-400" />
           ) : (
             q && (
-              <button type="button" onClick={() => setQ('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-metal-400 hover:text-ink-900" aria-label="Clear search">
+              <button type="button" onClick={() => setQ('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-metal-400 hover:text-brand-700" aria-label="Clear search">
                 <X className="h-4 w-4" strokeWidth={1.75} />
               </button>
             )
@@ -147,7 +147,7 @@ export default function SearchBar({ className, autoFocus = false, onNavigate, sc
                         key={c.slug}
                         type="button"
                         onClick={() => go(`/category/${c.slug}`)}
-                        className="rounded border border-line px-2.5 py-1 text-xs font-medium text-metal-600 transition-colors hover:border-ink-900 hover:text-ink-900"
+                        className="rounded border border-line px-2.5 py-1 text-xs font-medium text-metal-600 transition-colors hover:border-brand-600 hover:text-brand-700"
                       >
                         {c.name}
                       </button>
@@ -157,7 +157,7 @@ export default function SearchBar({ className, autoFocus = false, onNavigate, sc
                         key={b.slug}
                         type="button"
                         onClick={() => go(`/brands/${b.slug}`)}
-                        className="rounded border border-line px-2.5 py-1 text-xs font-medium text-metal-600 transition-colors hover:border-ink-900 hover:text-ink-900"
+                        className="rounded border border-line px-2.5 py-1 text-xs font-medium text-metal-600 transition-colors hover:border-brand-600 hover:text-brand-700"
                       >
                         {b.name}
                       </button>

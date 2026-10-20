@@ -167,8 +167,11 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Django REST Framework
 # ---------------------------------------------------------------------------
 REST_FRAMEWORK = {
+    # Rejects JWTs belonging to accounts that have not confirmed their email.
+    # Staff are exempt so an admin created in Django admin cannot lock
+    # themselves out of the management area.
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "apps.users.authentication.VerifiedEmailJWTAuthentication",
     ),
     # Secure by default: every endpoint requires auth unless a view explicitly
     # opts out with permission_classes = [AllowAny]. Public storefront reads
@@ -268,6 +271,29 @@ EMAIL_TEST_RECIPIENT = os.getenv("EMAIL_TEST_RECIPIENT", "").strip()
 EMAIL_MAX_ATTEMPTS = max(1, int(os.getenv("EMAIL_MAX_ATTEMPTS", "5")))
 EMAIL_IMMEDIATE_ATTEMPTS = max(1, int(os.getenv("EMAIL_IMMEDIATE_ATTEMPTS", "2")))
 EMAIL_RETRY_AFTER_MINUTES = max(1, int(os.getenv("EMAIL_RETRY_AFTER_MINUTES", "10")))
+
+# ---------------------------------------------------------------------------
+# Contact inbox
+# ---------------------------------------------------------------------------
+# Every message submitted through the storefront contact form is stored in the
+# admin Messages inbox and a copy is emailed here. Keep this address private:
+# it is only read by the server.
+CONTACT_NOTIFICATION_EMAIL = os.getenv(
+    "CONTACT_NOTIFICATION_EMAIL", "timelinegadgets4@gmail.com"
+).strip()
+
+# ---------------------------------------------------------------------------
+# Google Sign-In
+# ---------------------------------------------------------------------------
+# The same OAuth web client ID is used by the React app
+# (VITE_GOOGLE_CLIENT_ID) and by the backend to validate the ID token's `aud`
+# claim. Create it under Google Cloud Console -> APIs & Services -> Credentials
+# and add the storefront origins to "Authorised JavaScript origins".
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "").strip()
+GOOGLE_TOKENINFO_URL = os.getenv(
+    "GOOGLE_TOKENINFO_URL", "https://oauth2.googleapis.com/tokeninfo"
+).rstrip("/")
+GOOGLE_API_TIMEOUT = int(os.getenv("GOOGLE_API_TIMEOUT", "10"))
 
 # ---------------------------------------------------------------------------
 # Store configuration

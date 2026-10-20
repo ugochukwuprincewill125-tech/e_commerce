@@ -1,0 +1,19 @@
+User-agent: *
+Allow: /
+
+# Private or transactional areas with no search value.
+Disallow: /account
+Disallow: /account/
+Disallow: /admin
+Disallow: /admin/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /payment
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /verify-email
+Disallow: /wishlist
+
+Sitemap: https://timelinegadgets.com/sitemap.xml

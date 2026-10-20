@@ -25,8 +25,8 @@ export default function WishlistButton({ product, className, size = 'md', withLa
       className={cn(
         'relative inline-flex items-center justify-center rounded transition-colors',
         withLabel
-          ? 'h-11 gap-2 border border-line-strong bg-white px-4 text-[13px] font-semibold text-ink-900 hover:border-ink-900'
-          : cn(dim, 'border border-line bg-white text-ink-800 hover:border-ink-900 hover:text-ink-900'),
+          ? 'h-11 gap-2 border border-line-strong bg-white px-4 text-[13px] font-semibold text-ink-900 hover:border-brand-600 hover:text-brand-700'
+          : cn(dim, 'border border-line bg-white text-ink-800 hover:border-brand-600 hover:text-brand-700'),
         className,
       )}
     >

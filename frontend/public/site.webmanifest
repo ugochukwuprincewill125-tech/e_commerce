@@ -1,0 +1,17 @@
+{
+  "name": "Timeline Gadgets — Home of Quality Gadgets",
+  "short_name": "Timeline Gadgets",
+  "description": "Quality phones, laptops, audio, storage, networking and accessories from Computer Village, Ikeja, Lagos.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#C8102E",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "1254x1254",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

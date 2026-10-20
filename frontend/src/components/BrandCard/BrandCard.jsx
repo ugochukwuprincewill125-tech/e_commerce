@@ -9,7 +9,7 @@ export default function BrandCard({ brand }) {
   return (
     <Link
       to={`/brands/${brand.slug}`}
-      className="group flex h-full flex-col rounded-lg border border-line bg-white p-5 transition-colors hover:border-ink-900"
+      className="group flex h-full flex-col rounded-lg border border-line bg-white p-5 transition-colors hover:border-brand-600"
     >
       <div className="flex h-12 items-center border-b border-line pb-4">
         <span className="font-display text-lg font-semibold tracking-tight text-ink-900">{brand.name}</span>

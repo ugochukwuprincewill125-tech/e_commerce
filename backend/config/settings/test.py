@@ -10,7 +10,7 @@ DATABASES = {
 
 REST_FRAMEWORK["DEFAULT_THROTTLE_CLASSES"] = ()  # noqa: F405
 REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"] = (  # noqa: F405
-    "rest_framework_simplejwt.authentication.JWTAuthentication",
+    "apps.users.authentication.VerifiedEmailJWTAuthentication",
     "rest_framework.authentication.SessionAuthentication",
 )
 

@@ -214,7 +214,7 @@ export default function Shop() {
                     key={`${chip.key}-${chip.value}`}
                     type="button"
                     onClick={() => removeChip(chip)}
-                    className="inline-flex items-center gap-1.5 rounded border border-line-strong bg-white py-1 pl-2.5 pr-1.5 text-xs font-medium text-ink-800 transition-colors hover:border-ink-900"
+                    className="inline-flex items-center gap-1.5 rounded border border-line-strong bg-white py-1 pl-2.5 pr-1.5 text-xs font-medium text-ink-800 transition-colors hover:border-brand-600 hover:text-brand-700"
                   >
                     {chip.label} <X className="h-3.5 w-3.5" aria-label="Remove filter" />
                   </motion.button>

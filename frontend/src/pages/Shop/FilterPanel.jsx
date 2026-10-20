@@ -139,7 +139,7 @@ export default function FilterPanel({ facets, params, setParam, toggleListParam,
                 key={p.label}
                 type="button"
                 onClick={() => setParam({ min_price: p.min, max_price: p.max })}
-                className={cn('rounded-full border px-3 py-1.5 text-xs font-medium transition', active ? 'border-ink-900 bg-ink-900 text-white' : 'border-metal-200 hover:border-ink-900')}
+                className={cn('rounded-full border px-3 py-1.5 text-xs font-medium transition', active ? 'border-brand-600 bg-brand-600 text-white' : 'border-metal-200 hover:border-brand-600 hover:text-brand-700')}
               >
                 {p.label}
               </button>

@@ -264,7 +264,7 @@ export function SearchOverlay({ open, onClose }) {
                   key={t}
                   to={`/shop?q=${encodeURIComponent(t)}`}
                   onClick={onClose}
-                  className="rounded border border-line px-2.5 py-1 text-xs font-medium text-metal-600 transition-colors hover:border-ink-900 hover:text-ink-900"
+                  className="rounded border border-line px-2.5 py-1 text-xs font-medium text-metal-600 transition-colors hover:border-brand-600 hover:text-brand-700"
                 >
                   {t}
                 </Link>

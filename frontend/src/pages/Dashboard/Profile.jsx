@@ -1,17 +1,19 @@
 import { Camera, Trash2 } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { useNavigate } from 'react-router-dom'
 
 import Button from '../../components/Button/Button'
 import { Field, FormAlert } from '../../components/Form/Field'
 import { useAuth } from '../../context/AuthContext'
 import { useToast } from '../../context/ToastContext'
 import useConfirmAction from '../../hooks/useConfirmAction'
-import { errorMessage, fieldErrors } from '../../services/api'
+import { errorMessage, fieldErrors, rememberedEmail } from '../../services/api'
 import { authService } from '../../services/authService'
 
 function ProfileForm() {
-  const { user, setUser } = useAuth()
+  const { user, setUser, logout } = useAuth()
+  const navigate = useNavigate()
   const toast = useToast()
   const confirm = useConfirmAction()
   const fileRef = useRef(null)
@@ -44,9 +46,24 @@ function ProfileForm() {
     if (removeImage) form.append('remove_profile_image', 'true')
     try {
       const updated = await authService.updateProfile(form)
-      setUser(updated)
       setFile(null)
-      toast.success('Profile updated', updated.email !== user.email ? 'Check your inbox to verify your new email address.' : undefined)
+
+      if (updated.email !== user.email) {
+        if (rememberedEmail.get()) rememberedEmail.set(updated.email)
+        toast.success(
+          'Email updated',
+          'Check your inbox to verify the new address, then sign in again.',
+        )
+        // Changing the email un-verifies the account. The old token is no
+        // longer accepted, so navigate first and then clear the local session
+        // without asking the server to revoke a token it will reject.
+        navigate(`/verify-email?email=${encodeURIComponent(updated.email)}`, { replace: true })
+        await logout({ remote: false })
+        return
+      }
+
+      setUser(updated)
+      toast.success('Profile updated')
     } catch (err) {
       const fe = fieldErrors(err)
       Object.entries(fe).forEach(([k, v]) => setFieldError(k, { message: v }))

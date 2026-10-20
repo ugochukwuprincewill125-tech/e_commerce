@@ -21,9 +21,9 @@ export default function CategoryCard({ category, variant = 'tile', className }) 
     return (
       <Link
         to={`/category/${category.slug}`}
-        className={cn('group flex items-center gap-3 rounded border border-line bg-white p-3 transition-colors hover:border-ink-900', className)}
+        className={cn('group flex items-center gap-3 rounded border border-line bg-white p-3 transition-colors hover:border-brand-600', className)}
       >
-        <span className="flex h-10 w-10 flex-none items-center justify-center rounded bg-metal-100 text-ink-900 transition-colors group-hover:bg-ink-900 group-hover:text-white">
+        <span className="flex h-10 w-10 flex-none items-center justify-center rounded bg-metal-100 text-ink-900 transition-colors group-hover:bg-brand-600 group-hover:text-white">
           <Icon className="h-5 w-5" strokeWidth={1.75} />
         </span>
         <span className="min-w-0">

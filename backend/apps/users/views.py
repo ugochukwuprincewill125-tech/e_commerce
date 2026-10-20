@@ -12,6 +12,7 @@ from .serializers import (
     AddressSerializer,
     ChangePasswordSerializer,
     EmailSerializer,
+    GoogleAuthSerializer,
     LoginSerializer,
     LogoutSerializer,
     PasswordResetConfirmSerializer,
@@ -40,11 +41,13 @@ class RegisterView(generics.CreateAPIView):
         user = serializer.save()
         send_welcome_email(user)
         send_verification_email(user)
+        # Deliberately no tokens here. The customer must open the verification
+        # link and sign in afterwards, so an unverified account can never reach
+        # the dashboard by refreshing the registration response.
         return Response(
             {
-                "detail": "Account created. We've sent you a welcome email and a verification link.",
+                "detail": "Account created. Check your inbox and verify your email address, then sign in.",
                 "user": UserSerializer(user, context={"request": request}).data,
-                **tokens_for(user),
             },
             status=status.HTTP_201_CREATED,
         )
@@ -53,6 +56,27 @@ class RegisterView(generics.CreateAPIView):
 class LoginView(TokenObtainPairView):
     serializer_class = LoginSerializer
     throttle_scope = "auth"
+
+
+class GoogleAuthView(APIView):
+    """Sign in (or sign up) with a Google Identity Services credential."""
+
+    permission_classes = [permissions.AllowAny]
+    throttle_scope = "auth"
+
+    def post(self, request):
+        serializer = GoogleAuthSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data["user"]
+        created = serializer.validated_data["created"]
+        return Response(
+            {
+                "detail": "Account created with Google." if created else "Signed in with Google.",
+                "user": UserSerializer(user, context={"request": request}).data,
+                **tokens_for(user),
+            },
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
 
 
 class RefreshView(TokenRefreshView):
@@ -86,14 +110,35 @@ class VerifyEmailView(APIView):
 
 
 class ResendVerificationView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    """Public resend endpoint.
+
+    It has to be public because the whole point of verification is that the
+    account cannot sign in before it is verified. The response never reveals
+    whether an address exists (or is already verified), so it cannot be used to
+    enumerate customer accounts.
+    """
+
+    permission_classes = [permissions.AllowAny]
     throttle_scope = "auth"
 
     def post(self, request):
-        if request.user.email_verified:
-            return Response({"detail": "Your email is already verified."})
-        send_verification_email(request.user)
-        return Response({"detail": "A new verification link has been sent to your email."})
+        email = (request.data.get("email") or "").strip()
+        if not email and request.user.is_authenticated:
+            email = request.user.email
+
+        if email:
+            user = User.objects.filter(email__iexact=email, is_active=True).first()
+            if user and not user.email_verified:
+                send_verification_email(user)
+
+        return Response(
+            {
+                "detail": (
+                    "If that email address still needs verification, "
+                    "a new link is on its way."
+                )
+            }
+        )
 
 
 class PasswordResetRequestView(APIView):

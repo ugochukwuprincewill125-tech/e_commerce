@@ -1,15 +1,21 @@
 import api, { tokens } from './api'
 
 export const authService = {
-  async login(email, password) {
+  async login(email, password, remember = false) {
     const { data } = await api.post('/auth/login/', { email, password })
-    tokens.set({ access: data.access, refresh: data.refresh })
+    tokens.set({ access: data.access, refresh: data.refresh, remember })
     return data.user
   },
   async register(payload) {
+    // Registration deliberately returns no session: the account must verify
+    // its email address before the customer can sign in.
     const { data } = await api.post('/auth/register/', payload)
-    tokens.set({ access: data.access, refresh: data.refresh })
     return data
+  },
+  async googleLogin(credential, remember = false) {
+    const { data } = await api.post('/auth/google/', { credential })
+    tokens.set({ access: data.access, refresh: data.refresh, remember })
+    return data.user
   },
   async logout() {
     const refresh = tokens.refresh
@@ -34,7 +40,8 @@ export const authService = {
   forgotPassword: (email) => api.post('/auth/password-reset/', { email }).then((r) => r.data),
   resetPassword: (payload) => api.post('/auth/password-reset/confirm/', payload).then((r) => r.data),
   verifyEmail: (uid, token) => api.post('/auth/verify-email/', { uid, token }).then((r) => r.data),
-  resendVerification: () => api.post('/auth/resend-verification/').then((r) => r.data),
+  resendVerification: (email) =>
+    api.post('/auth/resend-verification/', email ? { email } : {}).then((r) => r.data),
 }
 
 export const userService = {

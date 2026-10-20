@@ -40,20 +40,31 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener('tgs:logout', onForcedLogout)
   }, [queryClient])
 
-  const login = useCallback(async (email, password) => {
-    const me = await authService.login(email, password)
+  const login = useCallback(async (email, password, remember = false) => {
+    const me = await authService.login(email, password, remember)
     setUser(me)
     return me
   }, [])
 
   const register = useCallback(async (payload) => {
-    const data = await authService.register(payload)
-    setUser(data.user)
-    return data
+    // New accounts are signed out until their email is verified. Do not put
+    // `data.user` in the auth context — that would make the guest-only route
+    // send them straight to a dashboard they cannot access yet.
+    return authService.register(payload)
   }, [])
 
-  const logout = useCallback(async () => {
-    await authService.logout().catch(() => {})
+  const googleLogin = useCallback(async (credential, remember = false) => {
+    const me = await authService.googleLogin(credential, remember)
+    setUser(me)
+    return me
+  }, [])
+
+  const logout = useCallback(async ({ remote = true } = {}) => {
+    // `remote: false` is for cases where the current token is no longer
+    // accepted (for example after changing an email, which un-verifies the
+    // account). It clears the local session without provoking a server 401.
+    if (remote) await authService.logout().catch(() => {})
+    else tokens.clear()
     setUser(null)
     // Drop every cache scoped to the account so the next user (or guest) can
     // never see stale orders, addresses, dashboard totals or wishlist data.
@@ -69,8 +80,8 @@ export function AuthProvider({ children }) {
   }, [])
 
   const value = useMemo(
-    () => ({ user, setUser, isAuthenticated: Boolean(user), initialising, login, register, logout, refreshUser }),
-    [user, initialising, login, register, logout, refreshUser],
+    () => ({ user, setUser, isAuthenticated: Boolean(user), initialising, login, googleLogin, register, logout, refreshUser }),
+    [user, initialising, login, googleLogin, register, logout, refreshUser],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

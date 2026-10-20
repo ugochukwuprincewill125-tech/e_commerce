@@ -52,7 +52,7 @@
     -webkit-appearance: none;
   }
   ::selection {
-    @apply bg-ink-900 text-white;
+    @apply bg-brand-600 text-white;
   }
   @media (prefers-reduced-motion: reduce) {
     html {
@@ -70,23 +70,23 @@
 
 @layer components {
   /* ---------------------------------------------------------------------
-     Buttons — square-ish, solid fills, no glow. Hierarchy comes from fill
-     weight (ink > brand > outline > ghost), never from gradients.
+     Buttons — square-ish, solid fills, no glow. The brand red is the primary
+     action colour; ink is reserved for dark chrome rather than buttons.
      ------------------------------------------------------------------- */
   .btn {
     @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-md border border-transparent px-4 py-2.5 text-sm font-semibold leading-none transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50;
   }
   .btn-primary {
-    @apply btn bg-ink-900 text-white hover:bg-ink-800;
+    @apply btn bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800;
   }
   .btn-accent {
-    @apply btn bg-brand-600 text-white hover:bg-brand-700;
+    @apply btn bg-brand-700 text-white hover:bg-brand-800;
   }
   .btn-outline {
-    @apply btn border-line-strong bg-white text-ink-900 hover:border-ink-900 hover:bg-metal-50;
+    @apply btn border-line-strong bg-white text-ink-900 hover:border-brand-600 hover:bg-brand-50 hover:text-brand-700;
   }
   .btn-ghost {
-    @apply btn text-ink-800 hover:bg-metal-100;
+    @apply btn text-ink-800 hover:bg-brand-50 hover:text-brand-700;
   }
   .btn-inverse {
     @apply btn border border-white/25 bg-transparent text-white hover:border-white hover:bg-white hover:text-ink-900;
@@ -118,7 +118,7 @@
     @apply mt-1.5 text-xs leading-relaxed text-metal-500;
   }
    .input {
-     @apply block w-full rounded-md border-line bg-white px-3.5 py-2.5 text-base text-ink-900 shadow-none transition-colors placeholder:text-metal-400 focus:border-ink-900 focus:ring-0 sm:text-sm;
+     @apply block w-full rounded-md border-line bg-white px-3.5 py-2.5 text-base text-ink-900 shadow-none transition-colors placeholder:text-metal-400 focus:border-brand-600 focus:ring-0 sm:text-sm;
    }
   .input-error {
     @apply border-danger focus:border-danger;

@@ -10,6 +10,17 @@ export default function ProtectedRoute({ children }) {
   const location = useLocation()
   if (initialising) return <PageLoader />
   if (!user) return <Navigate to={withNext(currentTarget(location))} replace />
+  // Defence in depth: a stale token or an email change can surface an
+  // unverified profile in the client. Never render customer-only pages for it.
+  // Staff keep access to the separately guarded /admin area.
+  if (!user.email_verified) {
+    return (
+      <Navigate
+        to={`/verify-email?email=${encodeURIComponent(user.email || '')}`}
+        replace
+      />
+    )
+  }
   return children
 }
 

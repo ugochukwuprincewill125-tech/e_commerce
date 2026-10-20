@@ -23,7 +23,7 @@ export default function VariantPicker({ variants, value, onChange }) {
               aria-pressed={active}
               className={cn(
                 'relative flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-sm font-medium transition',
-                active ? 'border-ink-900 bg-ink-900 text-white' : 'border-metal-200 bg-white text-ink-900 hover:border-ink-900',
+                active ? 'border-brand-600 bg-brand-600 text-white' : 'border-metal-200 bg-white text-ink-900 hover:border-brand-600 hover:text-brand-700',
                 disabled && 'cursor-not-allowed opacity-40 line-through',
               )}
             >

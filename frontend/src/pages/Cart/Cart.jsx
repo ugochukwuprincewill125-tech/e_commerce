@@ -180,7 +180,7 @@ export default function Cart() {
                       'flex flex-col items-center gap-1.5 rounded border px-3 py-2.5 text-[12px] font-medium transition-colors',
                       prefs.delivery_method === value
                         ? 'border-brand-600 bg-brand-50 text-brand-700'
-                        : 'border-line bg-white text-metal-600 hover:border-ink-900 hover:text-ink-900',
+                        : 'border-line bg-white text-metal-600 hover:border-brand-600 hover:text-brand-700',
                     )}
                   >
                     <Icon className="h-4 w-4" strokeWidth={1.75} />

@@ -1,15 +1,25 @@
+import logging
+import time
+
+import requests
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
+from django.db import IntegrityError, transaction
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
 from rest_framework import serializers
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from .models import Address
 from .tokens import email_verification_token
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
+
+GOOGLE_ISSUERS = {"accounts.google.com", "https://accounts.google.com"}
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -101,8 +111,174 @@ class LoginSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         attrs[self.username_field] = attrs.get(self.username_field, "").lower()
         data = super().validate(attrs)
+        if not self.user.email_verified and not self.user.is_staff:
+            raise AuthenticationFailed(
+                {
+                    "detail": (
+                        "Please verify your email address before signing in. "
+                        "We can send you a new verification link."
+                    ),
+                    "code": "email_not_verified",
+                }
+            )
         data["user"] = UserSerializer(self.user, context=self.context).data
         return data
+
+
+def _google_profile(credential):
+    """Validate a Google ID token and return its claims.
+
+    Google's tokeninfo endpoint verifies the signature and expiry server-side.
+    We additionally pin the audience, issuer and verified-email claim so a
+    token minted for another application can never sign a customer in here.
+    """
+    if not settings.GOOGLE_CLIENT_ID:
+        raise serializers.ValidationError(
+            "Google sign-in is not configured yet. Please use email and password."
+        )
+
+    try:
+        response = requests.get(
+            settings.GOOGLE_TOKENINFO_URL,
+            params={"id_token": credential},
+            timeout=settings.GOOGLE_API_TIMEOUT,
+        )
+    except requests.RequestException:
+        logger.warning("Google token verification request failed (network error).")
+        raise serializers.ValidationError(
+            "Google sign-in is temporarily unavailable. Please try again."
+        ) from None
+
+    if response.status_code != 200:
+        raise serializers.ValidationError(
+            "Google could not verify this sign-in. Please try again."
+        )
+
+    try:
+        payload = response.json()
+    except ValueError:
+        raise serializers.ValidationError(
+            "Google could not verify this sign-in. Please try again."
+        ) from None
+
+    if payload.get("aud") != settings.GOOGLE_CLIENT_ID:
+        logger.warning("Google token audience did not match GOOGLE_CLIENT_ID.")
+        raise serializers.ValidationError("This Google sign-in was not issued for this site.")
+
+    if payload.get("iss") not in GOOGLE_ISSUERS:
+        raise serializers.ValidationError("This Google sign-in is not valid.")
+
+    verified = payload.get("email_verified")
+    if verified is not True and str(verified).lower() not in {"true", "1"}:
+        raise serializers.ValidationError(
+            "Google has not verified this email address. Verify it with Google first."
+        )
+
+    if not payload.get("email") or not payload.get("sub"):
+        raise serializers.ValidationError("Google did not return an email address for this account.")
+
+    try:
+        expired = int(payload.get("exp", 0)) <= int(time.time())
+    except (TypeError, ValueError):
+        expired = True
+    if expired:
+        raise serializers.ValidationError("This Google sign-in has expired. Please try again.")
+
+    return payload
+
+
+class GoogleAuthSerializer(serializers.Serializer):
+    """Exchange a Google Identity Services credential for our own JWT pair."""
+
+    credential = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        profile = _google_profile(attrs["credential"])
+        email = profile["email"].strip().lower()
+        sub = str(profile["sub"])
+
+        given_name = (profile.get("given_name") or "").strip()
+        family_name = (profile.get("family_name") or "").strip()
+        if not given_name or not family_name:
+            parts = (profile.get("name") or "").strip().split()
+            given_name = given_name or (parts[0] if parts else "Customer")
+            family_name = family_name or (" ".join(parts[1:]) if len(parts) > 1 else "Account")
+
+        created = False
+        try:
+            with transaction.atomic():
+                # Match the stable Google subject first. Looking up by email
+                # alone would orphan the account if the customer changes their
+                # Google address and then collide with the unique google_sub.
+                user = User.objects.select_for_update().filter(google_sub=sub).first()
+                if user is None:
+                    user = User.objects.select_for_update().filter(email__iexact=email).first()
+
+                if user is None:
+                    user = User.objects.create_user(
+                        email=email,
+                        first_name=given_name[:80],
+                        last_name=family_name[:80],
+                        email_verified=True,
+                        google_sub=sub,
+                    )
+                    created = True
+                else:
+                    if not user.is_active:
+                        raise AuthenticationFailed(
+                            "This account has been disabled. Please contact support.",
+                            code="account_disabled",
+                        )
+                    if user.google_sub and user.google_sub != sub:
+                        raise AuthenticationFailed(
+                            "This email is linked to a different Google account. "
+                            "Sign in with your password instead.",
+                            code="google_account_mismatch",
+                        )
+
+                    update_fields = []
+                    if not user.google_sub:
+                        user.google_sub = sub
+                        update_fields.append("google_sub")
+                    if user.email.lower() != email:
+                        if (
+                            User.objects.exclude(pk=user.pk)
+                            .filter(email__iexact=email)
+                            .exists()
+                        ):
+                            raise AuthenticationFailed(
+                                "Another account already uses this email address.",
+                                code="email_in_use",
+                            )
+                        user.email = email
+                        update_fields.append("email")
+                    if not user.email_verified:
+                        # Google has already confirmed ownership of the address.
+                        user.email_verified = True
+                        update_fields.append("email_verified")
+                    if not user.first_name:
+                        user.first_name = given_name[:80]
+                        update_fields.append("first_name")
+                    if not user.last_name:
+                        user.last_name = family_name[:80]
+                        update_fields.append("last_name")
+                    if update_fields:
+                        user.save(update_fields=update_fields)
+
+                if created:
+                    from .emails import send_welcome_email
+
+                    send_welcome_email(user)
+        except IntegrityError:
+            # Two simultaneous first sign-ins for the same Google account (or
+            # an email that was claimed between our lookup and the insert).
+            raise serializers.ValidationError(
+                "Google sign-in could not be completed. Please try again."
+            ) from None
+
+        attrs["user"] = user
+        attrs["created"] = created
+        return attrs
 
 
 class LogoutSerializer(serializers.Serializer):

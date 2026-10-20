@@ -16,26 +16,50 @@ if (import.meta.env.PROD && !import.meta.env.VITE_API_URL) {
 const ACCESS_KEY = 'tgs_access'
 const REFRESH_KEY = 'tgs_refresh'
 const CART_KEY = 'tgs_cart_session'
+const REMEMBER_KEY = 'tgs_remember_email'
 
 /* ---------------------------- token storage ----------------------------- */
-function safeGet(key) {
+function safeGet(key, storage = window.localStorage) {
   try {
-    return window.localStorage.getItem(key)
+    return storage.getItem(key)
   } catch {
     return null
   }
 }
-function safeSet(key, value) {
+function safeSet(key, value, storage = window.localStorage) {
   try {
-    if (value) window.localStorage.setItem(key, value)
-    else window.localStorage.removeItem(key)
+    if (value) storage.setItem(key, value)
+    else storage.removeItem(key)
   } catch {
     /* storage unavailable (private mode) — keep working in memory */
   }
 }
 
-let accessToken = safeGet(ACCESS_KEY)
-let refreshToken = safeGet(REFRESH_KEY)
+function readToken(key) {
+  try {
+    const persistent = window.localStorage.getItem(key)
+    if (persistent !== null) return { value: persistent, remember: true }
+    const session = window.sessionStorage.getItem(key)
+    if (session !== null) return { value: session, remember: false }
+  } catch {
+    /* storage unavailable */
+  }
+  return { value: null, remember: null }
+}
+
+const storedAccess = readToken(ACCESS_KEY)
+const storedRefresh = readToken(REFRESH_KEY)
+let accessToken = storedAccess.value
+let refreshToken = storedRefresh.value
+// Tokens created before this flag existed are persistent. A session chosen at
+// sign-in is preserved across refresh-token rotation because `set` only
+// changes the mode when `remember` is explicitly supplied.
+let rememberTokens = storedAccess.remember ?? storedRefresh.remember ?? true
+
+function writeToken(key, value) {
+  safeSet(key, rememberTokens ? value : null, window.localStorage)
+  safeSet(key, rememberTokens ? null : value, window.sessionStorage)
+}
 
 export const tokens = {
   get access() {
@@ -44,21 +68,37 @@ export const tokens = {
   get refresh() {
     return refreshToken
   },
-  set({ access, refresh }) {
+  set({ access, refresh, remember }) {
+    if (remember !== undefined) rememberTokens = Boolean(remember)
     if (access !== undefined) {
       accessToken = access
-      safeSet(ACCESS_KEY, access)
+      writeToken(ACCESS_KEY, access)
     }
     if (refresh !== undefined) {
       refreshToken = refresh
-      safeSet(REFRESH_KEY, refresh)
+      writeToken(REFRESH_KEY, refresh)
     }
   },
   clear() {
     accessToken = null
     refreshToken = null
-    safeSet(ACCESS_KEY, null)
-    safeSet(REFRESH_KEY, null)
+    safeSet(ACCESS_KEY, null, window.localStorage)
+    safeSet(REFRESH_KEY, null, window.localStorage)
+    safeSet(ACCESS_KEY, null, window.sessionStorage)
+    safeSet(REFRESH_KEY, null, window.sessionStorage)
+  },
+}
+
+/** The email address remembered on this device (never the password). */
+export const rememberedEmail = {
+  get() {
+    return safeGet(REMEMBER_KEY) || ''
+  },
+  set(email) {
+    safeSet(REMEMBER_KEY, email)
+  },
+  clear() {
+    safeSet(REMEMBER_KEY, null)
   },
 }
 

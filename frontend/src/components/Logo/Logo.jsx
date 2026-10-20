@@ -5,18 +5,14 @@ import useHomeLink from '../../hooks/useHomeLink'
 import { cn } from '../../utils/format'
 
 /**
- * Official Timeline Gadgets logo.
+ * Official Timeline Gadgets app mark.
  *
- * Put the supplied logo files in /public/brand (see README.txt there):
- *   timeline-logo.png        – standard logo for light backgrounds
- *   timeline-logo-white.png  – optional version for dark backgrounds
- *
- * The image is only ever sized by height with object-contain, so it is never
- * stretched, distorted or recoloured. Until the file exists, the company name
- * is shown as plain text (a placeholder, not a logo).
+ * The master file is `public/favicon.png`. It is used unchanged (the image has
+ * its own black plate), only ever sized by height with object-contain, so it is
+ * never stretched, distorted or recoloured. If the file cannot load, the
+ * company name is shown as plain text rather than a broken image.
  */
-export const LOGO_SRC = '/brand/timeline-logo.png'
-export const LOGO_ON_DARK_SRC = '/brand/timeline-logo-white.png'
+export const LOGO_SRC = '/favicon.png'
 
 const SIZES = {
   sm: 'h-8',
@@ -41,22 +37,19 @@ export default function Logo({ onDark = false, size = 'md', className, linked = 
   const to = useHomeLink()
   const signedIn = to !== '/'
 
-  // 0 = preferred file, 1 = fallback file (standard logo on a light plate), 2 = text placeholder
-  const [stage, setStage] = useState(0)
-  const src = onDark && stage === 0 ? LOGO_ON_DARK_SRC : LOGO_SRC
-  const usePlate = onDark && stage === 1
+  const [failed, setFailed] = useState(false)
 
   let content
-  if (stage === 2) {
+  if (failed) {
     content = <TextPlaceholder onDark={onDark} />
   } else {
     content = (
-      <span className={cn('inline-flex items-center', usePlate && 'rounded-xl bg-white px-3 py-1.5')}>
+      <span className="inline-flex items-center">
         <img
-          src={src}
+          src={LOGO_SRC}
           alt="Timeline Gadgets Limited — Home of Quality Gadgets"
-          className={cn('w-auto max-w-[220px] object-contain', SIZES[size])}
-          onError={() => setStage((s) => (onDark ? s + 1 : 2))}
+          className={cn('w-auto rounded-md object-contain', SIZES[size])}
+          onError={() => setFailed(true)}
           decoding="async"
         />
       </span>

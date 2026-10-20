@@ -23,7 +23,7 @@ function MapPlaceholder({ location }) {
       href={link}
       target="_blank"
       rel="noopener noreferrer"
-      className="group flex h-48 flex-col items-center justify-center gap-3 rounded-lg border border-line bg-metal-50 p-6 text-center transition-colors hover:border-ink-900"
+      className="group flex h-48 flex-col items-center justify-center gap-3 rounded-lg border border-line bg-metal-50 p-6 text-center transition-colors hover:border-brand-600"
       aria-label={`Open ${location.label} in Google Maps`}
     >
       <span className="flex h-11 w-11 items-center justify-center rounded-full bg-ink-900 text-white">
@@ -99,7 +99,7 @@ export default function Contact() {
                   <span className="block text-sm font-semibold">Phone</span>
                   {company.phones?.length ? (
                     company.phones.map((p) => (
-                      <a key={p} href={`tel:${p.replace(/\s/g, '')}`} className="block text-sm text-metal-600 hover:text-ink-900">
+                      <a key={p} href={`tel:${p.replace(/\s/g, '')}`} className="block text-sm text-metal-600 hover:text-brand-700">
                         {p}
                       </a>
                     ))

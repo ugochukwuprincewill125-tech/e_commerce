@@ -180,8 +180,8 @@ function CollectionShowcase() {
               className={cn(
                 'rounded-full border px-4 py-2 text-[13px] font-semibold transition',
                 e.key === active.key
-                  ? 'border-ink-900 bg-ink-900 text-white'
-                  : 'border-metal-200 bg-white text-ink-800 hover:border-ink-900',
+                  ? 'border-brand-600 bg-brand-600 text-white'
+                  : 'border-metal-200 bg-white text-ink-800 hover:border-brand-600 hover:text-brand-700',
               )}
             >
               {e.label}

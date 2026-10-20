@@ -8,7 +8,10 @@ TEMPLATE_SPECS = {
     "welcome": {
         "html": "emails/welcome.html",
         "text": "emails/welcome.txt",
-        "subject": "Welcome to {{ store_name }} — verify your email",
+        "subject": (
+            "{% if verify_url %}Welcome to {{ store_name }} — verify your email"
+            "{% else %}Welcome to {{ store_name }}{% endif %}"
+        ),
     },
     "verify_email": {
         "html": "emails/verify_email.html",
@@ -19,6 +22,11 @@ TEMPLATE_SPECS = {
         "html": "emails/password_reset.html",
         "text": "emails/password_reset.txt",
         "subject": "Reset your {{ store_name }} password",
+    },
+    "contact_message": {
+        "html": "emails/contact_message.html",
+        "text": "emails/contact_message.txt",
+        "subject": "New website message: {{ subject }}",
     },
     "order_confirmation": {
         "html": "emails/order_confirmation.html",

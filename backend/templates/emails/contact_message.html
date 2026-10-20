@@ -1,0 +1,33 @@
+{% extends "emails/base_email.html" %}
+{% block content %}
+<h1 style="margin:0 0 14px;color:#0A0F1C;font-size:26px;line-height:1.25;letter-spacing:-0.02em;">New website message</h1>
+<p style="margin:0 0 20px;">A customer has sent a message through the {{ store_name }} contact form.</p>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #E4E7EC;border-radius:6px;margin:0 0 22px;">
+  <tr>
+    <td style="padding:14px 16px;border-bottom:1px solid #E4E7EC;color:#6B7587;font-size:13px;width:120px;">From</td>
+    <td style="padding:14px 16px;border-bottom:1px solid #E4E7EC;font-size:14px;"><strong>{{ customer_name }}</strong><br><a href="mailto:{{ customer_email }}" style="color:#A50D26;">{{ customer_email }}</a></td>
+  </tr>
+  <tr>
+    <td style="padding:14px 16px;border-bottom:1px solid #E4E7EC;color:#6B7587;font-size:13px;">Phone</td>
+    <td style="padding:14px 16px;border-bottom:1px solid #E4E7EC;font-size:14px;">{{ customer_phone }}</td>
+  </tr>
+  <tr>
+    <td style="padding:14px 16px;border-bottom:1px solid #E4E7EC;color:#6B7587;font-size:13px;">Subject</td>
+    <td style="padding:14px 16px;border-bottom:1px solid #E4E7EC;font-size:14px;"><strong>{{ subject }}</strong></td>
+  </tr>
+  <tr>
+    <td style="padding:14px 16px;border-bottom:1px solid #E4E7EC;color:#6B7587;font-size:13px;">Received</td>
+    <td style="padding:14px 16px;border-bottom:1px solid #E4E7EC;font-size:14px;">{{ submitted_at }}</td>
+  </tr>
+  <tr>
+    <td style="padding:14px 16px;color:#6B7587;font-size:13px;vertical-align:top;">Message</td>
+    <td style="padding:14px 16px;font-size:14px;line-height:1.7;white-space:pre-line;">{{ message }}</td>
+  </tr>
+</table>
+
+<p style="margin:0 0 22px;text-align:center;">
+  <a class="button" href="{{ message_url }}" style="display:inline-block;padding:13px 24px;background:#C8102E;color:#ffffff !important;text-decoration:none !important;font-weight:700;border-radius:6px;">Open the admin inbox</a>
+</p>
+<p class="muted" style="margin:0;font-size:12px;line-height:1.7;">Reply to the customer using the email address above. The message is also available in the admin Messages tab until it is resolved.</p>
+{% endblock %}

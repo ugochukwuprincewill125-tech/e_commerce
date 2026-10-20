@@ -1,0 +1,16 @@
+{% extends "emails/base_email.txt" %}
+{% block content %}New website message from {{ customer_name }}
+
+From: {{ customer_name }} <{{ customer_email }}>
+Phone: {{ customer_phone }}
+Subject: {{ subject }}
+Received: {{ submitted_at }}
+
+{{ message }}
+
+Open the admin inbox:
+{{ message_url }}
+
+Reply to the customer using the email address above. The message is also
+available in the admin Messages tab until it is resolved.
+{% endblock %}

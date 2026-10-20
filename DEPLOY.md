@@ -88,7 +88,8 @@ Notes:
    | Key | Value |
    |---|---|
    | `VITE_API_URL` | `https://<service-name>.onrender.com/api` (no trailing slash) |
-   | `VITE_SITE_URL` | optional — the site's public URL, for canonical/OG tags |
+   | `VITE_SITE_URL` | `https://timelinegadgets.com` — public URL for canonical/OG tags |
+   | `VITE_GOOGLE_CLIENT_ID` | Google OAuth **web** client ID; omit to hide the Google button |
 
 4. Deploy. `frontend/vercel.json` supplies the SPA fallback (deep links like
    `/account/orders` survive a refresh) and the security headers.
@@ -107,8 +108,10 @@ products load (Cloudinary images), sign-in works, checkout places an order.
 
 ## 5. Migrations & admin (run from your machine)
 
-Render builds never migrate (a failed deploy must not touch the database).
-`backend/.env` already points at the same Supabase database, so:
+`render.yaml` runs `python manage.py migrate` during the Render build, so a
+normal deploy applies new migrations automatically. To run them manually from
+your machine (required if the Render blueprint predates that build step),
+`backend/.env` already points at the same Supabase database:
 
 ```powershell
 cd backend
@@ -168,6 +171,8 @@ expect in the admin):
 | `ALLOWED_HOSTS` | `.onrender.com` | The exact Render hostname is trusted automatically too |
 | `FRONTEND_URL` | `https://<app>.vercel.app` | No trailing slash |
 | `CORS_ALLOWED_ORIGINS` | same as `FRONTEND_URL` | **Required** — the storefront is cross-origin now |
+| `CONTACT_NOTIFICATION_EMAIL` | `timelinegadgets4@gmail.com` | Contact-form copy; also stored in the admin Messages tab |
+| `GOOGLE_CLIENT_ID` | Google OAuth web client ID | Same value as `VITE_GOOGLE_CLIENT_ID`; no client secret is used |
 | `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` | Cloudinary console → API Keys | Required in production |
 | `PAYSTACK_SECRET_KEY` / `PAYSTACK_PUBLIC_KEY` | `sk_test_…` / `pk_test_…` | Add when ready (§6) |
 | `ALLOW_MISSING_PAYSTACK` | `True` | Keeps deploys working until Paystack keys exist; delete afterwards |
@@ -181,15 +186,23 @@ expect in the admin):
 always-on host), `CSRF_TRUSTED_ORIGINS` (the Render origin is trusted
 automatically).
 
-Optional tuning (all have sane defaults): `THROTTLE_ANON`, `THROTTLE_USER`,
-`THROTTLE_AUTH`, `THROTTLE_CONTACT`, `THROTTLE_PAYMENTS`, `JWT_ACCESS_MINUTES`,
+Optional tuning (all have sane defaults): `GOOGLE_TOKENINFO_URL`,
+`GOOGLE_API_TIMEOUT`, `THROTTLE_ANON`, `THROTTLE_USER`, `THROTTLE_AUTH`,
+`THROTTLE_CONTACT`, `THROTTLE_PAYMENTS`, `JWT_ACCESS_MINUTES`,
 `JWT_REFRESH_DAYS`, `LOG_LEVEL`, `SECURE_HSTS_SECONDS`, `PAYSTACK_BASE_URL`.
+
+Google Sign-In also needs these **Authorised JavaScript origins** in the Google
+Cloud OAuth client: `http://localhost:5173`, `http://127.0.0.1:5173`,
+`https://timelinegadgets.com` and `https://www.timelinegadgets.com`.
 
 ## 8. Post-deploy checklist
 
 - [ ] `https://<service>.onrender.com/api/health/` → `{"status": "ok"}`
 - [ ] Storefront loads; product images come from Cloudinary
-- [ ] Register / sign in (welcome email; check Render logs if Brevo is not set yet)
+- [ ] Register → verify email → sign in (welcome email; check Render logs if Brevo is not set yet)
+- [ ] Forgot-password email arrives and the reset link opens the reset form
+- [ ] Contact form appears in the admin Messages tab and emails the team inbox
+- [ ] Google button appears and signs in (only after both Google client-ID envs are set)
 - [ ] Cart → checkout → order placed; visible in the admin
 - [ ] Admin: edit a product and upload an image
 - [ ] Paystack set up (§6) before taking real orders

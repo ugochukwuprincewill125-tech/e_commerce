@@ -22,7 +22,7 @@ export default function Pagination({ page, totalPages, onChange }) {
     <nav className="mt-12 flex items-center justify-center gap-1.5" aria-label="Pagination">
       <button
         type="button"
-        className={cn(btn, 'border-line-strong bg-white text-ink-900 hover:border-ink-900 disabled:opacity-40')}
+        className={cn(btn, 'border-line-strong bg-white text-ink-900 hover:border-brand-600 hover:text-brand-700 disabled:opacity-40')}
         onClick={() => onChange(page - 1)}
         disabled={page <= 1}
         aria-label="Previous page"
@@ -40,7 +40,7 @@ export default function Pagination({ page, totalPages, onChange }) {
             type="button"
             onClick={() => onChange(p)}
             aria-current={p === page ? 'page' : undefined}
-            className={cn(btn, p === page ? 'border-ink-900 bg-ink-900 text-white' : 'border-line-strong bg-white text-ink-900 hover:border-ink-900')}
+            className={cn(btn, p === page ? 'border-brand-600 bg-brand-600 text-white' : 'border-line-strong bg-white text-ink-900 hover:border-brand-600 hover:text-brand-700')}
           >
             {p}
           </button>
@@ -48,7 +48,7 @@ export default function Pagination({ page, totalPages, onChange }) {
       )}
       <button
         type="button"
-        className={cn(btn, 'border-line-strong bg-white text-ink-900 hover:border-ink-900 disabled:opacity-40')}
+        className={cn(btn, 'border-line-strong bg-white text-ink-900 hover:border-brand-600 hover:text-brand-700 disabled:opacity-40')}
         onClick={() => onChange(page + 1)}
         disabled={page >= totalPages}
         aria-label="Next page"

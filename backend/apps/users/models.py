@@ -36,6 +36,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     phone = models.CharField(max_length=30, blank=True)
     profile_image = models.ImageField(upload_to="users/", blank=True, null=True)
     email_verified = models.BooleanField(default=False)
+    # Stable Google account identifier, populated when a customer first signs in
+    # with Google. Null for password-only accounts.
+    google_sub = models.CharField(max_length=64, unique=True, blank=True, null=True)
     date_joined = models.DateTimeField(default=timezone.now)
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)

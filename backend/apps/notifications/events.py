@@ -131,7 +131,7 @@ def _order_context(order):
     }
 
 
-def send_welcome_email(user, verify_url):
+def send_welcome_email(user, verify_url=""):
     return enqueue_email(
         template="welcome",
         to_email=user.email,
@@ -139,7 +139,11 @@ def send_welcome_email(user, verify_url):
         context={
             **_user_context(user),
             "verify_url": verify_url,
-            "preheader": "Welcome — confirm your email to finish setting up your account.",
+            "preheader": (
+                "Welcome — confirm your email to finish setting up your account."
+                if verify_url
+                else "Welcome to Timeline Gadgets."
+            ),
         },
         idempotency_key=f"welcome:{user.pk}",
         event="user.welcome",
@@ -176,6 +180,37 @@ def send_password_reset_email(user, reset_url):
         idempotency_key=f"password-reset:{user.pk}:{_url_hash(reset_url)}",
         event="user.password_reset",
         metadata={"user_id": user.pk},
+    )
+
+
+def send_contact_notification(message):
+    """Email the store inbox when a customer uses the contact form.
+
+    The message is also stored in ``ContactMessage`` for the admin Messages
+    tab. This notification is the copy that lands in the team's inbox.
+    """
+    recipient = (settings.CONTACT_NOTIFICATION_EMAIL or "").strip()
+    if not recipient:
+        logger.info("No CONTACT_NOTIFICATION_EMAIL configured; contact message %s stored only.", message.pk)
+        return None
+    return enqueue_email(
+        template="contact_message",
+        to_email=recipient,
+        to_name="Timeline Gadgets",
+        context={
+            **_base_context(),
+            "customer_name": message.name,
+            "customer_email": message.email,
+            "customer_phone": message.phone or "Not provided",
+            "subject": message.subject,
+            "message": message.message,
+            "submitted_at": _local(message.created_at),
+            "message_url": f"{settings.FRONTEND_URL}/admin/messages",
+            "preheader": f"New contact message from {message.name}: {message.subject}",
+        },
+        idempotency_key=f"contact-message:{message.pk}",
+        event="contact.message",
+        metadata={"contact_message_id": message.pk},
     )
 
 

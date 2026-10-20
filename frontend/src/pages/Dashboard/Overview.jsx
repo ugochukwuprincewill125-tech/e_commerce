@@ -19,7 +19,7 @@ function Stat({ icon: Icon, label, value, to, delay }) {
     <Link
       to={to}
       style={{ transitionDelay: `${delay}ms` }}
-      className="group flex items-center gap-3.5 rounded-md border border-line bg-white p-4 transition-colors hover:border-ink-900"
+      className="group flex items-center gap-3.5 rounded-md border border-line bg-white p-4 transition-colors hover:border-brand-600"
     >
       <span className="flex h-11 w-11 flex-none items-center justify-center rounded border border-line bg-metal-50 text-ink-800 transition-colors group-hover:border-brand-600 group-hover:bg-brand-50 group-hover:text-brand-700">
         <Icon className="h-5 w-5" strokeWidth={1.75} />
@@ -141,14 +141,14 @@ export default function Overview() {
           <Link
             key={to}
             to={to}
-            className="group flex items-center gap-3 rounded-md border border-line bg-white p-4 transition-colors hover:border-ink-900"
+            className="group flex items-center gap-3 rounded-md border border-line bg-white p-4 transition-colors hover:border-brand-600"
           >
             <Icon className="h-4.5 w-4.5 flex-none text-brand-600" strokeWidth={1.75} />
             <span className="min-w-0 flex-1">
               <span className="block text-[13px] font-semibold text-ink-900">{title}</span>
               <span className="block truncate text-xs text-metal-500">{sub}</span>
             </span>
-            <ArrowRight className="h-4 w-4 flex-none text-metal-300 transition-colors group-hover:text-ink-900" strokeWidth={1.75} />
+            <ArrowRight className="h-4 w-4 flex-none text-metal-300 transition-colors group-hover:text-brand-600" strokeWidth={1.75} />
           </Link>
         ))}
       </div>

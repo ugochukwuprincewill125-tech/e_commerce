@@ -153,7 +153,7 @@ export default function OrderDetails() {
 
   return (
     <div className="space-y-6">
-      <Link to="/account/orders" className="inline-flex items-center gap-1.5 text-sm font-semibold text-metal-500 hover:text-ink-900">
+      <Link to="/account/orders" className="inline-flex items-center gap-1.5 text-sm font-semibold text-metal-500 hover:text-brand-700">
         <ArrowLeft className="h-4 w-4" /> All orders
       </Link>
       <div className="flex flex-wrap items-start justify-between gap-4">

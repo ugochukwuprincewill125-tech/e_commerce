@@ -3,6 +3,7 @@
 <h1 style="margin:0 0 14px;color:#0A0F1C;font-size:26px;line-height:1.25;letter-spacing:-0.02em;">Welcome to {{ store_name }}</h1>
 <p style="margin:0 0 14px;">Hi {{ first_name }},</p>
 <p style="margin:0 0 14px;">Thanks for creating an account with {{ store_legal_name }}. You can now track orders, save delivery addresses and keep your wishlist in one place.</p>
+{% if verify_url %}
 <p style="margin:0 0 8px;">One last step: confirm this email address so we know it is really you.</p>
 <p style="margin:26px 0;text-align:center;">
   <a class="button" href="{{ verify_url }}" style="display:inline-block;padding:13px 24px;background:#C8102E;color:#ffffff !important;text-decoration:none !important;font-weight:700;border-radius:6px;">Verify my email</a>
@@ -11,5 +12,8 @@
   If the button does not work, copy this link into your browser:<br>
   <a href="{{ verify_url }}" style="color:#A50D26;">{{ verify_url }}</a>
 </p>
+{% else %}
+<p style="margin:0 0 14px;">Your email address is already verified through Google, so there is nothing else to do. You can sign in any time with the “Sign in with Google” button.</p>
+{% endif %}
 <p class="muted" style="margin:0;font-size:12px;line-height:1.7;">If you did not create this account, you can safely ignore this email.</p>
 {% endblock %}

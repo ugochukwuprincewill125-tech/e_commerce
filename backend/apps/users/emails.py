@@ -34,8 +34,13 @@ def _verification_url(user):
 
 
 def send_welcome_email(user):
-    """Welcome a new customer and include their email-verification link."""
-    record = queue_welcome_email(user, _verification_url(user))
+    """Welcome a new customer.
+
+    Password registrations include their email-verification link; Google
+    sign-ups are already verified by Google, so the template omits that step.
+    """
+    verify_url = "" if user.email_verified else _verification_url(user)
+    record = queue_welcome_email(user, verify_url)
     if record is None:
         logger.warning("Welcome email could not be queued for user %s.", user.pk)
     return record

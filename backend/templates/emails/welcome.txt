@@ -3,9 +3,15 @@
 
 Welcome to {{ store_name }} — {{ store_tagline }}.
 
-Thanks for creating an account with {{ store_legal_name }}. Please confirm your email address by opening this link:
+Thanks for creating an account with {{ store_legal_name }}.
+{% if verify_url %}
+Please confirm your email address by opening this link:
 
 {{ verify_url }}
+{% else %}
+Your email address is already verified through Google, so there is nothing
+else to do. You can sign in any time with the "Sign in with Google" button.
+{% endif %}
 
 If you did not create this account, you can safely ignore this email.
 {% endblock %}

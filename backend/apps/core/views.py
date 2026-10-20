@@ -1,8 +1,9 @@
 from django.conf import settings
-from django.core.mail import mail_admins
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from apps.notifications.events import send_contact_notification
 
 from .serializers import ContactMessageSerializer
 from .store import COMPANY, NIGERIAN_STATES, shipping_settings
@@ -30,12 +31,11 @@ class ContactView(generics.CreateAPIView):
     throttle_scope = "contact"
 
     def perform_create(self, serializer):
+        # Saving the row is what populates the admin Messages tab. The email
+        # notification is queued through the durable outbox so a temporary
+        # provider outage cannot lose an enquiry.
         msg = serializer.save()
-        mail_admins(
-            subject=f"[Website] {msg.subject}",
-            message=f"From: {msg.name} <{msg.email}> {msg.phone}\n\n{msg.message}",
-            fail_silently=True,
-        )
+        send_contact_notification(msg)
 
     def create(self, request, *args, **kwargs):
         super().create(request, *args, **kwargs)

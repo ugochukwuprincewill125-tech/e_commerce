@@ -159,7 +159,7 @@ export default function Addresses() {
                       {a.is_default && <span className="chip ml-2 bg-ink-900 text-white">Default</span>}
                     </p>
                     <div className="flex gap-1">
-                      <button type="button" onClick={() => setEditing(a)} className="rounded-lg p-1.5 text-metal-500 hover:bg-metal-100 hover:text-ink-900" aria-label="Edit address">
+                      <button type="button" onClick={() => setEditing(a)} className="rounded-lg p-1.5 text-metal-500 hover:bg-brand-50 hover:text-brand-700" aria-label="Edit address">
                         <Pencil className="h-4 w-4" />
                       </button>
                       <button type="button" onClick={() => askDeleteAddress(a)} className="rounded-lg p-1.5 text-metal-500 hover:bg-red-50 hover:text-danger" aria-label="Delete address">

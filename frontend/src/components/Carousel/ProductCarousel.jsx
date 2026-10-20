@@ -70,7 +70,7 @@ export default function ProductCarousel({ title, subtitle, viewAllTo, viewAllLab
                 onClick={() => nudge(-1)}
                 disabled={atStart}
                 aria-label="Previous products"
-                className="flex h-8 w-8 items-center justify-center rounded-full border border-line bg-white text-ink-800 transition-colors hover:border-ink-900 disabled:opacity-35"
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-line bg-white text-ink-800 transition-colors hover:border-brand-600 hover:text-brand-700 disabled:opacity-35"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
@@ -79,7 +79,7 @@ export default function ProductCarousel({ title, subtitle, viewAllTo, viewAllLab
                 onClick={() => nudge(1)}
                 disabled={atEnd}
                 aria-label="Next products"
-                className="flex h-8 w-8 items-center justify-center rounded-full border border-line bg-white text-ink-800 transition-colors hover:border-ink-900 disabled:opacity-35"
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-line bg-white text-ink-800 transition-colors hover:border-brand-600 hover:text-brand-700 disabled:opacity-35"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>

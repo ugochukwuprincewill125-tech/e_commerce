@@ -285,7 +285,7 @@ export default function ProductDetails() {
                 role="tab"
                 aria-selected={tab === t.key}
                 onClick={() => setTab(t.key)}
-                className={cn('relative whitespace-nowrap px-4 py-3 text-[13px] font-semibold transition-colors', tab === t.key ? 'text-ink-900' : 'text-metal-500 hover:text-ink-900')}
+                className={cn('relative whitespace-nowrap px-4 py-3 text-[13px] font-semibold transition-colors', tab === t.key ? 'text-brand-700' : 'text-metal-500 hover:text-brand-700')}
               >
                 {t.label}
                 {t.key === 'reviews' && ` (${product.review_count})`}

@@ -38,6 +38,7 @@ const Register = lazy(() => import('./pages/Register/Register'))
 const ForgotPassword = lazy(() => import('./pages/Login/ForgotPassword'))
 const ResetPassword = lazy(() => import('./pages/Login/ResetPassword'))
 const VerifyEmail = lazy(() => import('./pages/Login/VerifyEmail'))
+const VerifyEmailNotice = lazy(() => import('./pages/Login/VerifyEmailNotice'))
 const Dashboard = lazy(() => import('./pages/Dashboard/Dashboard'))
 const HomeFeed = lazy(() => import('./pages/Dashboard/HomeFeed'))
 const CategoryDirectory = lazy(() => import('./pages/Dashboard/CategoryDirectory'))
@@ -83,6 +84,7 @@ export default function App() {
             <Route path="/register" element={<GuestOnlyRoute><Page><Register /></Page></GuestOnlyRoute>} />
             <Route path="/forgot-password" element={<Page><ForgotPassword /></Page>} />
             <Route path="/reset-password/:uid/:token" element={<Page><ResetPassword /></Page>} />
+            <Route path="/verify-email" element={<Page><VerifyEmailNotice /></Page>} />
             <Route path="/verify-email/:uid/:token" element={<Page><VerifyEmail /></Page>} />
             <Route path="/wishlist" element={<Navigate to="/account/wishlist" replace />} />
             <Route path="/account" element={<ProtectedRoute><Page><Dashboard /></Page></ProtectedRoute>}>

@@ -38,10 +38,16 @@ export default function VerifyEmail() {
             <>
               <XCircle className="mx-auto h-14 w-14 text-danger" />
               <h1 className="mt-6 text-2xl font-bold">Verification link invalid</h1>
-              <p className="mt-2 text-metal-500">{errorMessage(error)} You can request a new link from your dashboard.</p>
-              <Button to={user ? '/account' : '/login'} className="mt-8">
-                {user ? 'Go to dashboard' : 'Sign in'}
-              </Button>
+              <p className="mt-2 text-metal-500">
+                {errorMessage(error)} The link may have expired or already been used. Request a
+                fresh one below.
+              </p>
+              <div className="mt-8 flex flex-wrap justify-center gap-3">
+                <Button to="/verify-email">Request a new link</Button>
+                <Button to={user ? '/account' : '/login'} variant="outline">
+                  {user ? 'Go to dashboard' : 'Sign in'}
+                </Button>
+              </div>
             </>
           ) : (
             <>

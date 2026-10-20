@@ -100,7 +100,7 @@ export default function Footer() {
               href={company.instagram}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-5 inline-flex items-center gap-2 rounded border border-white/20 px-3.5 py-2 text-[13px] font-medium text-white transition-colors hover:border-white hover:bg-white hover:text-ink-900"
+              className="mt-5 inline-flex items-center gap-2 rounded border border-white/20 px-3.5 py-2 text-[13px] font-medium text-white transition-colors hover:border-brand-400 hover:bg-brand-600"
             >
               <InstagramIcon className="h-4 w-4" /> {company.instagram_handle}
             </a>

@@ -11,7 +11,7 @@ export default function Breadcrumbs({ items, className, dark = false }) {
     <nav aria-label="Breadcrumb" className={cn('text-[13px]', className)}>
       <ol className="flex flex-wrap items-center gap-1.5">
         <li>
-          <Link to={home} className={cn('transition-colors', dark ? 'text-metal-400 hover:text-white' : 'text-metal-500 hover:text-ink-900')}>
+          <Link to={home} className={cn('transition-colors', dark ? 'text-metal-400 hover:text-white' : 'text-metal-500 hover:text-brand-700')}>
             {rootLabel}
           </Link>
         </li>
@@ -19,7 +19,7 @@ export default function Breadcrumbs({ items, className, dark = false }) {
           <li key={item.label + i} className="flex items-center gap-1.5">
             <ChevronRight className={cn('h-3.5 w-3.5', dark ? 'text-metal-600' : 'text-metal-300')} aria-hidden />
             {item.to && i < items.length - 1 ? (
-              <Link to={item.to} className={cn('transition-colors', dark ? 'text-metal-400 hover:text-white' : 'text-metal-500 hover:text-ink-900')}>
+              <Link to={item.to} className={cn('transition-colors', dark ? 'text-metal-400 hover:text-white' : 'text-metal-500 hover:text-brand-700')}>
                 {item.label}
               </Link>
             ) : (

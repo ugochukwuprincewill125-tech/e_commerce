@@ -1,24 +1,14 @@
-OFFICIAL LOGO GOES HERE
-=======================
+APP LOGO
+========
 
-Drop the official Timeline Gadgets Limited logo files into this folder
-using these exact names (PNG with a transparent background, or SVG):
+The app mark lives at /public/favicon.png and is used by the navbar, footer,
+account rail, authentication screens, browser favicon, PWA manifest, social
+preview and transactional email header. It is the single source of truth.
 
-  timeline-logo.png         -> the standard logo (used on light backgrounds:
-                               navbar, auth pages, checkout)
-  timeline-logo-white.png   -> OPTIONAL light/white version for dark
-                               backgrounds (footer, hero). If this file is
-                               missing, the standard logo is shown on a small
-                               white plate so it stays legible.
+The image is rendered with object-contain at a fixed height, so it is never
+stretched, distorted or recoloured. If the file cannot load, the company name is
+shown as plain text in the logo position.
 
-Want SVG instead? Change LOGO_SRC / LOGO_ON_DARK_SRC in
-src/components/Logo/Logo.jsx.
-
-The logo is rendered with `object-contain` and a fixed height only, so it is
-never stretched, distorted or recoloured.
-
-Until the file is added, the site shows the company name in plain text in the
-logo position. That text is only a placeholder and is not a logo.
-
-
-
+This /brand folder is kept only for future approved brand assets. It is no
+longer read by the Logo component; to change the mark, replace
+/public/favicon.png (and the paths in index.html if the filename changes).
