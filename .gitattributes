@@ -1,0 +1,2 @@
+# Normalize line endings on check-in, use CRLF on check-out (Windows-friendly)
+* text=auto eol=crlf
