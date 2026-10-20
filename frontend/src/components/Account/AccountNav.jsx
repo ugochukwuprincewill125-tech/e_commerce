@@ -136,8 +136,11 @@ export function AccountRail() {
       <aside className="pinned-panel pinned-panel-flush hidden w-[264px] flex-none border-r border-line bg-ink-950 lg:block">
         <div className="flex h-full flex-col overflow-y-auto overscroll-contain p-5">
 
-        <div className="border-b border-white/10 pb-5">
-          <Logo onDark size="sm" />
+        <div className="flex items-center gap-2.5 border-b border-white/10 pb-5">
+          <Logo onDark size="sm" linked={false} />
+          <span className="font-display min-w-0 truncate text-[15px] font-bold leading-none tracking-tight text-white">
+            Timeline Gadgets
+          </span>
         </div>
 
         <div className="mt-6 flex-1">
