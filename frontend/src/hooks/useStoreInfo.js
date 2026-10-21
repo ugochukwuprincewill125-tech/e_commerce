@@ -7,7 +7,7 @@ export const FALLBACK_COMPANY = {
   name: 'Timeline Gadgets Limited',
   short_name: 'Timeline Gadgets',
   tagline: 'Home of Quality Gadgets',
-  email: 'timelinegadget@gmail.com',
+  email: 'timelinegadgets4@gmail.com',
   phones: [],
   instagram: 'https://www.instagram.com/timelinegadgets/',
   instagram_handle: '@timelinegadgets',

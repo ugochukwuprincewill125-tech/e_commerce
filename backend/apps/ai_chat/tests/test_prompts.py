@@ -24,7 +24,7 @@ class TestCanonicalPrompt:
 
     def test_prompt_never_names_the_store_owner_email_as_internal(self):
         # Support contact belongs to the knowledge layer, not the canonical prompt.
-        assert "timelinegadget@gmail.com" not in prompts.SYSTEM_PROMPT
+        assert "timelinegadgets4@gmail.com" not in prompts.SYSTEM_PROMPT
 
 
 class TestKnowledgeLayer:
@@ -54,7 +54,7 @@ class TestKnowledgeLayer:
     @pytest.mark.django_db
     def test_support_contact_is_verified_email(self, category, brand):
         text = app_knowledge()
-        assert "timelinegadget@gmail.com" in text
+        assert "timelinegadgets4@gmail.com" in text
         assert "+2347062895442" in text
 
     def test_no_admin_knowledge_leaks_into_knowledge(self):

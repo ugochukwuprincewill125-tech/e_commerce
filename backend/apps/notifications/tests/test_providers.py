@@ -39,8 +39,8 @@ def brevo_settings(settings):
     settings.BREVO_API_KEY = "xkeysib-secret"
     settings.BREVO_API_URL = "https://api.brevo.com/v3"
     settings.BREVO_SENDER_NAME = "Timeline Gadgets"
-    settings.BREVO_SENDER_EMAIL = "timelinegadget@gmail.com"
-    settings.BREVO_REPLY_TO_EMAIL = "timelinegadget@gmail.com"
+    settings.BREVO_SENDER_EMAIL = "timelinegadgets4@gmail.com"
+    settings.BREVO_REPLY_TO_EMAIL = "timelinegadgets4@gmail.com"
     settings.BREVO_API_TIMEOUT = 5
     return settings
 
@@ -61,7 +61,7 @@ class TestBrevoPayload:
         assert message_id == "<201@brevo>"
         assert captured["url"] == "https://api.brevo.com/v3/smtp/email"
         assert captured["headers"]["api-key"] == "xkeysib-secret"
-        assert captured["json"]["sender"] == {"name": "Timeline Gadgets", "email": "timelinegadget@gmail.com"}
+        assert captured["json"]["sender"] == {"name": "Timeline Gadgets", "email": "timelinegadgets4@gmail.com"}
         assert captured["json"]["to"] == [{"email": "customer@example.com", "name": "Test Customer"}]
         assert captured["json"]["subject"] == "Order received"
         assert captured["json"]["htmlContent"] == "<p>Hello</p>"

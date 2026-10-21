@@ -5,7 +5,7 @@ COMPANY = {
     "name": "Timeline Gadgets Limited",
     "short_name": "Timeline Gadgets",
     "tagline": "Home of Quality Gadgets",
-    "email": "timelinegadget@gmail.com",
+    "email": "timelinegadgets4@gmail.com",
     # Add the store phone numbers here once confirmed; the frontend shows
     # a "call us" block only when this list is not empty.
     "phones": [],

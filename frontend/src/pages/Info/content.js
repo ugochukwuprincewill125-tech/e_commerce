@@ -45,7 +45,7 @@ export const INFO = {
       },
       {
         heading: 'Need help?',
-        body: 'Email timelinegadget@gmail.com or visit either of our stores in Computer Village, Ikeja and our team will guide you.',
+        body: 'Email timelinegadgets4@gmail.com or visit either of our stores in Computer Village, Ikeja and our team will guide you.',
       },
     ],
   },
@@ -60,7 +60,7 @@ export const INFO = {
       { q: 'How can I track my order?', a: 'Sign in and open “My Orders” to follow your order status.' },
       { q: 'Can I cancel an order?', a: 'Unpaid orders can be cancelled from your order page. For paid orders, please contact us as soon as possible.' },
       { q: 'Why can’t I add more of an item to my cart?', a: 'Our cart is connected to live stock levels. If you can’t increase the quantity, we don’t have more units available right now.' },
-      { q: 'How do I contact you?', a: 'Email timelinegadget@gmail.com, send a message through our Contact page, or reach us on Instagram @timelinegadgets.' },
+      { q: 'How do I contact you?', a: 'Email timelinegadgets4@gmail.com, send a message through our Contact page, or reach us on Instagram @timelinegadgets.' },
     ],
   },
 }
