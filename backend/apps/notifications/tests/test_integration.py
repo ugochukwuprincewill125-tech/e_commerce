@@ -87,8 +87,8 @@ class TestOrderEmails:
         assert record.idempotency_key == f"order-confirmation:{order.pk}"
         assert order.order_number in record.subject
         assert "Test Widget" in record.html_body
-        # The customer copy and the store copy.
-        assert len(mailoutbox) == 2
+        # Placing an order is not a sale yet, so the store inbox stays quiet.
+        assert len(mailoutbox) == 1
 
     def test_payment_confirmation_is_sent_once_per_reference(self, order, mailoutbox, django_capture_on_commit_callbacks):
         with django_capture_on_commit_callbacks(execute=True):
@@ -97,7 +97,10 @@ class TestOrderEmails:
             send_payment_confirmation(order, "TGS-REF-1")
 
         assert _emails("payment_confirmation").count() == 1
-        assert len(mailoutbox) == 1
+        # The customer's receipt and the store's copy — the repeated calls
+        # above do not produce extra messages.
+        assert _emails("order_paid_admin").count() == 1
+        assert len(mailoutbox) == 2
         order.refresh_from_db()
         assert order.payment_status == PaymentStatus.PAID
 
@@ -128,28 +131,43 @@ class TestOrderEmails:
 
 
 class TestStoreInboxNotifications:
-    """The store keeps its own copy of every new order."""
+    """The store keeps its own copy of every order whose payment is confirmed.
 
-    def test_a_new_order_is_copied_to_the_store_inbox(self, customer, product, mailoutbox, django_capture_on_commit_callbacks):
+    An email here always means a real sale: a customer who starts a checkout
+    and never pays must not reach the team inbox.
+    """
+
+    def test_placing_an_order_does_not_reach_the_store_inbox(self, customer, product, django_capture_on_commit_callbacks):
+        with django_capture_on_commit_callbacks(execute=True):
+            _make_order(customer, product)
+
+        assert _emails("order_paid_admin").count() == 0
+        # The customer still gets their own confirmation.
+        assert _emails("order_confirmation").count() == 1
+
+    def test_a_confirmed_payment_is_copied_to_the_store_inbox(self, customer, product, mailoutbox, django_capture_on_commit_callbacks):
         with django_capture_on_commit_callbacks(execute=True):
             order = _make_order(customer, product)
+            mark_order_paid(order, "TGS-REF-PAID-1")
 
-        record = _emails("order_placed_admin").get()
-        assert record.idempotency_key == f"order-placed-admin:{order.pk}"
+        record = _emails("order_paid_admin").get()
+        assert record.idempotency_key == f"order-paid-admin:{order.pk}"
         assert record.recipient_email == settings.ORDER_NOTIFICATION_EMAIL
         assert order.order_number in record.subject
-        # The customer gets their own copy as well.
-        assert len(mailoutbox) == 2
+        # The customer's order confirmation, their receipt, and the store copy.
+        assert len(mailoutbox) == 3
 
     def test_the_store_copy_carries_the_fulfilment_details(self, customer, product, django_capture_on_commit_callbacks):
         with django_capture_on_commit_callbacks(execute=True):
             order = _make_order(customer, product)
+            mark_order_paid(order, "TGS-REF-PAID-2")
 
-        record = _emails("order_placed_admin").get()
+        record = _emails("order_paid_admin").get()
         assert order.order_number in record.html_body
         assert "Test Widget" in record.html_body
         assert "customer@example.com" in record.html_body
         assert "08000000000" in record.html_body
+        assert "TGS-REF-PAID-2" in record.html_body
         assert "Main Office" in record.html_body
         assert "Oremeji Street" in record.html_body
         assert "/admin/orders" in record.html_body
@@ -158,36 +176,46 @@ class TestStoreInboxNotifications:
         assert "Test Widget" in record.text_body
 
     def test_the_store_copy_is_sent_once_per_order(self, customer, product, django_capture_on_commit_callbacks):
-        from apps.notifications.events import send_new_order_notification
-
         with django_capture_on_commit_callbacks(execute=True):
             order = _make_order(customer, product)
-            send_new_order_notification(order)
-            send_new_order_notification(order)
+            mark_order_paid(order, "TGS-REF-PAID-3")
+            mark_order_paid(order, "TGS-REF-PAID-3")
 
-        assert _emails("order_placed_admin").count() == 1
+        assert _emails("order_paid_admin").count() == 1
 
     def test_no_store_copy_when_the_address_is_not_configured(self, customer, product, settings, django_capture_on_commit_callbacks):
         settings.ORDER_NOTIFICATION_EMAIL = ""
 
         with django_capture_on_commit_callbacks(execute=True):
-            _make_order(customer, product)
+            order = _make_order(customer, product)
+            mark_order_paid(order, "TGS-REF-PAID-4")
 
-        assert _emails("order_placed_admin").count() == 0
-        # The customer still receives their own confirmation.
-        assert _emails("order_confirmation").count() == 1
+        assert _emails("order_paid_admin").count() == 0
+        # The customer still receives their own receipt.
+        assert _emails("payment_confirmation").count() == 1
 
-    def test_a_rolled_back_checkout_sends_nothing(self, customer, product, django_capture_on_commit_callbacks):
+    def test_a_late_payment_on_a_cancelled_order_still_reaches_the_store(self, customer, product, django_capture_on_commit_callbacks):
+        with django_capture_on_commit_callbacks(execute=True):
+            order = _make_order(customer, product)
+            cancel_order(order, note="Customer changed their mind.")
+            mark_order_paid(order, "TGS-REF-LATE-1")
+
+        record = _emails("order_paid_admin").get()
+        # The money is real, so the team must hear about it.
+        assert "cancelled before the payment landed" in record.html_body.lower()
+
+    def test_a_rolled_back_payment_sends_nothing(self, customer, product, django_capture_on_commit_callbacks):
         from django.db import transaction
 
         with django_capture_on_commit_callbacks(execute=True):
+            order = _make_order(customer, product)
             with pytest.raises(Exception):
                 with transaction.atomic():
-                    _make_order(customer, product)
-                    raise RuntimeError("checkout blew up")
+                    mark_order_paid(order, "TGS-REF-ROLLBACK")
+                    raise RuntimeError("payment blew up")
 
-        assert _emails("order_placed_admin").count() == 0
-        assert _emails("order_confirmation").count() == 0
+        assert _emails("order_paid_admin").count() == 0
+        assert _emails("payment_confirmation").count() == 0
 
 
 class TestRefundEmails:

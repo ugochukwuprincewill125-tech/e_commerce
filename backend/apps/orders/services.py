@@ -11,9 +11,9 @@ from rest_framework.exceptions import ValidationError
 from apps.cart.models import CartItem
 from apps.cart.pricing import calculate_totals
 from apps.notifications.events import (
-    send_new_order_notification,
     send_order_cancelled,
     send_order_confirmation,
+    send_paid_order_notification,
     send_payment_confirmation,
 )
 from apps.products.models import Product, ProductVariant
@@ -137,8 +137,6 @@ def create_order_from_cart(user, cart, data):
     # The outbox row is part of this transaction, so a rolled-back checkout
     # never produces an order-confirmation email.
     send_order_confirmation(order)
-    # ...and the team gets their own copy, so a new order is never missed.
-    send_new_order_notification(order)
     return order
 
 
@@ -195,6 +193,10 @@ def mark_order_paid(order, reference, note="Payment confirmed via Paystack."):
     # Reached only after server-side verification (Paystack callback/webhook)
     # or a deliberate staff confirmation — never from browser-reported success.
     send_payment_confirmation(order, reference)
+    # ...and the store gets its copy, so a confirmed sale is never missed.
+    # This fires on the transition to paid only, so an abandoned checkout
+    # never reaches the team inbox.
+    send_paid_order_notification(order)
     return order, True
 
 
