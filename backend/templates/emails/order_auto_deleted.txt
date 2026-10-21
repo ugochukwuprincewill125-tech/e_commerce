@@ -1,0 +1,14 @@
+{% extends "emails/base_email.txt" %}
+{% block content %}Hi {{ customer_name }},
+
+We noticed you placed order {{ order_number }} on {{ order_date }}, but we did not receive payment within the {{ grace_minutes }} minutes following our payment reminder. The order has now been deleted and its reserved items returned to stock.
+
+Order total: {{ total }}
+Status: Deleted — no payment received
+
+If you still want to purchase these items, you are welcome to place a new order on our website at any time.
+
+Continue shopping: {{ site_url }}
+
+If you believe you already paid for this order, please contact us at {{ store_email }} with your payment reference and we will check it for you.
+{% endblock %}

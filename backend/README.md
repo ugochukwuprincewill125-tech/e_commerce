@@ -207,8 +207,13 @@ Full CRUD (`ModelViewSet`) at `/api/admin-api/categories/`, `/brands/`,
 6. `ALLOWED_HOSTS` + `CORS_ALLOWED_ORIGINS`/`CSRF_TRUSTED_ORIGINS` → your domains
 7. `python manage.py collectstatic` (WhiteNoise serves admin statics)
 8. `gunicorn config.wsgi` behind TLS (`SECURE_SSL_REDIRECT`, HSTS enabled)
-9. Schedule `python manage.py release_unpaid_orders` (cron/celery beat) to
-   expire stale unpaid orders and return stock
+9. Schedule `python manage.py process_unpaid_orders` every 5–10 minutes
+   (cron/celery beat, an uptime pinger, or the included GitHub workflow) to
+   send payment reminders after 15 minutes and permanently delete unpaid
+   orders after the one-hour grace period, releasing their stock. Production
+   also enables `UNPAID_ORDER_SWEEP_ON_REQUEST`, a best-effort background
+   sweep on incoming requests while the API is awake. `release_unpaid_orders`
+   remains as the 48-hour legacy safety net.
 
 ## Notes
 

@@ -33,6 +33,12 @@ services:
       # is visible in the Render dashboard.
       - key: CONTACT_NOTIFICATION_EMAIL
         value: timelinegadgets4@gmail.com
+      # Abandoned-checkout follow-up: remind after 15 minutes, then delete the
+      # unpaid order 60 minutes later if payment still has not arrived.
+      - key: UNPAID_ORDER_REMINDER_MINUTES
+        value: "15"
+      - key: UNPAID_ORDER_DELETION_GRACE_MINUTES
+        value: "60"
       # Google OAuth web client ID. Use the same value for VITE_GOOGLE_CLIENT_ID
       # in the Vercel project. A client secret is not needed for the ID-token flow.
       - key: GOOGLE_CLIENT_ID
@@ -96,6 +102,10 @@ cronJobs:
         value: https://timelinegadgets.com
       - key: CORS_ALLOWED_ORIGINS
         value: https://timelinegadgets.com,https://www.timelinegadgets.com
+      - key: UNPAID_ORDER_REMINDER_MINUTES
+        value: "15"
+      - key: UNPAID_ORDER_DELETION_GRACE_MINUTES
+        value: "60"
       - key: BREVO_API_KEY
         sync: false
       - key: BREVO_SENDER_NAME

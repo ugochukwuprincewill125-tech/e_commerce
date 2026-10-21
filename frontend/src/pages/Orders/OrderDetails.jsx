@@ -182,7 +182,12 @@ export default function OrderDetails() {
         <div className="flex flex-col gap-3 rounded-2xl border border-brand-100 bg-brand-50 p-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="font-semibold text-ink-900">Payment pending</p>
-            <p className="text-sm text-metal-600">Complete payment to confirm this order. Unpaid orders are released after a while.</p>
+            <p className="text-sm text-metal-600">
+              Complete payment to confirm this order.{' '}
+              {order.auto_delete_at
+                ? `If payment isn't received by ${formatDateTime(order.auto_delete_at)}, this order will be deleted automatically.`
+                : 'If it stays unpaid, we will send a reminder and then delete the order automatically.'}
+            </p>
           </div>
           <div className="flex flex-wrap gap-2">
             {order.can_cancel && (
@@ -305,17 +310,11 @@ export default function OrderDetails() {
       </Modal>
       <Modal open={confirmDelete} onClose={() => setConfirmDelete(false)} title="Delete this order?">
         <div className="p-5 sm:p-6">
-          {order.status === 'delivered' ? (
-            <p className="text-sm text-metal-600">
-              Order {order.order_number} was delivered — it can be removed from your history.
-              Its receipt will be deleted too, so download it first if you still need it. This cannot be undone.
-            </p>
-          ) : (
-            <p className="text-sm text-metal-600">
-              Order {order.order_number} was cancelled — it will be permanently deleted along with its items.
-              This cannot be undone.
-            </p>
-          )}
+          <p className="text-sm text-metal-600">
+            Order {order.order_number} has not been paid. Deleting it removes the order and its items
+            from your account and from our store dashboard, and releases the reserved stock.
+            This cannot be undone.
+          </p>
           <div className="mt-6 flex justify-end gap-3">
             <Button variant="outline" onClick={() => setConfirmDelete(false)}>
               Keep order

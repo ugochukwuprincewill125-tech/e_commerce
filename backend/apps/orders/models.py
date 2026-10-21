@@ -1,5 +1,6 @@
 import secrets
 import string
+from datetime import timedelta
 
 from django.conf import settings
 from django.db import models
@@ -91,6 +92,13 @@ class Order(TimeStampedModel):
     paid_at = models.DateTimeField(null=True, blank=True)
     stock_restored = models.BooleanField(default=False, editable=False)
 
+    # Abandoned-checkout follow-up. The scheduled sweep sends one reminder
+    # after UNPAID_ORDER_REMINDER_MINUTES and then deletes the order once
+    # UNPAID_ORDER_DELETION_GRACE_MINUTES have passed since that reminder.
+    # The timestamp is also the idempotency guard: a second sweep never sends
+    # the reminder again.
+    payment_reminder_sent_at = models.DateTimeField(null=True, blank=True)
+
     # Fulfilment tracking. Staff fill these in when the parcel leaves, so a
     # shopper and the store can both see the same reference. `tracking_number`
     # is what makes an order "tracked" — see the `is_tracked` property.
@@ -128,6 +136,7 @@ class Order(TimeStampedModel):
             models.Index(fields=["user", "-created_at"]),
             models.Index(fields=["status"]),
             models.Index(fields=["payment_status"]),
+            models.Index(fields=["payment_reminder_sent_at"]),
             models.Index(fields=["tracking_number"]),
         ]
 
@@ -170,6 +179,15 @@ class Order(TimeStampedModel):
     @property
     def can_pay(self):
         return self.status == OrderStatus.PLACED and self.payment_status in (PaymentStatus.PENDING, PaymentStatus.FAILED)
+
+    @property
+    def auto_delete_at(self):
+        """When this unpaid order becomes due for automatic deletion."""
+        if not self.payment_reminder_sent_at:
+            return None
+        return self.payment_reminder_sent_at + timedelta(
+            minutes=settings.UNPAID_ORDER_DELETION_GRACE_MINUTES
+        )
 
     @property
     def can_delete(self):

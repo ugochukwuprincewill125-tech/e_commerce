@@ -175,7 +175,9 @@ Production build: `npm run build`, which outputs to `frontend/dist/`.
 | `LOW_STOCK_THRESHOLD` | Stock level at or below which products show **Low Stock** (default 5) |
 | `SHIPPING_FEE_LAGOS`, `SHIPPING_FEE_SOUTH_WEST`, `SHIPPING_FEE_DEFAULT` | Delivery fees in Naira |
 | `FREE_SHIPPING_THRESHOLD` | Order subtotal (₦) above which delivery is free |
-| `UNPAID_ORDER_EXPIRY_HOURS` | Used by `release_unpaid_orders` |
+| `UNPAID_ORDER_EXPIRY_HOURS` | Legacy safety net used by `release_unpaid_orders` |
+| `UNPAID_ORDER_REMINDER_MINUTES`, `UNPAID_ORDER_DELETION_GRACE_MINUTES` | Unpaid-order follow-up: send the reminder after 15 minutes, then delete the order 60 minutes later if still unpaid |
+| `UNPAID_ORDER_SWEEP_ON_REQUEST` | Best-effort background sweep while the API is awake (production on, development off) |
 | `REVIEWS_REQUIRE_APPROVAL` | `True` to hold new reviews for admin approval |
 
 ### `frontend/.env`
@@ -250,7 +252,7 @@ The payment flow runs entirely through the backend:
 **Nothing settles silently.** Cancelling on the Paystack checkout does *not* necessarily cancel an in-flight charge, and webhooks can be delayed — or, in local development, unreachable entirely. Reconciliation re-verifies open attempts against Paystack from three places, so late money is always found:
 
 - the order page (`refresh-payment/` above) and the payment callback page, which re-check automatically;
-- the scheduled GitHub workflow, which calls the token-guarded `POST /api/payments/maintenance/reconcile/` hourly next to the unpaid-order release;
+- the scheduled GitHub workflows, which call the token-guarded `POST /api/payments/maintenance/reconcile/` hourly and run the unpaid-order reminder/deletion sweep every 10 minutes;
 - manually, any time:
 
 ```bash
@@ -271,12 +273,14 @@ python manage.py reconcile_payments --dry-run      # list what would be checked
 
 Every customer email goes through the durable outbox in `apps/notifications`: it is stored before delivery with a unique idempotency key (so repeated webhooks/events cannot send twice), sent through **Brevo** when `BREVO_API_KEY` is set, and retried safely after a provider hiccup. Payment confirmations are only generated after server-side verification and double as the customer's receipt (with a verifiable receipt code). Registration sends a welcome email plus a verification link; every customer-visible order status change (processing, ready for delivery/pickup, shipped, delivered/picked up) sends its own email, and delivery/pickup completion thanks the customer and links each purchased item for a review. Emails can be inspected/retried in the admin under **Transactional email**, and the scheduled workflow sweeps pending messages hourly. Setup, testing and the future-domain checklist live in [EMAIL_SETUP.md](EMAIL_SETUP.md).
 
-Unpaid orders hold reserved stock. Release stale ones on a schedule (for example hourly with cron):
+Unpaid orders hold reserved stock. A scheduled sweep sends one reminder after **15 minutes**, then permanently deletes the order (customer and admin) **60 minutes** after that reminder if payment still has not arrived, returning the stock:
 
 ```bash
-python manage.py release_unpaid_orders            # uses UNPAID_ORDER_EXPIRY_HOURS
-python manage.py release_unpaid_orders --dry-run
+python manage.py process_unpaid_orders            # reminders + deletion + legacy expiry
+python manage.py process_unpaid_orders --dry-run
 ```
+
+The included `.github/workflows/unpaid-orders.yml` calls the equivalent token-guarded `POST /api/orders/maintenance/process-unpaid/` every 10 minutes. Production also enables `UNPAID_ORDER_SWEEP_ON_REQUEST`, so the first request after each minute runs the same idempotent sweep in a background thread while the API is awake; this keeps timing close on Render's free tier even when GitHub delays a scheduled run. The older `release_unpaid_orders` command remains as a 48-hour safety net for orders created before this flow.
 
 ---
 
@@ -387,7 +391,7 @@ gunicorn config.wsgi:application --bind 0.0.0.0:$PORT
 - `render.yaml` at the repo root defines the Render web service: build command, start command and the health check at `/api/health/`.
 - Set a strong `SECRET_KEY`, `DATABASE_URL`, `ALLOWED_HOSTS`, `FRONTEND_URL`, `CORS_ALLOWED_ORIGINS`, Paystack keys and SMTP settings. The Render hostname is trusted automatically; `python manage.py check` validates the rest.
 - Static files (admin, DRF) are served by WhiteNoise; media uploads go to Cloudinary when `CLOUDINARY_*` is set (recommended), otherwise to local `media/`.
-- Schedule `python manage.py release_unpaid_orders` (e.g. hourly).
+- Schedule `python manage.py process_unpaid_orders` every 10 minutes (or use the included GitHub workflow) for reminders and unpaid-order deletion. Set the same `MAINTENANCE_TOKEN` on Render and as a GitHub repository secret.
 
 ### Frontend (Vercel — or any static host)
 

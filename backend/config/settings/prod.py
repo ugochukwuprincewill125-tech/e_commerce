@@ -22,6 +22,11 @@ if not SECRET_KEY or SECRET_KEY.startswith("dev-only"):  # noqa: F405
 # Never allow simulated payments in production.
 PAYMENT_TEST_MODE = False
 
+# Render has no cron on the free tier, and GitHub's scheduled workflows can be
+# delayed. Sweep unpaid orders opportunistically while the API process is awake
+# (the external workflow still remains the fallback when the instance sleeps).
+UNPAID_ORDER_SWEEP_ON_REQUEST = env_bool("UNPAID_ORDER_SWEEP_ON_REQUEST", True)
+
 # Never let a production deploy redirect or suppress customer email by
 # accident. Real delivery is controlled by BREVO_API_KEY / SMTP settings.
 EMAIL_TEST_MODE = False

@@ -11,10 +11,12 @@ from rest_framework.exceptions import ValidationError
 from apps.cart.models import CartItem
 from apps.cart.pricing import calculate_totals
 from apps.notifications.events import (
+    send_order_auto_deleted,
     send_order_cancelled,
     send_order_confirmation,
     send_paid_order_notification,
     send_payment_confirmation,
+    send_payment_reminder,
 )
 from apps.products.models import Product, ProductVariant
 from apps.promotions.models import Coupon
@@ -204,13 +206,205 @@ def mark_order_paid(order, reference, note="Payment confirmed via Paystack."):
 def delete_order(order):
     """Permanently remove one of the customer's own orders.
 
-    Only placed-but-unpaid orders qualify (the caller checks `can_delete`).
-    Such an order is still holding reserved stock, so it is released first
-    before the rows are removed.
+    Only placed-but-unpaid orders qualify. The state is re-checked under the
+    row lock because a delayed payment webhook can land between the view's
+    Paystack re-check and this delete. Such an order is still holding reserved
+    stock, so it is released before the rows are removed.
     """
     order = Order.objects.select_for_update().get(pk=order.pk)
+    if not order.can_delete:
+        raise ValidationError("Only orders that have been placed but not yet paid can be deleted.")
+
+    from apps.payments.models import Payment
+
+    if order.payments.filter(status=Payment.Status.SUCCESS).exists():
+        raise ValidationError(
+            "A payment has been confirmed for this order, so it can no longer be deleted."
+        )
+
     restore_stock(order)
     order.delete()
+
+
+def payment_state_before_delete(order):
+    """Check whether an unpaid order is safe to remove right now.
+
+    A customer can complete a Paystack payment without the webhook reaching us
+    immediately. Before deleting an "unpaid" order we therefore re-verify every
+    open attempt. Returns one of:
+
+    * ``"paid"``    — a successful payment exists (or was just confirmed);
+    * ``"pending"`` — Paystack still considers an attempt in flight;
+    * ``"error"``   — Paystack could not be reached, so we do not know;
+    * ``"clear"``   — no successful or in-flight payment; deletion is safe.
+
+    Deletion deliberately treats ``pending`` and ``error`` as "not safe" and
+    retries on the next sweep rather than risking a paid order being removed.
+    """
+    # Local check first: never delete rows that already hold a successful
+    # charge, even if the order flags somehow lag behind.
+    from apps.payments.models import Payment
+
+    if order.payments.filter(status=Payment.Status.SUCCESS).exists():
+        return "paid"
+
+    # Local import avoids a circular import: payments.services imports the
+    # order services used by webhooks and reconcile callbacks.
+    from apps.payments.services import reconcile_order_payments
+
+    changed, results = reconcile_order_payments(order)
+    if changed:
+        return "paid"
+    outcomes = {outcome for _, outcome in results}
+    if "error" in outcomes:
+        return "error"
+    if "pending" in outcomes:
+        return "pending"
+    return "clear"
+
+
+def send_unpaid_order_reminders(limit=200, now=None):
+    """Email customers whose placed order is still unpaid after the grace period.
+
+    Each order receives exactly one reminder; ``payment_reminder_sent_at`` is
+    the idempotency guard and also starts the deletion countdown. Returns the
+    number of reminders queued.
+    """
+    now = now or timezone.now()
+    cutoff = now - timedelta(minutes=settings.UNPAID_ORDER_REMINDER_MINUTES)
+    candidate_ids = list(
+        Order.objects.filter(
+            status=OrderStatus.PLACED,
+            payment_status__in=[PaymentStatus.PENDING, PaymentStatus.FAILED],
+            paid_at__isnull=True,
+            payment_reminder_sent_at__isnull=True,
+            created_at__lte=cutoff,
+        )
+        .order_by("created_at")
+        .values_list("pk", flat=True)[: max(1, int(limit))]
+    )
+
+    reminded = 0
+    for order_id in candidate_ids:
+        with transaction.atomic():
+            order = Order.objects.select_for_update().filter(pk=order_id).first()
+            if order is None or not order.can_pay or order.payment_reminder_sent_at:
+                continue
+            deadline = now + timedelta(minutes=settings.UNPAID_ORDER_DELETION_GRACE_MINUTES)
+            record = send_payment_reminder(order, auto_delete_at=deadline)
+            if record is None:
+                # Never start the countdown without a queued reminder. The
+                # order stays eligible for the legacy 48-hour release.
+                logger.warning("Could not queue payment reminder for order %s.", order.order_number)
+                continue
+            order.payment_reminder_sent_at = now
+            order.save(update_fields=["payment_reminder_sent_at", "updated_at"])
+            reminded += 1
+
+    if reminded:
+        logger.info("Queued %s unpaid-order payment reminder(s).", reminded)
+    return reminded
+
+
+def delete_expired_unpaid_orders(limit=200, now=None):
+    """Delete orders whose reminder grace period has elapsed without payment.
+
+    Returns ``(deleted, deferred)``. ``deferred`` counts orders kept because a
+    Paystack payment was still pending or could not be checked; those are
+    retried on the next sweep.
+    """
+    now = now or timezone.now()
+    cutoff = now - timedelta(minutes=settings.UNPAID_ORDER_DELETION_GRACE_MINUTES)
+    candidate_ids = list(
+        Order.objects.filter(
+            status=OrderStatus.PLACED,
+            payment_status__in=[PaymentStatus.PENDING, PaymentStatus.FAILED],
+            paid_at__isnull=True,
+            payment_reminder_sent_at__lte=cutoff,
+        )
+        .order_by("payment_reminder_sent_at")
+        .values_list("pk", flat=True)[: max(1, int(limit))]
+    )
+
+    deleted = 0
+    deferred = 0
+    for order_id in candidate_ids:
+        order = Order.objects.filter(pk=order_id).first()
+        if order is None:
+            continue
+
+        # The provider call happens outside the row lock/transaction.
+        state = payment_state_before_delete(order)
+        if state == "paid":
+            continue
+        if state in ("pending", "error"):
+            deferred += 1
+            logger.info(
+                "Deferred deletion of order %s — payment state is '%s'.",
+                order.order_number,
+                state,
+            )
+            continue
+
+        with transaction.atomic():
+            order = Order.objects.select_for_update().filter(pk=order_id).first()
+            if order is None:
+                continue
+            # Re-check under the lock; a webhook or the customer may have paid
+            # while Paystack was being queried.
+            if (
+                order.status != OrderStatus.PLACED
+                or order.payment_status not in (PaymentStatus.PENDING, PaymentStatus.FAILED)
+                or order.paid_at
+                or not order.payment_reminder_sent_at
+                or order.payment_reminder_sent_at > cutoff
+            ):
+                continue
+
+            from apps.payments.models import Payment
+
+            successful = order.payments.filter(status=Payment.Status.SUCCESS).first()
+            if successful is not None:
+                # Defensive: make the local record reflect the successful
+                # charge instead of deleting it.
+                mark_order_paid(order, successful.reference)
+                continue
+
+            # The outbox row and the deletion commit together: either the
+            # customer gets the goodbye email and the order is gone, or
+            # neither happens.
+            send_order_auto_deleted(order)
+            restore_stock(order)
+            order.delete()
+            deleted += 1
+
+    if deleted or deferred:
+        logger.info(
+            "Unpaid-order cleanup: %s deleted, %s deferred (payment still pending/unverifiable).",
+            deleted,
+            deferred,
+        )
+    return deleted, deferred
+
+
+def process_unpaid_order_followups(*, limit=200, now=None, cancel_stale_legacy=True):
+    """Run the reminder + auto-deletion cycle.
+
+    Called by the management command and the token-guarded maintenance
+    endpoint. The legacy 48-hour release is kept as a safety net for orders
+    created before this flow (or whose reminder could not be queued), so stock
+    can never be held indefinitely.
+    """
+    now = now or timezone.now()
+    reminded = send_unpaid_order_reminders(limit=limit, now=now)
+    deleted, deferred = delete_expired_unpaid_orders(limit=limit, now=now)
+    cancelled = release_stale_unpaid_orders() if cancel_stale_legacy else 0
+    return {
+        "reminded": reminded,
+        "deleted": deleted,
+        "deferred": deferred,
+        "cancelled_legacy": cancelled,
+    }
 
 
 def release_stale_unpaid_orders(hours=None):

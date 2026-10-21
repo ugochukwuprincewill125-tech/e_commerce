@@ -85,6 +85,8 @@ class OrderListSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     payment_status_display = serializers.CharField(source="get_payment_status_display", read_only=True)
     is_paid = serializers.BooleanField(read_only=True)
+    payment_reminder_sent_at = serializers.DateTimeField(read_only=True)
+    auto_delete_at = serializers.DateTimeField(read_only=True)
     item_count = serializers.SerializerMethodField()
     items = OrderItemSerializer(many=True, read_only=True)
 
@@ -93,6 +95,7 @@ class OrderListSerializer(serializers.ModelSerializer):
         fields = (
             "id", "order_number", "status", "status_display", "payment_status", "payment_status_display",
             "is_paid", "total", "item_count", "items", "created_at", "can_pay",
+            "payment_reminder_sent_at", "auto_delete_at",
         )
 
     def get_item_count(self, obj):

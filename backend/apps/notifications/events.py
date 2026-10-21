@@ -229,6 +229,51 @@ def send_order_confirmation(order):
     )
 
 
+def send_payment_reminder(order, auto_delete_at=None):
+    """Remind a customer that a placed order is still awaiting payment.
+
+    The order is deleted automatically when the grace period ends, so the
+    deadline is part of the email. The outbox key guarantees one reminder per
+    order even if two sweeps overlap.
+    """
+    deadline = auto_delete_at or order.auto_delete_at
+    grace_minutes = settings.UNPAID_ORDER_DELETION_GRACE_MINUTES
+    return enqueue_email(
+        template="payment_reminder",
+        to_email=order.email,
+        to_name=order.customer_name,
+        context={
+            **_order_context(order),
+            "payment_deadline": _local(deadline),
+            "grace_minutes": grace_minutes,
+            "preheader": (
+                f"Payment for order {order.order_number} is still pending — "
+                f"it will be deleted if left unpaid."
+            ),
+        },
+        idempotency_key=f"payment-reminder:{order.pk}",
+        event="order.payment_reminder",
+        metadata={"order_id": order.pk, "order_number": order.order_number},
+    )
+
+
+def send_order_auto_deleted(order):
+    """Tell the customer their abandoned, unpaid order was removed."""
+    return enqueue_email(
+        template="order_auto_deleted",
+        to_email=order.email,
+        to_name=order.customer_name,
+        context={
+            **_order_context(order),
+            "grace_minutes": settings.UNPAID_ORDER_DELETION_GRACE_MINUTES,
+            "preheader": f"Order {order.order_number} was deleted because payment was not received.",
+        },
+        idempotency_key=f"order-auto-deleted:{order.pk}",
+        event="order.auto_deleted",
+        metadata={"order_id": order.pk, "order_number": order.order_number},
+    )
+
+
 def send_paid_order_notification(order):
     """Copy a paid order to the team's inbox so staff hear about it right away.
 

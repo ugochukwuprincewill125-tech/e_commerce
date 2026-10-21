@@ -74,7 +74,8 @@ class OrderAdmin(admin.ModelAdmin):
     actions = ["action_processing", "action_ready", "action_ready_pickup", "action_shipped", "action_delivered", "action_picked_up", "action_mark_paid", "action_cancel"]
     readonly_fields = (
         "order_number", "user_link", "subtotal", "shipping_fee", "discount", "total", "coupon_code",
-        "payment_reference", "paid_at", "created_at", "updated_at", "formatted_shipping",
+        "payment_reference", "paid_at", "payment_reminder_sent_at", "auto_delete_at",
+        "created_at", "updated_at", "formatted_shipping",
         "refund_amount", "refund_reason", "refunded_at",
     )
     fieldsets = (
@@ -82,7 +83,7 @@ class OrderAdmin(admin.ModelAdmin):
         ("Customer", {"fields": ("first_name", "last_name", "email", "phone")}),
         ("Delivery", {"fields": ("delivery_method", "pickup_location", "formatted_shipping", "customer_note")}),
         ("Amounts (₦, calculated by the server)", {"fields": ("subtotal", "discount", "shipping_fee", "total", "coupon_code")}),
-        ("Payment", {"fields": ("payment_reference", "paid_at")}),
+        ("Payment", {"fields": ("payment_reference", "paid_at", "payment_reminder_sent_at", "auto_delete_at")}),
         ("Refund", {"classes": ("collapse",), "fields": ("refund_amount", "refund_reason", "refunded_at")}),
     )
 

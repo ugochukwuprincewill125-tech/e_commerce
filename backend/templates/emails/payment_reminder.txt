@@ -1,0 +1,14 @@
+{% extends "emails/base_email.txt" %}
+{% block content %}Hi {{ customer_name }},
+
+We noticed you placed order {{ order_number }} on {{ order_date }}, but we have not received payment yet. Your items are still reserved for you.
+
+Please complete payment by {{ payment_deadline }}. If payment is not received within {{ grace_minutes }} minutes of this reminder, the order will be automatically deleted and the reserved items returned to stock.
+
+Items:
+{% include "emails/partials/order_items.txt" %}
+{% include "emails/partials/order_totals.txt" %}
+Complete payment: {{ order_url }}
+
+If you have just completed payment, please ignore this message — your payment confirmation will arrive shortly. If you need help, contact us at {{ store_email }} and quote order {{ order_number }}.
+{% endblock %}

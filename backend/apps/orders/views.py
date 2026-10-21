@@ -18,7 +18,14 @@ from .serializers import (
     OrderListSerializer,
     ReceiptSerializer,
 )
-from .services import cancel_order, create_order_from_cart, delete_order, release_stale_unpaid_orders
+from .services import (
+    cancel_order,
+    create_order_from_cart,
+    delete_order,
+    payment_state_before_delete,
+    process_unpaid_order_followups,
+    release_stale_unpaid_orders,
+)
 
 
 def order_queryset():
@@ -85,6 +92,27 @@ class OrderViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Crea
                 {"detail": "Only orders that have been placed but not yet paid can be deleted."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        # A customer can start a Paystack payment and close the tab before the
+        # webhook lands. Re-check open attempts before destroying the record so
+        # a paid order is never erased by a "delete" click.
+        state = payment_state_before_delete(order)
+        if state == "paid":
+            return Response(
+                {"detail": "A payment has been confirmed for this order, so it can no longer be deleted."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if state == "pending":
+            return Response(
+                {"detail": "A payment for this order is still being confirmed. Please try again shortly."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        if state == "error":
+            return Response(
+                {"detail": "We could not verify this order's payment with Paystack right now. Please try again shortly."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
         delete_order(order)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -118,23 +146,30 @@ class OrderViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Crea
         return Response(data)
 
 
-class ReleaseUnpaidOrdersView(APIView):
-    """POST /api/orders/maintenance/release-unpaid/ — token-guarded upkeep.
-
-    Render's free tier has no cron, so `.github/workflows/maintenance.yml`
-    calls this on a schedule (with the X-Maintenance-Token header) to cancel
-    unpaid orders past their expiry and put the reserved stock back on the
-    shelf. Disabled (404) until MAINTENANCE_TOKEN is configured.
-    """
+class MaintenanceTokenMixin:
+    """Shared X-Maintenance-Token check for token-guarded upkeep endpoints."""
 
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
     throttle_scope = "auth"
 
-    def post(self, request):
+    def authorized(self, request):
         token = settings.MAINTENANCE_TOKEN
         supplied = request.META.get("HTTP_X_MAINTENANCE_TOKEN", "")
-        if not token or not hmac.compare_digest(token, supplied):
+        return bool(token) and hmac.compare_digest(token, supplied)
+
+
+class ReleaseUnpaidOrdersView(MaintenanceTokenMixin, APIView):
+    """POST /api/orders/maintenance/release-unpaid/ — token-guarded upkeep.
+
+    Render's free tier has no cron, so the scheduled GitHub workflow calls
+    this endpoint (with the X-Maintenance-Token header) to cancel legacy
+    unpaid orders past their expiry and put the reserved stock back on the
+    shelf. Disabled (404) until MAINTENANCE_TOKEN is configured.
+    """
+
+    def post(self, request):
+        if not self.authorized(request):
             return Response(status=status.HTTP_404_NOT_FOUND)
         try:
             hours = int(request.data.get("hours", 0)) or None
@@ -142,3 +177,20 @@ class ReleaseUnpaidOrdersView(APIView):
             hours = None
         count = release_stale_unpaid_orders(hours)
         return Response({"cancelled": count})
+
+
+class ProcessUnpaidOrdersView(MaintenanceTokenMixin, APIView):
+    """POST /api/orders/maintenance/process-unpaid/ — reminder + cleanup.
+
+    Runs the abandoned-checkout sweep: one reminder email after the configured
+    delay, then permanent deletion (customer AND admin) once the grace period
+    has passed without payment. Any Paystack attempt still pending or
+    unverifiable defers deletion to the next run rather than risking a paid
+    order. `.github/workflows/unpaid-orders.yml` calls this every 10 minutes.
+    """
+
+    def post(self, request):
+        if not self.authorized(request):
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        result = process_unpaid_order_followups()
+        return Response(result)

@@ -107,10 +107,13 @@ for Delivery → Shipped → Delivered. Pickup orders end: Ready for Store \
 Pickup → Picked Up.
 - Payment status values: Pending, Paid, Failed, Refunded. Never assert a \
 payment succeeded unless status is Paid.
-- An order can be cancelled by the customer only while it is Placed and not \
-yet paid; cancelled (unpaid) or delivered orders can be deleted from \
-history. Refunds are arranged through support — the assistant cannot issue \
-them.
+- An order can be cancelled or deleted by the customer only while it is \
+Placed and not yet paid. An unpaid order also gets one payment reminder \
+email {settings.UNPAID_ORDER_REMINDER_MINUTES} minutes after checkout; if it \
+is still unpaid {settings.UNPAID_ORDER_DELETION_GRACE_MINUTES} minutes after \
+that reminder it is deleted automatically from the customer's and the \
+store's order lists, and its reserved stock is returned. Refunds are \
+arranged through support — the assistant cannot issue them.
 - Receipts exist for paid orders, listed under My Receipts and on the order \
 detail page.
 

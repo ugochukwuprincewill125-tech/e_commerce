@@ -1,0 +1,24 @@
+{% extends "emails/base_email.html" %}
+{% block content %}
+<h1 style="margin:0 0 14px;color:#0A0F1C;font-size:26px;line-height:1.25;letter-spacing:-0.02em;">Your unpaid order was deleted</h1>
+<p style="margin:0 0 14px;">Hi {{ customer_name }},</p>
+<p style="margin:0 0 14px;">
+  We noticed you placed order <strong>{{ order_number }}</strong> on {{ order_date }}, but we did not receive
+  payment within the {{ grace_minutes }} minutes following our payment reminder. The order has now been
+  deleted and its reserved items returned to stock.
+</p>
+<div style="margin:18px 0;padding:14px 16px;background:#F6F7F9;border:1px solid #E4E7EC;border-radius:6px;font-size:13px;line-height:1.6;color:#24314D;">
+  <strong>Order total:</strong> {{ total }}<br>
+  <strong>Status:</strong> Deleted — no payment received
+</div>
+<p style="margin:0 0 14px;">
+  If you still want to purchase these items, you are welcome to place a new order on our website at any time.
+</p>
+<p style="margin:26px 0;text-align:center;">
+  <a class="button" href="{{ site_url }}" style="display:inline-block;padding:13px 24px;background:#C8102E;color:#ffffff !important;text-decoration:none !important;font-weight:700;border-radius:6px;">Continue shopping</a>
+</p>
+<p class="muted" style="margin:0;font-size:12px;line-height:1.7;">
+  If you believe you already paid for this order, please contact us at {{ store_email }} with your payment
+  reference and we will check it for you.
+</p>
+{% endblock %}

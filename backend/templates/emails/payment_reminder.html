@@ -1,0 +1,23 @@
+{% extends "emails/base_email.html" %}
+{% block content %}
+<h1 style="margin:0 0 14px;color:#0A0F1C;font-size:26px;line-height:1.25;letter-spacing:-0.02em;">Your order is still awaiting payment</h1>
+<p style="margin:0 0 14px;">Hi {{ customer_name }},</p>
+<p style="margin:0 0 14px;">
+  We noticed you placed order <strong>{{ order_number }}</strong> on {{ order_date }}, but we have not received payment yet.
+  Your items are still reserved for you.
+</p>
+<div style="margin:18px 0;padding:14px 16px;background:#FEF3C7;border:1px solid #FDE68A;border-radius:6px;font-size:13px;line-height:1.6;color:#92400E;">
+  <strong>Please complete payment by {{ payment_deadline }}.</strong>
+  If payment is not received within {{ grace_minutes }} minutes of this reminder, the order will be
+  automatically deleted and the reserved items returned to stock.
+</div>
+{% include "emails/partials/order_items.html" %}
+{% include "emails/partials/order_totals.html" %}
+<p style="margin:26px 0;text-align:center;">
+  <a class="button" href="{{ order_url }}" style="display:inline-block;padding:13px 24px;background:#C8102E;color:#ffffff !important;text-decoration:none !important;font-weight:700;border-radius:6px;">Complete payment</a>
+</p>
+<p class="muted" style="margin:0;font-size:12px;line-height:1.7;">
+  If you have just completed payment, please ignore this message — your payment confirmation will arrive shortly.
+  If you need help, contact us at {{ store_email }} and quote order {{ order_number }}.
+</p>
+{% endblock %}

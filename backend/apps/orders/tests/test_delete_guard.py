@@ -22,6 +22,31 @@ class TestOrderDeleteGuard:
         assert resp.status_code == status.HTTP_204_NO_CONTENT
         assert not Order.objects.filter(pk=order.pk).exists()
 
+    @pytest.mark.parametrize(
+        ("payment_state", "expected_status"),
+        [
+            ("paid", status.HTTP_400_BAD_REQUEST),
+            ("pending", status.HTTP_409_CONFLICT),
+            ("error", status.HTTP_503_SERVICE_UNAVAILABLE),
+        ],
+    )
+    def test_delete_is_blocked_when_payment_cannot_be_cleared(
+        self, auth_client, order, monkeypatch, payment_state, expected_status
+    ):
+        # The provider re-check says the attempt succeeded, is still in flight,
+        # or cannot be reached. Deleting under those conditions could erase a
+        # paid order, so the order must survive and the API must explain why.
+        monkeypatch.setattr(
+            "apps.orders.views.payment_state_before_delete",
+            lambda _order: payment_state,
+        )
+
+        resp = auth_client.delete(_url(order))
+
+        assert resp.status_code == expected_status
+        assert "payment" in resp.data["detail"].lower()
+        assert Order.objects.filter(pk=order.pk).exists()
+
     def test_placed_order_with_a_failed_payment_can_be_deleted(self, auth_client, order):
         # The attempt was made but never settled, so no money ever moved.
         Order.objects.filter(pk=order.pk).update(payment_status=PaymentStatus.FAILED)

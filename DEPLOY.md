@@ -65,9 +65,12 @@ Notes:
   ships a keep-alive workflow: `.github/workflows/keepalive.yml` pings
   `/api/health/` every 10 minutes from GitHub Actions, which keeps the
   service inside its 15-minute idle window. It runs automatically on `main` —
-  nothing to configure. Alternatives: any uptime pinger (UptimeRobot,
-  cron-job.org) hitting `/api/health/` every 5–10 minutes, or upgrading the
-  Render plan to Starter.
+  nothing to configure. GitHub can throttle scheduled runs, so for exact
+  unpaid-order timing also point a free uptime pinger (UptimeRobot,
+  cron-job.org) at `/api/health/` every 5 minutes, or upgrade the Render plan
+  to Starter. The API additionally runs the unpaid-order sweep in the
+  background while it is awake, so any health ping or customer visit catches
+  up due reminders and deletions.
 - Every push to `main` redeploys automatically (`autoDeploy`).
 - Migrations are **not** run at deploy time — run them from your machine (§5).
 - Uploads no longer hit Vercel's ~4.5MB request cap: Cloudinary stores the
@@ -141,8 +144,11 @@ order is saved as unpaid.
 How money is handled in the store (no setup needed, listed so you know what to
 expect in the admin):
 
-- Unpaid orders expire after `UNPAID_ORDER_EXPIRY_HOURS` (default 48h) and
-  their reserved stock goes back on the shelf — see §7's `MAINTENANCE_TOKEN`.
+- An unpaid order gets one reminder email 15 minutes after checkout. If it is
+  still unpaid 60 minutes later (75 minutes total), it is permanently deleted
+  from the customer and admin dashboards and its reserved stock goes back on
+  the shelf. `UNPAID_ORDER_EXPIRY_HOURS` (default 48h) remains a safety net for
+  old or reminder-less orders. Both jobs need §7's `MAINTENANCE_TOKEN`.
 - Refunds are handled by support, not by a button in the store: the customer
   asks (WhatsApp / phone / email), you agree it, and you send the refund from
   the Paystack dashboard (Transactions → the charge → Refund) — or by a plain
@@ -176,7 +182,10 @@ expect in the admin):
 | `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` | Cloudinary console → API Keys | Required in production |
 | `PAYSTACK_SECRET_KEY` / `PAYSTACK_PUBLIC_KEY` | `sk_test_…` / `pk_test_…` | Add when ready (§6) |
 | `ALLOW_MISSING_PAYSTACK` | `True` | Keeps deploys working until Paystack keys exist; delete afterwards |
-| `MAINTENANCE_TOKEN` | any long random string | Enables the expired-unpaid-order upkeep and pending-email retries. Set the same string as a GitHub repo secret (Actions use it hourly) — see `.github/workflows/maintenance.yml` |
+| `MAINTENANCE_TOKEN` | any long random string | Enables the unpaid-order follow-up, expired-order upkeep and pending-email retries. Set the same string as a GitHub repo secret — see `.github/workflows/maintenance.yml` and `.github/workflows/unpaid-orders.yml` |
+| `UNPAID_ORDER_REMINDER_MINUTES` | `15` | Minutes after checkout before the one payment-reminder email |
+| `UNPAID_ORDER_DELETION_GRACE_MINUTES` | `60` | Minutes after the reminder before the unpaid order is permanently deleted and its stock released |
+| `UNPAID_ORDER_SWEEP_ON_REQUEST` | `True` in production | Runs the reminder/deletion sweep in a background thread on the first request after each minute. The external workflow remains the fallback while the instance is asleep |
 | `BREVO_API_KEY` | `xkeysib-…` API key | Transactional email. Until set, emails fall back to the Django backend and print to the Render logs |
 | `BREVO_SENDER_EMAIL` / `BREVO_REPLY_TO_EMAIL` | the Brevo-verified sender | Must be verified in Brevo; the blueprint pre-fills the current Gmail sender. See `EMAIL_SETUP.md` |
 | `EMAIL_BACKEND`, `EMAIL_HOST`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS` | optional SMTP fallback | Only used when no Brevo key is set |
@@ -206,8 +215,9 @@ Cloud OAuth client: `http://localhost:5173`, `http://127.0.0.1:5173`,
 - [ ] Cart → checkout → order placed; visible in the admin
 - [ ] Admin: edit a product and upload an image
 - [ ] Paystack set up (§6) before taking real orders
-- [ ] (Recommended) Set `MAINTENANCE_TOKEN` on Render **and** as a GitHub
-      secret, so unpaid orders stop holding stock after their expiry
+- [ ] (Required) Set `MAINTENANCE_TOKEN` on Render **and** as a GitHub
+      secret, so payment reminders are sent and unpaid orders are deleted
+      (and their stock released) on schedule
 - [ ] (Optional) Custom domain: add it on Vercel + Render, then update
       `FRONTEND_URL`, `CORS_ALLOWED_ORIGINS` and `ALLOWED_HOSTS`
 

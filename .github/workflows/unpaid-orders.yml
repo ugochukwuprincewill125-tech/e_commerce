@@ -1,0 +1,47 @@
+# Abandoned-checkout follow-up.
+#
+# Every 10 minutes this calls the token-guarded maintenance endpoint that:
+#   1. emails a reminder to customers whose order is still unpaid after
+#      UNPAID_ORDER_REMINDER_MINUTES (default 15);
+#   2. permanently deletes orders whose reminder grace period has elapsed
+#      (default 60 minutes) without payment, releasing their stock;
+#   3. defers any order whose Paystack payment is still pending or cannot be
+#      verified, so a paid order is never deleted by mistake.
+#
+# Render's free tier has no cron, and GitHub can throttle scheduled runs. The
+# API also runs the same idempotent sweep in the background on incoming
+# requests while it is awake; this workflow is the external fallback when the
+# service was asleep or had no traffic. The endpoint is disabled until the
+# same MAINTENANCE_TOKEN is set on Render and as a GitHub repository secret.
+name: Unpaid order follow-up
+
+on:
+  schedule:
+    # GitHub may delay scheduled runs under load; a late run simply picks up
+    # the next due order. Every 10 minutes keeps the reminder close to the
+    # 15-minute mark and the deletion close to the 60-minute grace period.
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: unpaid-order-followup
+  cancel-in-progress: false
+
+jobs:
+  process-unpaid:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Send reminders and delete expired unpaid orders
+        env:
+          MAINTENANCE_TOKEN: ${{ secrets.MAINTENANCE_TOKEN }}
+          UNPAID_URL: https://timelineglobal.onrender.com/api/orders/maintenance/process-unpaid/
+        run: |
+          if [ -z "$MAINTENANCE_TOKEN" ]; then
+            echo "MAINTENANCE_TOKEN is not configured - skipping (the endpoint is disabled)."
+            exit 0
+          fi
+          # A cold instance accepts the connection first and boots while the
+          # request waits, so allow generous time for the first call.
+          curl -sS -f -X POST -H "X-Maintenance-Token: $MAINTENANCE_TOKEN" \
+            --max-time 130 "$UNPAID_URL"

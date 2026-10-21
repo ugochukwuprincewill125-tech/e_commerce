@@ -79,6 +79,9 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # Opportunistic unpaid-order follow-up while the API process is awake.
+    # Disabled in development/tests; enabled by config.settings.prod.
+    "apps.orders.middleware.UnpaidOrderSweepMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -323,8 +326,21 @@ SHIPPING_FEE_SOUTH_WEST = int(os.getenv("SHIPPING_FEE_SOUTH_WEST", "5500"))
 SHIPPING_FEE_DEFAULT = int(os.getenv("SHIPPING_FEE_DEFAULT", "7500"))
 FREE_SHIPPING_THRESHOLD = int(os.getenv("FREE_SHIPPING_THRESHOLD", "1000000"))
 UNPAID_ORDER_EXPIRY_HOURS = int(os.getenv("UNPAID_ORDER_EXPIRY_HOURS", "48"))
+# Abandoned-checkout follow-up. An unpaid order gets one reminder email this
+# many minutes after it was placed, then is permanently deleted (and its stock
+# released) once the deletion grace period has passed since that reminder.
+# Both values are configurable so the store can tune the policy without a code
+# change. Keep the grace period at 60 minutes unless the policy changes.
+UNPAID_ORDER_REMINDER_MINUTES = max(1, int(os.getenv("UNPAID_ORDER_REMINDER_MINUTES", "15")))
+UNPAID_ORDER_DELETION_GRACE_MINUTES = max(1, int(os.getenv("UNPAID_ORDER_DELETION_GRACE_MINUTES", "60")))
+# Best-effort in-process trigger. It is off in development/tests to avoid
+# surprising emails while coding; production turns it on so reminders and
+# deletions keep close to schedule whenever the API is awake. The scheduled
+# maintenance endpoint remains the external fallback.
+UNPAID_ORDER_SWEEP_ON_REQUEST = env_bool("UNPAID_ORDER_SWEEP_ON_REQUEST", False)
 # Token for the maintenance endpoint the scheduled GitHub workflow calls
-# (cancels expired unpaid orders so they stop holding stock). Unset = disabled.
+# (sends unpaid-order reminders, deletes expired unpaid orders and cancels
+# stale legacy ones so they stop holding stock). Unset = disabled.
 MAINTENANCE_TOKEN = os.getenv("MAINTENANCE_TOKEN", "")
 REVIEWS_REQUIRE_APPROVAL = env_bool("REVIEWS_REQUIRE_APPROVAL", False)
 

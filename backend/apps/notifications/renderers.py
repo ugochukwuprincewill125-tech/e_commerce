@@ -38,6 +38,16 @@ TEMPLATE_SPECS = {
         "text": "emails/payment_confirmation.txt",
         "subject": "Payment confirmed for order {{ order_number }}",
     },
+    "payment_reminder": {
+        "html": "emails/payment_reminder.html",
+        "text": "emails/payment_reminder.txt",
+        "subject": "Payment still pending for order {{ order_number }}",
+    },
+    "order_auto_deleted": {
+        "html": "emails/order_auto_deleted.html",
+        "text": "emails/order_auto_deleted.txt",
+        "subject": "Order {{ order_number }} has been deleted",
+    },
     "order_paid_admin": {
         "html": "emails/order_paid_admin.html",
         "text": "emails/order_paid_admin.txt",

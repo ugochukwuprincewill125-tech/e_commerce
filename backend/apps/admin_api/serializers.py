@@ -227,6 +227,7 @@ class AdminOrderListSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
     is_tracked = serializers.BooleanField(read_only=True)
     is_refunded = serializers.BooleanField(read_only=True)
+    auto_delete_at = serializers.DateTimeField(read_only=True)
     # Staff need the drop-off address in the list itself, not only in the
     # detail modal — delivery orders surface it in the "Ship to" column.
     shipping_address = serializers.JSONField(read_only=True)
@@ -240,6 +241,7 @@ class AdminOrderListSerializer(serializers.ModelSerializer):
             "discount", "total", "coupon_code", "item_count", "items",
             "carrier", "tracking_number", "is_tracked",
             "refund_amount", "refund_reason", "refunded_at", "is_refunded",
+            "payment_reminder_sent_at", "auto_delete_at",
             "created_at", "updated_at",
         )
 

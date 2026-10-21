@@ -27,6 +27,8 @@ while testing, but the production store should authenticate its own domain
 | Staff marks an order **shipped** | `order_shipped` | `order-status:<order>:shipped` |
 | Staff marks an order **delivered** / **picked up** | `order_delivered` — thanks + review links for each item | `order-status:<order>:<status>` |
 | Order cancelled (customer, staff, or expiry) | `order_cancelled` | `order-cancelled:<order>` |
+| Unpaid order 15 minutes after checkout | `payment_reminder` - states the one-hour deadline before automatic deletion | `payment-reminder:<order>` |
+| Unpaid order deleted after the reminder grace period | `order_auto_deleted` - explains the deletion and invites a new order | `order-auto-deleted:<order>` |
 | Refund recorded (Paystack webhook or staff) | `order_refunded` | `order-refund:<order>:<refund id/reference>` |
 
 `placed` and `payment_confirmed` do not send a separate status email: checkout
@@ -138,6 +140,10 @@ Then exercise the real triggers:
 5. Move a pickup order through **Processing → Ready for Pickup → Picked Up** → the ready email shows the store address and opening hours, and the picked-up email thanks the customer and asks for a review.
 6. Cancel another order → `order_cancelled`.
 7. Mark a paid order refunded (or send a Paystack `refund.processed` webhook) → `order_refunded`.
+8. Place an order without paying → after 15 minutes the scheduled sweep sends
+   `payment_reminder`; one hour after that it sends `order_auto_deleted` and
+   removes the order. In development, run
+   `python manage.py process_unpaid_orders` to exercise it immediately.
 
 Everything is visible in **Admin panel → Transactional email**: rendered HTML
 preview, plain-text body, status, provider message id, attempts, last error, and

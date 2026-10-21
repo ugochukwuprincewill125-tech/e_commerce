@@ -4,7 +4,7 @@
 Thank you for shopping with {{ store_name }}. We received order {{ order_number }} on {{ order_date }}.
 
 {% if payment_status_key == "paid" %}Payment confirmed. We are preparing your order.
-{% else %}Awaiting payment. Your items are reserved, but we will start processing once payment is confirmed. You can complete payment from your order page.
+{% else %}Awaiting payment. Your items are reserved, but we will start processing once payment is confirmed. You can complete payment from your order page. If payment is not received, we will send a reminder and then delete the order automatically so the reserved items can be released.
 {% endif %}
 Items:
 {% include "emails/partials/order_items.txt" %}
