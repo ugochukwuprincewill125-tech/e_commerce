@@ -25,9 +25,14 @@
     <meta property="og:image" content="https://timelinegadgets.com/favicon.png" />
     <meta name="twitter:card" content="summary" />
 
-    <!-- One master app mark. favicon.png is the supplied brand logo. -->
-    <link rel="icon" type="image/png" href="/favicon.png" />
-    <link rel="apple-touch-icon" href="/favicon.png" />
+    <!-- One master app mark. favicon.png is the supplied brand logo;
+         the resized copies satisfy Google's favicon guideline (a square
+         icon that is a multiple of 48px — 48/96/192) for best result
+         placement in search. -->
+    <link rel="icon" type="image/png" href="/favicon-48x48.png" sizes="48x48" />
+    <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/png" href="/favicon-192x192.png" />
+    <link rel="apple-touch-icon" href="/favicon-192x192.png" />
     <link rel="manifest" href="/site.webmanifest" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
