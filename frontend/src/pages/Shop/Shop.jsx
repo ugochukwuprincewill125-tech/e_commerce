@@ -9,6 +9,7 @@ import EmptyState, { ErrorState } from '../../components/EmptyState/EmptyState'
 import { ProductGridSkeleton } from '../../components/Loader/Skeleton'
 import Pagination from '../../components/Pagination/Pagination'
 import ProductGrid from '../../components/ProductGrid/ProductGrid'
+import SearchBar from '../../components/SearchBar/SearchBar'
 import Seo from '../../components/Seo/Seo'
 import useLockBody from '../../hooks/useLockBody'
 import { catalogService, productService } from '../../services/productService'
@@ -84,6 +85,10 @@ export default function Shop() {
   const brand = useQuery({ queryKey: ['brand', brandSlug], queryFn: () => catalogService.brand(brandSlug), enabled: Boolean(brandSlug) })
 
   const title = category.data?.name || brand.data?.name || (q ? `Results for “${q}”` : 'Shop all gadgets')
+  const placeholder =
+    (category.data?.name && `Search ${category.data.name} products`) ||
+    (brand.data?.name && `Search ${brand.data.name} products`) ||
+    'Search all products'
   const description =
     category.data?.description ||
     brand.data?.description ||
@@ -148,6 +153,16 @@ export default function Shop() {
             {title}
           </motion.h1>
           {description && <p className="mt-1.5 max-w-2xl text-[13px] leading-relaxed text-metal-500">{description}</p>}
+          {/* Submitted scope-bound: on a category or brand listing the search
+              stays on that slice of the catalogue, on /shop it covers the
+              whole catalogue. */}
+          <div className="mt-4 max-w-xl">
+            <SearchBar
+              searchTo={categorySlug ? `/category/${categorySlug}` : brandSlug ? `/brands/${brandSlug}` : '/shop'}
+              initialValue={q}
+              placeholder={placeholder}
+            />
+          </div>
         </div>
       </section>
 

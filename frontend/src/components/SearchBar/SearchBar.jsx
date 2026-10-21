@@ -19,11 +19,26 @@ import { cn, formatNaira } from '../../utils/format'
  * `panelAlign` anchors the suggestions panel to the field's right edge. Use
  * "right" when the field sits close to the viewport's right edge (the navbar),
  * so the panel opens inwards instead of overflowing the screen.
+ *
+ * `searchTo` overrides the page heavy submissions land on (e.g. pass
+ * "/brands/apple" on a brand page so a submit stays on the brand listing
+ * instead of jumping to /category/<scope>) and `initialValue` pre-fills the
+ * input, used to echo an active query back on search-results pages.
  */
-export default function SearchBar({ className, autoFocus = false, onNavigate, scope = '', grouped = false, placeholder, panelAlign = 'left' }) {
+export default function SearchBar({
+  className,
+  autoFocus = false,
+  onNavigate,
+  scope = '',
+  grouped = false,
+  placeholder,
+  panelAlign = 'left',
+  searchTo,
+  initialValue = '',
+}) {
   const navigate = useNavigate()
   const listId = useId()
-  const [q, setQ] = useState('')
+  const [q, setQ] = useState(initialValue)
   const [open, setOpen] = useState(false)
   const [cursor, setCursor] = useState(-1)
   const wrapper = useRef(null)
@@ -45,6 +60,11 @@ export default function SearchBar({ className, autoFocus = false, onNavigate, sc
 
   useEffect(() => setCursor(-1), [term])
 
+  // Keep the input in step with the page's own query string, so an active
+  // search term (or a term submitted from elsewhere in the app) is echoed
+  // back into the field the customer is looking at.
+  useEffect(() => setQ(initialValue), [initialValue])
+
   const go = (to) => {
     setOpen(false)
     setQ('')
@@ -52,7 +72,10 @@ export default function SearchBar({ className, autoFocus = false, onNavigate, sc
     navigate(to)
   }
 
-  const searchPath = (term) => (scope ? `/category/${scope}?q=${encodeURIComponent(term)}` : `/shop?q=${encodeURIComponent(term)}`)
+  const searchPath = (term) => {
+    if (searchTo) return `${searchTo}?q=${encodeURIComponent(term)}`
+    return scope ? `/category/${scope}?q=${encodeURIComponent(term)}` : `/shop?q=${encodeURIComponent(term)}`
+  }
 
   const submit = (e) => {
     e.preventDefault()

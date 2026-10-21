@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 
 import EmptyState, { ErrorState } from '../../components/EmptyState/EmptyState'
 import { Skeleton } from '../../components/Loader/Skeleton'
+import SearchBar from '../../components/SearchBar/SearchBar'
 import { catalogService } from '../../services/productService'
 import { categoryIcon } from '../../utils/icons'
 
@@ -25,6 +26,12 @@ export default function CategoryDirectory() {
       <div>
         <h2 className="text-[19px] font-semibold tracking-tight text-ink-900">Categories</h2>
         <p className="mt-1 text-[13px] text-metal-500">Browse the full catalogue by department.</p>
+      </div>
+
+      {/* Search jumps straight to matching products (with live suggestions
+          as they type); the tiles below stay for department browsing. */}
+      <div className="mt-4 max-w-xl">
+        <SearchBar placeholder="Search products by name, brand or category" />
       </div>
 
       <div className="mt-4">

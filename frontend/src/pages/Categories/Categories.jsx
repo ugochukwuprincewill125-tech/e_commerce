@@ -6,6 +6,7 @@ import CategoryCard from '../../components/CategoryCard/CategoryCard'
 import { ErrorState } from '../../components/EmptyState/EmptyState'
 import { Skeleton } from '../../components/Loader/Skeleton'
 import Reveal from '../../components/Motion/Reveal'
+import SearchBar from '../../components/SearchBar/SearchBar'
 import Seo from '../../components/Seo/Seo'
 import { catalogService } from '../../services/productService'
 import { categoryIcon } from '../../utils/icons'
@@ -25,6 +26,9 @@ export default function Categories() {
             {data.length ? `${data.length} categories` : 'Categories'} of phones, computers, accessories and technology
             solutions.
           </p>
+          <div className="mt-5 max-w-xl">
+            <SearchBar placeholder="Search products by name, brand or category" />
+          </div>
         </div>
       </section>
 
