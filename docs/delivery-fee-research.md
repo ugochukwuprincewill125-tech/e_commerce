@@ -1,7 +1,7 @@
 # Delivery fee research & recommendation
 
 **Date:** 21 October 2026 (updated 22 October 2026)
-**Status:** approved and implemented in code — deploy pending
+**Status:** deployed and verified live on 22 October 2026 (four-zone payload + Vercel bundle)
 **Decision (22 Oct 2026):** Lagos metro stays at **₦3,500** and is served by local Computer Village dispatch riders (₦1,500–₦3,000 per drop); the other three zones move to **₦6,500 / ₦8,000 / ₦9,000**. 3–5 kg attracts a **₦1,500** manual surcharge; the free-delivery threshold stays at ₦1,000,000.
 
 **Scope:** what it actually costs to deliver a Timeline Global Systems order (courier + packaging + payment fees + handling) and what the store should charge, zone by zone, without overcharging or undercharging customers.
@@ -233,7 +233,7 @@ The heavy-parcel surcharge is operational for now (admin confirms 3–5 kg order
 
 ### 4.4 Action list
 
-1. **Deploy and verify** the new fees: `GET /api/store/` should return the four zones; place a Lagos test order and an interstate test order.
+1. **Deployed and verified (22 Oct 2026).** `GET /api/store-info/` returns the four zones; live quotes: Lagos Ikeja ₦3,500, Ikorodu ₦6,500, Ogun ₦6,500, Enugu/Kwara ₦8,000, Kano/Akwa Ibom ₦9,000, pickup ₦0.
 2. **Formalise a Lagos dispatch partner** (Kwik/H Express/Zariqo) for metro drops; keep Fez/GIG for high-value orders where insurance matters.
 3. **Request SME quotes:** Fez business portal (volume/post-paid), Sendbox, Konga Logistics. Use the Fez retail matrix in this report as the comparison baseline.
 4. **Add `weight_grams`** to products when real listings replace the ₦1,000 placeholders, then enable the 3–5 kg surcharge automatically.
