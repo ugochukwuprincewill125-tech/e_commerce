@@ -126,6 +126,7 @@ class MergeCartView(APIView):
 class QuoteSerializer(serializers.Serializer):
     coupon_code = serializers.CharField(required=False, allow_blank=True, max_length=40)
     state = serializers.CharField(required=False, allow_blank=True, max_length=80)
+    city = serializers.CharField(required=False, allow_blank=True, max_length=80)
     delivery_method = serializers.ChoiceField(choices=["delivery", "pickup"], required=False, default="delivery")
 
 

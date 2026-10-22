@@ -15,6 +15,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useCart } from '../../context/CartContext'
 import { useToast } from '../../context/ToastContext'
 import useCheckoutPrefs from '../../hooks/useCheckoutPrefs'
+import useDebounce from '../../hooks/useDebounce'
 import useQuote from '../../hooks/useQuote'
 import useStoreInfo from '../../hooks/useStoreInfo'
 import { errorMessage, fieldErrors } from '../../services/api'
@@ -111,7 +112,13 @@ export default function Checkout() {
 
   const deliveryMethod = prefs.delivery_method
   const state = watch('state')
-  const quote = useQuote({ coupon_code: prefs.coupon_code, state: deliveryMethod === 'delivery' ? state : '', delivery_method: deliveryMethod })
+  const city = useDebounce(watch('city'))
+  const quote = useQuote({
+    coupon_code: prefs.coupon_code,
+    state: deliveryMethod === 'delivery' ? state : '',
+    city: deliveryMethod === 'delivery' ? city : '',
+    delivery_method: deliveryMethod,
+  })
 
   // Pre-fill with the default saved address.
   useEffect(() => {
@@ -146,7 +153,7 @@ export default function Checkout() {
   const applyCoupon = async (code) => {
     setCouponError('')
     try {
-      const res = await cartService.applyCoupon({ code, state, delivery_method: deliveryMethod })
+      const res = await cartService.applyCoupon({ code, state, city, delivery_method: deliveryMethod })
       setPrefs({ coupon_code: code })
       toast.success(res.detail)
     } catch (err) {

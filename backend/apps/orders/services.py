@@ -75,7 +75,7 @@ def create_order_from_cart(user, cart, data):
 
     subtotal = sum(unit_price * qty for _, _, qty, unit_price in lines)
     delivery_method = data.get("delivery_method", "delivery")
-    totals = calculate_totals(subtotal, data.get("coupon_code", ""), data.get("state", ""), delivery_method)
+    totals = calculate_totals(subtotal, data.get("coupon_code", ""), data.get("state", ""), delivery_method, data.get("city", ""))
     if data.get("coupon_code") and not totals["coupon"]["valid"]:
         raise ValidationError({"detail": totals["coupon"]["message"], "coupon_code": totals["coupon"]["message"]})
 

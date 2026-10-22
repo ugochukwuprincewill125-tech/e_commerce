@@ -85,14 +85,38 @@ export const updateProductImage = (productId, imageId, payload) =>
   api.patch(`/admin-api/products/${productId}/images/${imageId}/`, payload).then((r) => r.data)
 
 /* ---------------------------- categories/brands --------------------------- */
-export const fetchAdminCategories = () => api.get('/admin-api/categories/').then((r) => r.data)
+/**
+ * The taxonomy endpoints stay paginated server-side (12 per page), but the
+ * panel presents them as a single table with no pagination controls — and the
+ * same response feeds the category/brand pickers on the product screens. Only
+ * fetching the first page silently hid every category past row 12, which is
+ * why recently added categories never appeared on /admin/categories while
+ * showing fine on the storefront. Walk the pages and stitch one complete
+ * list, keeping the paginated shape consumers already read.
+ */
+const TAXONOMY_PAGE_SIZE = 48 // server max (StandardPagination.max_page_size)
+
+async function fetchAllAdminTaxonomy(endpoint) {
+  const get = (page) => api.get(endpoint, { params: { page, page_size: TAXONOMY_PAGE_SIZE } })
+  const first = await get(1)
+  const pages = [first.data]
+  // A short page means we have everything; the guard also keeps us from
+  // requesting a page that fell out of range between the calls.
+  while (pages.length < (pages[0].total_pages || 1) &&
+         (pages[pages.length - 1].results?.length ?? 0) >= TAXONOMY_PAGE_SIZE) {
+    pages.push((await get(pages.length + 1)).data)
+  }
+  return { ...pages[0], results: pages.flatMap((p) => p?.results || []) }
+}
+
+export const fetchAdminCategories = () => fetchAllAdminTaxonomy('/admin-api/categories/')
 export const createAdminCategory = (payload) => api.post('/admin-api/categories/', payload).then((r) => r.data)
 export const updateAdminCategory = (id, payload) => api.patch(`/admin-api/categories/${id}/`, payload).then((r) => r.data)
 export const deleteAdminCategory = (id) => api.delete(`/admin-api/categories/${id}/`).then((r) => r.data)
 /** Show/hide a category on the storefront (hidden categories' pages 404). */
 export const setCategoryActive = (id, is_active) => api.patch(`/admin-api/categories/${id}/`, { is_active }).then((r) => r.data)
 
-export const fetchAdminBrands = () => api.get('/admin-api/brands/').then((r) => r.data)
+export const fetchAdminBrands = () => fetchAllAdminTaxonomy('/admin-api/brands/')
 export const createAdminBrand = (payload) => api.post('/admin-api/brands/', payload).then((r) => r.data)
 export const updateAdminBrand = (id, payload) => api.patch(`/admin-api/brands/${id}/`, payload).then((r) => r.data)
 export const deleteAdminBrand = (id) => api.delete(`/admin-api/brands/${id}/`).then((r) => r.data)

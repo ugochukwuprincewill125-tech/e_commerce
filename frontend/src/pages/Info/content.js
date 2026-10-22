@@ -14,7 +14,7 @@ export const INFO = {
       },
       {
         heading: 'Delivery fees',
-        body: 'Delivery fees are calculated automatically at checkout based on your state, and shown before you pay. Large orders can qualify for free delivery.',
+        body: 'Delivery fees are calculated automatically at checkout based on your state, and shown before you pay. Lagos metro orders are delivered by our local dispatch riders; interstate orders travel with our courier partners. Orders above 2 kg may attract a ₦1,500 heavy-parcel surcharge, confirmed before dispatch. Large orders can qualify for free delivery.',
         showRates: true,
       },
       {

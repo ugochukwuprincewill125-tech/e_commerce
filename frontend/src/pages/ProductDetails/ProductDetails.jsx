@@ -66,11 +66,13 @@ function AssurancePanel() {
 
 function ShippingInfo() {
   const { shipping, company } = useStoreInfo()
+  const southEast = shipping?.south_east ?? shipping?.default
+  const north = shipping?.north ?? shipping?.default
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       {[
-        { icon: Truck, title: 'Lagos delivery', text: shipping ? `${formatNaira(shipping.lagos)} flat rate within Lagos. Most orders arrive within 1–2 business days.` : 'Fast delivery within Lagos.' },
-        { icon: Truck, title: 'Nationwide shipping', text: shipping ? `${formatNaira(shipping.south_west)} to other South-West states and ${formatNaira(shipping.default)} elsewhere in Nigeria. Typically 2–5 business days.` : 'Delivery to every state.' },
+        { icon: Truck, title: 'Lagos delivery', text: shipping ? `${formatNaira(shipping.lagos)} flat rate within Lagos metro, delivered by our local dispatch riders. Most orders arrive the same or next day.` : 'Fast delivery within Lagos.' },
+        { icon: Truck, title: 'Nationwide shipping', text: shipping ? `${formatNaira(shipping.south_west)} to the South West (incl. Ikorodu), ${formatNaira(southEast)} to the South East/South South, and ${formatNaira(north)} to northern states, Abuja and Akwa Ibom/Cross River.` : 'Delivery to every state.' },
         { icon: Store, title: 'Free store pickup', text: `Collect from our ${company.locations.map((l) => l.label.toLowerCase()).join(' or ')} in Computer Village, Ikeja once your order is ready.` },
         { icon: Zap, title: 'Free delivery on big orders', text: shipping ? `Orders from ${formatNaira(shipping.free_shipping_threshold)} ship free.` : 'Free delivery on qualifying orders.' },
       ].map(({ icon: Icon, title, text }) => (
@@ -80,7 +82,7 @@ function ShippingInfo() {
           <p className="mt-1 text-[13px] leading-relaxed text-metal-500">{text}</p>
         </div>
       ))}
-      <p className="text-xs text-metal-400 sm:col-span-2">Delivery fees are calculated by our server at checkout based on your state. See our shipping and returns pages for full details.</p>
+      <p className="text-xs text-metal-400 sm:col-span-2">Delivery fees are calculated by our server at checkout based on your state. Orders above 2 kg may attract a ₦1,500 heavy-parcel surcharge; we will confirm before dispatch. See our shipping page for full details.</p>
     </div>
   )
 }

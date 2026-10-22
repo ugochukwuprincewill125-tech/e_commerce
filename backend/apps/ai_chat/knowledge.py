@@ -44,7 +44,7 @@ def _catalogue_names():
 
 def app_knowledge():
     """Verified navigation, shopping and support knowledge for the prompt."""
-    lagos = shipping_settings()
+    fees = shipping_settings()
     naira = lambda v: f"₦{v:,.0f}"  # noqa: E731
     categories, brands = _catalogue_names()
 
@@ -92,10 +92,12 @@ signing in and walks through four steps: 1 Customer → 2 Delivery → 3 Review 
 → 4 Payment.
 - Delivery step options: Home/Office Delivery (address required) or free \
 Store Pickup at Computer Village, Ikeja, Lagos.
-- Shipping fees: Lagos {naira(lagos['lagos'])}, other South-West states \
-{naira(lagos['south_west'])}, all other states {naira(lagos['default'])}; \
-store pickup is free; orders of {naira(lagos['free_shipping_threshold'])} or \
-more ship free.
+- Shipping fees: Lagos metro {naira(fees['lagos'])}, the South West including \
+Ikorodu {naira(fees['south_west'])}, the South East and South South plus Kwara \
+{naira(fees['south_east'])}, and the northern states plus Akwa Ibom/Cross River \
+{naira(fees['north'])}; store pickup is free; orders of \
+{naira(fees['free_shipping_threshold'])} or more ship free. Orders above 2 kg \
+may attract a ₦1,500 heavy-parcel surcharge.
 - Payment is processed by Paystack (card, bank transfer, USSD). After paying, \
 the customer returns to /payment/callback and the order page shows a \
 "Refresh payment" action if the status lags.

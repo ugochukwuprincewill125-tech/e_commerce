@@ -6,23 +6,62 @@ from decimal import Decimal
 
 from django.conf import settings
 
-from apps.core.store import SOUTH_WEST_STATES
+from apps.core.store import (
+    NORTH_STATES,
+    SOUTH_EAST_SOUTH_SOUTH_STATES,
+    SOUTH_WEST_STATES,
+)
 from apps.promotions.models import Coupon
 
 ZERO = Decimal("0.00")
 
+# Cities in the Ikorodu corridor are priced by couriers with the Ogun/South
+# West band, not Lagos metro. These markers are checked against the free-text
+# city field only; "Ikorodu Road" (which runs through the mainland metro)
+# is explicitly excluded.
+_REMOTE_LAGOS_CITIES = ("ikorodu", "igbogbo", "ijede", "imota", "agbowa", "odogunyan")
+_REMOTE_LAGOS_EXCLUDE = ("road", "express", " rd ")
 
-def shipping_fee_for(subtotal, state, delivery_method="delivery"):
+_ZONE_FEE_SETTINGS = {
+    "lagos": "SHIPPING_FEE_LAGOS",
+    "south_west": "SHIPPING_FEE_SOUTH_WEST",
+    "south_east": "SHIPPING_FEE_SOUTH_EAST_SOUTH_SOUTH",
+    "north": "SHIPPING_FEE_NORTH",
+    "default": "SHIPPING_FEE_DEFAULT",
+}
+
+
+def _is_remote_lagos_city(city):
+    text = (city or "").strip().lower()
+    if not text:
+        return False
+    text = f" {' '.join(text.split())} "
+    if not any(marker in text for marker in _REMOTE_LAGOS_CITIES):
+        return False
+    return not any(marker in text for marker in _REMOTE_LAGOS_EXCLUDE)
+
+
+def resolve_shipping_zone(state, city=""):
+    """Map a delivery address to one of the four priced zones."""
+    key = (state or "").strip().lower()
+    if key == "lagos":
+        return "south_west" if _is_remote_lagos_city(city) else "lagos"
+    if key in SOUTH_WEST_STATES:
+        return "south_west"
+    if key in SOUTH_EAST_SOUTH_SOUTH_STATES:
+        return "south_east"
+    if key in NORTH_STATES:
+        return "north"
+    return "default"
+
+
+def shipping_fee_for(subtotal, state, delivery_method="delivery", city=""):
     if delivery_method == "pickup" or subtotal <= 0:
         return ZERO
     if subtotal >= settings.FREE_SHIPPING_THRESHOLD:
         return ZERO
-    key = (state or "").strip().lower()
-    if key == "lagos":
-        return Decimal(settings.SHIPPING_FEE_LAGOS)
-    if key in SOUTH_WEST_STATES:
-        return Decimal(settings.SHIPPING_FEE_SOUTH_WEST)
-    return Decimal(settings.SHIPPING_FEE_DEFAULT)
+    zone = resolve_shipping_zone(state, city)
+    return Decimal(getattr(settings, _ZONE_FEE_SETTINGS[zone]))
 
 
 def resolve_coupon(code, subtotal):
@@ -40,11 +79,11 @@ def resolve_coupon(code, subtotal):
     return coupon, {"code": code, "valid": True, "message": message, "discount": str(discount), "description": coupon.description}
 
 
-def calculate_totals(subtotal, coupon_code="", state="", delivery_method="delivery"):
+def calculate_totals(subtotal, coupon_code="", state="", delivery_method="delivery", city=""):
     subtotal = Decimal(subtotal).quantize(Decimal("0.01"))
     coupon, coupon_info = resolve_coupon(coupon_code, subtotal)
     discount = Decimal(coupon_info["discount"])
-    shipping = shipping_fee_for(subtotal, state, delivery_method)
+    shipping = shipping_fee_for(subtotal, state, delivery_method, city)
     total = max(subtotal - discount, ZERO) + shipping
     return {
         "coupon_obj": coupon,
@@ -61,8 +100,8 @@ def cart_subtotal(cart):
     return sum((item.line_total for item in cart.items.all()), ZERO)
 
 
-def build_quote(cart, coupon_code="", state="", delivery_method="delivery"):
-    totals = calculate_totals(cart_subtotal(cart), coupon_code, state, delivery_method)
+def build_quote(cart, coupon_code="", state="", delivery_method="delivery", city=""):
+    totals = calculate_totals(cart_subtotal(cart), coupon_code, state, delivery_method, city)
     totals.pop("coupon_obj")
     return {
         "subtotal": str(totals["subtotal"]),

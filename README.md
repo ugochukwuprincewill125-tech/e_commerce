@@ -173,7 +173,7 @@ Production build: `npm run build`, which outputs to `frontend/dist/`.
 | `EMAIL_MAX_ATTEMPTS`, `EMAIL_IMMEDIATE_ATTEMPTS`, `EMAIL_RETRY_AFTER_MINUTES` | Durable outbox delivery/retry policy |
 | `EMAIL_BACKEND`, `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS`, `DEFAULT_FROM_EMAIL` | SMTP/console fallback used until `BREVO_API_KEY` is set |
 | `LOW_STOCK_THRESHOLD` | Stock level at or below which products show **Low Stock** (default 5) |
-| `SHIPPING_FEE_LAGOS`, `SHIPPING_FEE_SOUTH_WEST`, `SHIPPING_FEE_DEFAULT` | Delivery fees in Naira |
+| `SHIPPING_FEE_LAGOS`, `SHIPPING_FEE_SOUTH_WEST`, `SHIPPING_FEE_SOUTH_EAST_SOUTH_SOUTH`, `SHIPPING_FEE_NORTH`, `SHIPPING_FEE_DEFAULT` | Delivery fees in Naira (four zones; default is the fallback for unrecognised states) |
 | `FREE_SHIPPING_THRESHOLD` | Order subtotal (₦) above which delivery is free |
 | `UNPAID_ORDER_EXPIRY_HOURS` | Legacy safety net used by `release_unpaid_orders` |
 | `UNPAID_ORDER_REMINDER_MINUTES`, `UNPAID_ORDER_DELETION_GRACE_MINUTES` | Unpaid-order follow-up: send the reminder after 15 minutes, then delete the order 60 minutes later if still unpaid |

@@ -51,9 +51,10 @@ export default function InfoPage({ page }) {
             {s.showRates && shipping && (
               <dl className="mt-5 grid gap-3 sm:grid-cols-2">
                 {[
-                  ['Lagos', formatNaira(shipping.lagos)],
-                  ['Other South-West states', formatNaira(shipping.south_west)],
-                  ['All other states', formatNaira(shipping.default)],
+                  ['Lagos metro', formatNaira(shipping.lagos)],
+                  ['South West (incl. Ikorodu)', formatNaira(shipping.south_west)],
+                  ['South East & South South + Kwara', formatNaira(shipping.south_east ?? shipping.default)],
+                  ['Northern states + Akwa Ibom/Cross River', formatNaira(shipping.north ?? shipping.default)],
                   ['Store pickup', 'Free'],
                   ['Orders from ' + formatNaira(shipping.free_shipping_threshold), 'Free delivery'],
                 ].map(([k, v]) => (

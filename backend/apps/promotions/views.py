@@ -9,6 +9,7 @@ from apps.cart.services import get_cart
 class ApplyCouponSerializer(serializers.Serializer):
     code = serializers.CharField(max_length=40)
     state = serializers.CharField(max_length=80, required=False, allow_blank=True)
+    city = serializers.CharField(max_length=80, required=False, allow_blank=True)
     delivery_method = serializers.ChoiceField(choices=["delivery", "pickup"], required=False, default="delivery")
 
 
@@ -31,6 +32,7 @@ class ApplyCouponView(APIView):
             cart,
             coupon_code=serializer.validated_data["code"],
             state=serializer.validated_data.get("state", ""),
+            city=serializer.validated_data.get("city", ""),
             delivery_method=serializer.validated_data["delivery_method"],
         )
         if not quote["coupon"]["valid"]:

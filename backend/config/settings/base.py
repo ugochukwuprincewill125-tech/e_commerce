@@ -321,9 +321,16 @@ GOOGLE_API_TIMEOUT = int(os.getenv("GOOGLE_API_TIMEOUT", "10"))
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173").rstrip("/")
 
 LOW_STOCK_THRESHOLD = int(os.getenv("LOW_STOCK_THRESHOLD", "5"))
+# Four-zone, cost-based delivery pricing (October 2026 courier research).
+# Lagos metro is handled by local Computer Village dispatch riders, so it stays
+# at ₦3,500; interstate parcels use the Fez courier bands.
 SHIPPING_FEE_LAGOS = int(os.getenv("SHIPPING_FEE_LAGOS", "3500"))
-SHIPPING_FEE_SOUTH_WEST = int(os.getenv("SHIPPING_FEE_SOUTH_WEST", "5500"))
-SHIPPING_FEE_DEFAULT = int(os.getenv("SHIPPING_FEE_DEFAULT", "7500"))
+SHIPPING_FEE_SOUTH_WEST = int(os.getenv("SHIPPING_FEE_SOUTH_WEST", "6500"))
+SHIPPING_FEE_SOUTH_EAST_SOUTH_SOUTH = int(os.getenv("SHIPPING_FEE_SOUTH_EAST_SOUTH_SOUTH", "8000"))
+SHIPPING_FEE_NORTH = int(os.getenv("SHIPPING_FEE_NORTH", "9000"))
+# Fallback for anything unrecognised (e.g. an address outside the known state
+# list): charge the highest band rather than undercharging.
+SHIPPING_FEE_DEFAULT = int(os.getenv("SHIPPING_FEE_DEFAULT", "9000"))
 FREE_SHIPPING_THRESHOLD = int(os.getenv("FREE_SHIPPING_THRESHOLD", "1000000"))
 UNPAID_ORDER_EXPIRY_HOURS = int(os.getenv("UNPAID_ORDER_EXPIRY_HOURS", "48"))
 # Abandoned-checkout follow-up. An unpaid order gets one reminder email this
