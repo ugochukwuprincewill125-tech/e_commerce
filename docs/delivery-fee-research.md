@@ -38,7 +38,7 @@ Rules that go with the table:
 - **≤ 2 kg included.** 0.5 kg, 1 kg and 2 kg are all quoted at the same price by Fez.
 - **3–5 kg: + ₦1,500.** Fez charges ~₦1,060 more at 5 kg and boxed packaging costs ~₦500 extra.
 - **Above 5 kg: manual quote** (Fez's public quote endpoint only returns bike rates; oversized items need their dashboard/sales).
-- **Store pickup stays free** — it is already implemented and is the best way for price-sensitive Lagos customers to avoid the ₦4,000 fee.
+- **Store pickup stays free** — it is already implemented and is the best way for price-sensitive Lagos customers to avoid the ₦3,500 fee.
 - **Free-delivery threshold: keep ₦1,000,000 for now.** Once real product prices/margins exist, a threshold of ₦300,000 max keeps delivery at ≤3% of order value.
 - **Payment processing (Paystack ~1.5% + ₦100) is deliberately not added to the delivery fee** — it is a cost of sales that product margin should carry. If the owner wants delivery to be fully self-funding including payment fees, the table would have to be ₦4,000 (Lagos, local dispatch) / ₦7,500 / ₦9,000 / ₦10,000, which is not competitive.
 
@@ -122,7 +122,7 @@ Small-electronics orders ship safely in a padded poly mailer; power banks and ri
 | Paystack international cards | ~3.9% + ₦100 (no cap — verify before enabling) |
 | Typical fee at AOV ₦50,000 | ₦850–985 per order |
 
-Paystack's fee applies to the whole order (product + delivery). At ₦50,000 AOV the fee is roughly ₦910 with a ₦4,000 delivery fee — comparable to packaging, and larger than the buffer built into any of the recommended zone fees. This is why payment fees belong in product margin, not in the delivery fee.
+Paystack's fee applies to the whole order (product + delivery). At ₦50,000 AOV the fee is roughly ₦900 with a ₦3,500 delivery fee — comparable to packaging, and larger than the buffer built into any of the recommended zone fees. This is why payment fees belong in product margin, not in the delivery fee.
 
 ### 2.6 Cost pressure context (why to review quarterly)
 
@@ -184,7 +184,7 @@ Lagos is not in this table because it uses local dispatch: at ₦2,500 the all-i
 
 | Zone | 5 kg courier | + boxed packaging | Fee at ≤2 kg | Shortfall | Fee needed to fund all-in |
 |---|---|---|---|---|---|
-| Lagos metro | ₦4,599 | ₦5,499 | ₦4,000 | −₦1,499 | ₦6,500 |
+| Lagos metro | ₦4,599 | ₦5,499 | ₦3,500 | −₦1,999 | ₦6,500 |
 | South West | ₦7,101 | ₦8,001 | ₦6,500 | −₦1,501 | ₦9,000 |
 | SE/SS + Kwara | ₦8,460 | ₦9,360 | ₦8,000 | −₦1,360 | ₦10,500 |
 | North + AK/CR | ₦9,576 | ₦10,476 | ₦9,000 | −₦1,476 | ₦11,500 |
@@ -193,7 +193,7 @@ The **+₦1,500 surcharge for 3–5 kg** closes most of the gap; the remainder i
 
 ### 3.6 Free-delivery threshold
 
-Current ₦1,000,000 is effectively "no free delivery." If a real threshold is wanted, the delivery cost should stay ≤3% of order value: ₦4,000 ÷ 3% = ₦133,000 (Lagos), ₦9,000 ÷ 3% = ₦300,000 (north). A single nationwide **₦300,000** threshold keeps the promise affordable everywhere. Recommendation: revisit only after real product prices and margins are loaded — the current catalogue still has ₦1,000 placeholder prices.
+Current ₦1,000,000 is effectively "no free delivery." If a real threshold is wanted, the delivery cost should stay ≤3% of order value: ₦3,500 ÷ 3% ≈ ₦117,000 (Lagos), ₦9,000 ÷ 3% = ₦300,000 (north). A single nationwide **₦300,000** threshold keeps the promise affordable everywhere. Recommendation: revisit only after real product prices and margins are loaded — the current catalogue still has ₦1,000 placeholder prices.
 
 ---
 
